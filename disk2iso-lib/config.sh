@@ -13,15 +13,15 @@
 # KONFIGURATION
 # ============================================================================
 
-OUTPUT_DIR="/mnt/pve/Public/images"
-CD_DEVICE="/dev/sr0"  # Standard CD/DVD-Laufwerk (wird dynamisch ermittelt)
+OUTPUT_DIR="/mnt/hdd/nas/images"      # Standard Ausgabeordner für ISO-Dateien
+CD_DEVICE="/dev/sr0"     # Standard CD/DVD-Laufwerk (wird dynamisch ermittelt)
 
 # Audio-CD Konfiguration
-AUDIO_OUTPUT_FORMAT="mp3"   # "mp3", "flac", "wav"
-AUDIO_QUALITY="V2"           # lame -V0 (beste) bis -V9 (kleinste Datei)
-AUDIO_USE_MUSICBRAINZ="true" # MusicBrainz Metadaten-Lookup (erfordert Internet)
-AUDIO_USE_CDTEXT="true"      # CD-TEXT als Fallback verwenden
-AUDIO_DOWNLOAD_COVER="true"  # Album-Cover herunterladen und einbetten
+AUDIO_OUTPUT_FORMAT="mp3"                               # "mp3", "flac", "wav"
+AUDIO_QUALITY="V2"                 # lame -V0 (beste) bis -V9 (kleinste Datei)
+AUDIO_USE_MUSICBRAINZ="true"   # MusicBrainz Metadaten-Lookup (erfordert Inet)
+AUDIO_USE_CDTEXT="true"                       # CD-TEXT als Fallback verwenden
+AUDIO_DOWNLOAD_COVER="true"          # Album-Cover herunterladen und einbetten
 
 # ============================================================================
 # GLOBALE VARIABLEN

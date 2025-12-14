@@ -1,24 +1,17 @@
 #!/bin/bash
-################################################################################
+#############################################################################
 # Disk Information Library
+#############################################################################
 # Filepath: disk2iso-lib/lib-diskinfos.sh
 #
 # Beschreibung:
-#   Sammlung aller Funktionen zur Ermittlung von Disk-Informationen:
-#   - Disk-Label/Volume-Namen Ermittlung
+#   Sammlung aller Funktionen zur Ermittlung von Disk-Informationen
+#   - Disk-Label/Volume-Namen 
 #   - Dateisystem-Informationen (Blockgröße, Volume-Größe)
-#   - Disk-Größe Ermittlung
+#   - Disk-Größe in Bytes
 #
 # Abhängigkeiten:
 #   - lib-files.sh (sanitize_filename)
-#
-# Quellen:
-#   - detection/disklabel.sh (get_disc_label)
-#   - unused.sh (get_disc_block_info, get_disc_size)
-#
-# Konsolidiert: 13.12.2025
-# Dateinamen-Funktionen verschoben nach lib-files.sh: 13.12.2025
-# Dateipfad-Funktionen verschoben nach lib-folders.sh: 13.12.2025
 #
 ################################################################################
 
@@ -187,27 +180,6 @@ get_disc_size() {
     
     echo "$size"
 }
-
-# ============================================================================
-# DEPRECATED: FILENAME & FOLDER FUNCTIONS MOVED
-# ============================================================================
-# 
-# Die folgenden Funktionen wurden in separate Module verschoben:
-# 
-# Dateinamen-Funktionen → lib-files.sh:
-#   - get_iso_filename()
-#   - get_md5_filename()
-#   - get_log_filename()
-#   - get_iso_basename()
-# 
-# Dateipfad-Funktionen → lib-folders.sh:
-#   - get_temp_pathname()
-#   - cleanup_temp_pathname()
-# 
-# Bitte die entsprechenden Module laden:
-#   source lib-files.sh
-#   source lib-folders.sh
-# ============================================================================
 
 # ============================================================================
 # ENDE DER DISK INFORMATION LIBRARY

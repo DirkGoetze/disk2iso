@@ -57,12 +57,39 @@ ensure_device_ready() {
         return 1
     fi
     
-    # Prüfe und lade sr_mod Kernel-Modul für sr* Devices
+    # Erkenne Container-Umgebung
+    local is_container=false
+    local virt_type="none"
+    if command -v systemd-detect-virt >/dev/null 2>&1; then
+        virt_type=$(systemd-detect-virt 2>/dev/null || echo "none")
+        if [[ "$virt_type" != "none" ]]; then
+            is_container=true
+            log_message "[DriveStatus] Container erkannt: $virt_type"
+        fi
+    fi
+    
+    # Prüfe und lade sr_mod Kernel-Modul für sr* Devices (NUR auf echten Systemen)
     if [[ "$device" =~ ^/dev/sr[0-9]+$ ]]; then
-        if ! lsmod | grep -q "^sr_mod "; then
-            log_message "$MSG_KERNEL_MODULE_LOAD"
-            if ! modprobe sr_mod 2>/dev/null; then
-                log_message "$MSG_KERNEL_MODULE_FAILED"
+        if [[ "$is_container" == false ]]; then
+            # Normale System-Umgebung: Lade sr_mod falls nötig
+            if ! lsmod | grep -q "^sr_mod "; then
+                log_message "$MSG_KERNEL_MODULE_LOAD"
+                if modprobe sr_mod 2>/dev/null; then
+                    log_message "[DriveStatus] ✓ sr_mod erfolgreich geladen"
+                    # Nach Modul-Laden 2 Sekunden warten
+                    sleep 2
+                else
+                    log_message "$MSG_KERNEL_MODULE_FAILED"
+                fi
+            fi
+        else
+            # Container-Umgebung: Überspringe modprobe
+            log_message "[DriveStatus] Container-Modus: Überspringe sr_mod-Laden (muss auf Host geladen sein)"
+            
+            # Prüfe ob sr_mod auf Host geladen ist
+            if ! lsmod | grep -q "^sr_mod "; then
+                log_message "[DriveStatus] Warnung: sr_mod nicht im Host geladen!"
+                log_message "[DriveStatus] Auf Proxmox Host ausführen: modprobe sr_mod"
             fi
         fi
     fi
@@ -71,9 +98,19 @@ ensure_device_ready() {
     if [[ ! -b "$device" ]]; then
         log_message "$MSG_DEVICE_WAIT"
         
-        # Warte auf udev (falls verfügbar)
-        if command -v udevadm >/dev/null 2>&1; then
-            udevadm settle --timeout=3 2>/dev/null
+        # In normaler Umgebung: Warte auf udev
+        if [[ "$is_container" == false ]]; then
+            if command -v udevadm >/dev/null 2>&1; then
+                udevadm settle --timeout=3 2>/dev/null
+                # Trigger udev für sr* Devices
+                if [[ "$device" =~ ^/dev/sr[0-9]+$ ]]; then
+                    local device_name=$(basename "$device")
+                    if [[ -e "/sys/class/block/$device_name" ]]; then
+                        udevadm trigger --action=add "/sys/class/block/$device_name" 2>/dev/null
+                        sleep 1
+                    fi
+                fi
+            fi
         fi
         
         # Retry-Loop: Warte bis zu 5 Sekunden
@@ -86,7 +123,61 @@ ensure_device_ready() {
     
     # Prüfe ob Device jetzt verfügbar ist
     if [[ ! -b "$device" ]]; then
+        # Erweiterte Diagnose
         log_message "[DriveStatus] Device nicht verfügbar: $device"
+        
+        # Prüfe ob Device im Kernel bekannt ist
+        if [[ "$device" =~ ^/dev/sr[0-9]+$ ]]; then
+            local device_name=$(basename "$device")
+            if [[ -e "/sys/class/block/$device_name" ]]; then
+                log_message "[DriveStatus] Device existiert in /sys/class/block/$device_name"
+                log_message "[DriveStatus] Aber /dev/$device_name wurde nicht erstellt"
+                
+                # Container-spezifische Diagnose
+                if [[ "$is_container" == true ]]; then
+                    log_message "[DriveStatus] Container-Modus: Device muss vom Host durchgereicht werden"
+                    log_message "[DriveStatus] Proxmox Host-Anweisungen:"
+                    log_message "[DriveStatus]   WICHTIG: Für CD/DVD-Zugriff muss Container PRIVILEGIERT sein!"
+                    log_message "[DriveStatus]   1. pct stop <CTID>"
+                    log_message "[DriveStatus]   2. modprobe sr_mod"
+                    log_message "[DriveStatus]   3. In /etc/pve/lxc/<CTID>.conf anpassen:"
+                    log_message "[DriveStatus]      unprivileged: 0              # Privilegierter Container!"
+                    log_message "[DriveStatus]      lxc.cgroup2.devices.allow: b 11:0 rwm"
+                    log_message "[DriveStatus]      lxc.mount.entry: /dev/sr0 dev/sr0 none bind,optional,create=file"
+                    log_message "[DriveStatus]      lxc.apparmor.profile: unconfined  # Für CD/DVD-Ioctls"
+                    log_message "[DriveStatus]   4. pct start <CTID>"
+                    log_message "[DriveStatus]   Alternative: Container als privilegiert neu erstellen"
+                fi
+                
+                # Versuche Device-Node manuell zu erstellen (als letzter Ausweg)
+                if [[ -r "/sys/class/block/$device_name/dev" ]]; then
+                    local major_minor=$(cat "/sys/class/block/$device_name/dev" 2>/dev/null)
+                    if [[ -n "$major_minor" ]]; then
+                        log_message "[DriveStatus] Versuche Device-Node manuell zu erstellen (Major:Minor = $major_minor)"
+                        local major=$(echo "$major_minor" | cut -d: -f1)
+                        local minor=$(echo "$major_minor" | cut -d: -f2)
+                        if mknod "$device" b "$major" "$minor" 2>/dev/null; then
+                            chmod 660 "$device" 2>/dev/null
+                            log_message "[DriveStatus] ✓ Device-Node manuell erstellt"
+                            sleep 1
+                            # Erneute Prüfung
+                            if [[ -b "$device" ]]; then
+                                log_message "[DriveStatus] ✓ Device bereit: $device"
+                                return 0
+                            fi
+                        else
+                            log_message "[DriveStatus] mknod fehlgeschlagen (möglicherweise keine Berechtigung)"
+                        fi
+                    fi
+                fi
+            else
+                log_message "[DriveStatus] Device existiert nicht in /sys/class/block/"
+                if [[ "$is_container" == true ]]; then
+                    log_message "[DriveStatus] In Container: Host muss sr_mod laden und Device durchreichen"
+                fi
+            fi
+        fi
+        
         return 1
     fi
     
@@ -126,8 +217,9 @@ is_drive_closed() {
     fi
     
     # Methode 3: Prüfe mit blkid (funktioniert nur bei geschlossenem Laufwerk mit Medium)
-    if blkid "$CD_DEVICE" >/dev/null 2>&1; then
-        log_message "[DriveStatus] blkid: Laufwerk geschlossen (Dateisystem erkannt)"
+    local fs_type=$(blkid -s TYPE -o value "$CD_DEVICE" 2>/dev/null)
+    if [[ -n "$fs_type" ]]; then
+        log_message "[DriveStatus] blkid: Laufwerk geschlossen (Dateisystem erkannt: $fs_type)"
         return 0
     fi
     
@@ -142,8 +234,8 @@ is_disc_inserted() {
     log_message "[DriveStatus] Prüfe auf eingelegtes Medium..."
     
     # Test 1: blkid - Erkennt Dateisysteme (CD-ROM, DVD-ROM, DVD-Video, BD-ROM)
-    if blkid "$CD_DEVICE" >/dev/null 2>&1; then
-        local fs_type=$(blkid -s TYPE -o value "$CD_DEVICE" 2>/dev/null)
+    local fs_type=$(blkid -s TYPE -o value "$CD_DEVICE" 2>/dev/null)
+    if [[ -n "$fs_type" ]]; then
         log_message "[DriveStatus] ✓ Medium erkannt via blkid (Typ: $fs_type)"
         return 0
     fi
