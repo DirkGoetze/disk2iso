@@ -44,6 +44,56 @@ find_optical_device() {
     
     echo "$device"
 }
+
+# Funktion: Stelle sicher dass Device bereit ist
+# Lädt sr_mod Kernel-Modul falls nötig und wartet auf Device-Node-Erstellung
+# Parameter: $1 = Device-Pfad (z.B. /dev/sr0)
+# Rückgabe: 0 = Device bereit, 1 = Device nicht verfügbar
+ensure_device_ready() {
+    local device="$1"
+    
+    if [[ -z "$device" ]]; then
+        log_message "[DriveStatus] Fehler: Kein Device angegeben"
+        return 1
+    fi
+    
+    # Prüfe und lade sr_mod Kernel-Modul für sr* Devices
+    if [[ "$device" =~ ^/dev/sr[0-9]+$ ]]; then
+        if ! lsmod | grep -q "^sr_mod "; then
+            log_message "$MSG_KERNEL_MODULE_LOAD"
+            if ! modprobe sr_mod 2>/dev/null; then
+                log_message "$MSG_KERNEL_MODULE_FAILED"
+            fi
+        fi
+    fi
+    
+    # Warte auf Device-Node-Erstellung (wichtig für USB-Laufwerke und sr_mod)
+    if [[ ! -b "$device" ]]; then
+        log_message "$MSG_DEVICE_WAIT"
+        
+        # Warte auf udev (falls verfügbar)
+        if command -v udevadm >/dev/null 2>&1; then
+            udevadm settle --timeout=3 2>/dev/null
+        fi
+        
+        # Retry-Loop: Warte bis zu 5 Sekunden
+        local timeout=5
+        while [[ $timeout -gt 0 ]] && [[ ! -b "$device" ]]; do
+            sleep 1
+            ((timeout--))
+        done
+    fi
+    
+    # Prüfe ob Device jetzt verfügbar ist
+    if [[ ! -b "$device" ]]; then
+        log_message "[DriveStatus] Device nicht verfügbar: $device"
+        return 1
+    fi
+    
+    log_message "[DriveStatus] ✓ Device bereit: $device"
+    return 0
+}
+
 # Funktion: Prüfe ob Laufwerk-Schublade geschlossen ist
 # Rückgabe: 0 = geschlossen, 1 = offen
 is_drive_closed() {

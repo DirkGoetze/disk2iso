@@ -19,6 +19,9 @@ readonly MSG_DRIVE_FOUND="Verwende optisches Laufwerk:"
 readonly MSG_DRIVE_NOT_FOUND="FEHLER: Kein optisches Laufwerk gefunden"
 readonly MSG_DRIVE_NOT_AVAILABLE="Fehler: Laufwerk nicht verfügbar"
 readonly MSG_DRIVE_USB_TIP="Tipp: USB-Laufwerk anschließen oder /dev/sr0 prüfen"
+readonly MSG_KERNEL_MODULE_LOAD="Lade Kernel-Modul sr_mod für CD/DVD-Laufwerk..."
+readonly MSG_KERNEL_MODULE_FAILED="Warnung: Konnte sr_mod nicht laden. Root-Rechte erforderlich."
+readonly MSG_DEVICE_WAIT="Warte auf Device-Initialisierung..."
 
 # ============================================================================
 # ABHÄNGIGKEITEN

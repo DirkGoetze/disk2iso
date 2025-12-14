@@ -254,8 +254,8 @@ main() {
     CD_DEVICE="$detected_device"
     log_message "$MSG_DRIVE_FOUND $CD_DEVICE"
     
-    # Prüfe ob Laufwerk verfügbar ist
-    if [[ ! -b "$CD_DEVICE" ]]; then
+    # Stelle sicher dass Device bereit ist (lädt sr_mod, wartet auf udev)
+    if ! ensure_device_ready "$CD_DEVICE"; then
         log_message "$MSG_DRIVE_NOT_AVAILABLE $CD_DEVICE"
         exit 1
     fi
