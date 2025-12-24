@@ -127,7 +127,7 @@ ensure_device_ready() {
 }
 
 # Funktion: Prüfe ob Laufwerk-Schublade geschlossen ist
-# Vereinfacht: Nur /proc/sys/dev/cdrom/info nutzen
+# Vereinfacht: Nutze nur dd-Test (robuster für USB-Laufwerke)
 # Rückgabe: 0 = geschlossen, 1 = offen
 is_drive_closed() {
     # Prüfe ob Device existiert
@@ -135,18 +135,9 @@ is_drive_closed() {
         return 1
     fi
     
-    # Methode 1: Prüfe /proc/sys/dev/cdrom/info (Linux-spezifisch)
-    if [[ -f "/proc/sys/dev/cdrom/info" ]]; then
-        local drive_status=$(grep "drive status:" /proc/sys/dev/cdrom/info 2>/dev/null | awk '{print $3}')
-        if [[ "$drive_status" == "4" ]]; then
-            return 0
-        elif [[ "$drive_status" == "1" ]]; then
-            return 1
-        fi
-    fi
-    
-    # Fallback: Versuche Device zu öffnen (funktioniert nur wenn geschlossen)
-    if dd if="$CD_DEVICE" of=/dev/null bs=1 count=1 2>/dev/null; then
+    # Versuche Device zu öffnen (funktioniert nur wenn geschlossen)
+    # Timeout von 1 Sekunde um nicht zu hängen
+    if timeout 1 dd if="$CD_DEVICE" of=/dev/null bs=1 count=1 2>/dev/null; then
         return 0
     fi
     
@@ -154,11 +145,12 @@ is_drive_closed() {
 }
 
 # Funktion: Prüfe ob Medium eingelegt ist
-# Vereinfacht: Nur /proc und dd-Test nutzen
+# Vereinfacht: Nur dd-Test nutzen (robuster für USB-Laufwerke)
 # Rückgabe: 0 = Medium vorhanden, 1 = kein Medium
 is_disc_inserted() {
     # Versuche mit dd ein paar Bytes zu lesen
-    if dd if="$CD_DEVICE" of=/dev/null bs=2048 count=1 2>/dev/null; then
+    # Timeout von 2 Sekunden für langsame USB-Laufwerke
+    if timeout 2 dd if="$CD_DEVICE" of=/dev/null bs=2048 count=1 2>/dev/null; then
         return 0
     fi
     

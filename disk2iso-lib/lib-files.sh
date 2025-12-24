@@ -37,25 +37,26 @@ sanitize_filename() {
 # ============================================================================
 
 # Funktion zum Erstellen des ISO-Dateinamens
-# Erstellt eindeutigen Dateinamen und prüft auf Duplikate
+# Erstellt eindeutigen Dateinamen basierend auf Disc-Typ
 # Setzt globale Variable: iso_filename
 get_iso_filename() {
-    # Erstelle Ausgabeordner falls nicht vorhanden
-    get_out_folder
+    # Erstelle Typ-spezifischen Unterordner
+    local target_dir
+    target_dir=$(get_type_subfolder "$disc_type")
     
-    # Erstelle eindeutigen Dateinamen (disc_label konvertiere zu Kleinbuchstaben)
-    local base_filename="$(echo "${disc_label}" | tr '[:upper:]' '[:lower:]').iso"
-    local full_path="${OUTPUT_DIR}/${base_filename}"
+    # Erstelle eindeutigen Dateinamen (disc_label bereits bereinigt)
+    local base_filename="${disc_label}.iso"
+    local full_path="${target_dir}/${base_filename}"
     
     # Prüfe ob Datei bereits existiert und füge Nummer hinzu
     local counter=1
     while [[ -f "$full_path" ]]; do
-        base_filename="$(echo "${disc_label}" | tr '[:upper:]' '[:lower:]')_${counter}.iso"
-        full_path="${OUTPUT_DIR}/${base_filename}"
+        base_filename="${disc_label}_${counter}.iso"
+        full_path="${target_dir}/${base_filename}"
         ((counter++))
     done
     
-    # Setze globale Variable (komplett in Kleinbuchstaben)
+    # Setze globale Variable
     iso_filename="$full_path"
 }
 

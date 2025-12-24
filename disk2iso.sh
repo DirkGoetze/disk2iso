@@ -98,8 +98,8 @@ copy_disc_to_iso() {
     fi
 }
 
-# Funktion zum Überwachen des CD/DVD-Laufwerks - VEREINFACHT
-# Kopiert alle eingelegten Medien als ISO (keine Typ-Erkennung)
+# Funktion zum Überwachen des CD/DVD-Laufwerks
+# Erkennt Disc-Typ und kopiert entsprechend
 monitor_cdrom() {
     log_message "Laufwerksüberwachung gestartet"
     
@@ -112,22 +112,40 @@ monitor_cdrom() {
                 continue
             fi
             
-            # Generiere Label (ohne Typ-Erkennung)
-            get_disc_label "data"
-            disc_type="data"
+            # Erkenne Disc-Typ
+            detect_disc_type
+            log_message "Disc-Typ erkannt: $disc_type"
             
+            # Audio-CD Sonderbehandlung
+            if [[ "$disc_type" == "audio-cd" ]]; then
+                log_message "FEHLER: Audio-CD - Erstellung eines ISO-Image nicht möglich"
+                
+                # Werfe Medium aus und warte auf Entnahme
+                eject "$CD_DEVICE" 2>/dev/null
+                while is_disc_inserted; do
+                    sleep 2
+                done
+                continue
+            fi
+            
+            # Generiere Label
+            get_disc_label
+            log_message "Volume-Label: $disc_label"
+            
+            # Kopiere Disc als ISO
             copy_disc_to_iso
             
-            # Warte auf Statusänderung (Medium entfernt) - prüfe alle 2 Sekunden
-            wait_for_disc_change 2
+            # Warte bis Medium entfernt wurde
+            log_message "Warte auf Medium-Entnahme..."
+            while is_disc_inserted; do
+                sleep 2
+            done
         else
-            # Warte auf Statusänderung (Medium eingelegt) - prüfe alle 2 Sekunden
-            wait_for_disc_change 2
-            
-            # Wenn Laufwerk geschlossen wurde, kurz warten
-            if is_drive_closed; then
-                sleep 1
-            fi
+            # Warte bis Medium eingelegt wird
+            log_message "Warte auf Medium..."
+            while ! is_disc_inserted; do
+                sleep 2
+            done
         fi
     done
 }

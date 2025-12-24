@@ -109,6 +109,34 @@ get_out_folder() {
     fi
 }
 
+# Funktion zum Erstellen von Typ-spezifischen Unterordnern
+# Parameter: $1 = disc_type (audio-cd, cd-rom, dvd-video, dvd-rom, bd-video, bd-rom)
+# Rückgabe: Unterordner-Pfad
+get_type_subfolder() {
+    local dtype="$1"
+    local subfolder=""
+    
+    case "$dtype" in
+        cd-rom|dvd-rom|bd-rom)
+            subfolder="DATA"
+            ;;
+        dvd-video)
+            subfolder="DVD"
+            ;;
+        bd-video)
+            subfolder="BD"
+            ;;
+        *)
+            subfolder="DATA"
+            ;;
+    esac
+    
+    local full_path="${OUTPUT_DIR}/${subfolder}"
+    mkdir -p "$full_path"
+    
+    echo "$full_path"
+}
+
 # Funktion zum Erstellen des Album-Verzeichnisses für Audio-CDs
 # Parameter: $1 = album_dir Pfad
 # Rückgabe: 0 = erfolgreich, 1 = Fehler

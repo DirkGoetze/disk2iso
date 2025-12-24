@@ -24,6 +24,11 @@ check_lsblk() {
     command -v lsblk >/dev/null 2>&1
 }
 
+# Prüfe ob isoinfo verfügbar ist (optional, für optimierte ISO-Kopie)
+check_isoinfo() {
+    command -v isoinfo >/dev/null 2>&1
+}
+
 # Prüfe alle kritischen System-Tools
 check_all_critical_tools() {
     local missing=()
@@ -40,7 +45,16 @@ check_all_critical_tools() {
     return 0
 }
 
-# Keine optionalen Tools mehr
+# Prüfe optionale Tools (für bessere Performance)
 check_all_optional_tools() {
+    local missing=()
+    
+    check_isoinfo || missing+=("isoinfo (Paket: genisoimage)")
+    
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "${missing[@]}"
+        return 1
+    fi
+    
     return 0
 }
