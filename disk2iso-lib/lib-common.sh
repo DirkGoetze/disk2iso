@@ -33,9 +33,10 @@ copy_video_dvd() {
     mkdir -p "$temp_dvd"
     
     # Kopiere DVD-Struktur mit dvdbackup (entschlüsselt)
+    # Timeout nach 60 Sekunden (verhindert Hängen ohne libdvdcss2)
     log_message "Extrahiere DVD-Struktur..."
-    if ! dvdbackup -M -i "$CD_DEVICE" -o "$temp_dvd" 2>>"$log_filename"; then
-        log_message "FEHLER: dvdbackup fehlgeschlagen - Fallback auf ddrescue"
+    if ! timeout 60 dvdbackup -M -i "$CD_DEVICE" -o "$temp_dvd" 2>>"$log_filename"; then
+        log_message "FEHLER: dvdbackup fehlgeschlagen (Timeout oder kein libdvdcss2) - Fallback auf ddrescue"
         rm -rf "$temp_dvd"
         copy_video_dvd_ddrescue
         return $?

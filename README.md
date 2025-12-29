@@ -12,16 +12,43 @@ Automatisches Rippen von CDs, DVDs und Blu-rays zu ISO-Images beim Einlegen.
 
 ## Systemanforderungen
 
-**Nur Debian 13 Standard-Tools:**
-- dd (Kopieren)
-- md5sum (Checksummen)
-- lsblk (Laufwerkserkennung)
-- eject (Medien auswerfen)
+### Kritische Pakete (immer erforderlich)
+- **coreutils**: dd (Kopieren), md5sum (Checksummen)
+- **util-linux**: lsblk (Laufwerkserkennung)
+- **eject**: Medien auswerfen
+- **mount**: Dateisystem-Mount für Label-Erkennung
 - Standard Shell-Tools (grep, sed, awk, date, etc.)
 
-**Keine zusätzlichen Pakete erforderlich!**
+### Optionale Pakete (für erweiterte Funktionen)
+- **genisoimage** (empfohlen): isoinfo für exakte Volume-Größen → schnelleres Kopieren
+- **gddrescue** (empfohlen): Intelligentes Rettungs-Tool → deutlich schneller als dd
+- **dvdbackup** (optional): DVD-Entschlüsselung → schnellste Methode für Video-DVDs
+- **libdvdcss2** (optional): CSS-Entschlüsselung für kommerzielle DVDs (nur mit deb-multimedia.org)
+
+**Hinweis**: Das install.sh Script bietet alle Pakete interaktiv zur Installation an.
 
 ## Installation
+
+### Automatische Installation (empfohlen)
+
+```bash
+# 1. Repository clonen
+git clone <repository-url>
+cd disk2iso
+
+# 2. Installations-Script ausführen
+sudo ./install.sh
+```
+
+Das Installations-Script führt Sie interaktiv durch den Setup-Prozess:
+- ✓ Prüft und installiert kritische Pakete (dd, md5sum, lsblk, eject)
+- ✓ Bietet optionale Pakete an (genisoimage, gddrescue, dvdbackup)
+- ✓ Konfiguriert libdvdcss2 für DVD-Entschlüsselung (optional)
+- ✓ Installiert disk2iso nach /opt/disk2iso
+- ✓ Erstellt Symlink in /usr/local/bin
+- ✓ Konfiguriert systemd Service (optional)
+
+### Manuelle Installation
 
 ```bash
 # 1. Repository clonen
