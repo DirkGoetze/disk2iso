@@ -87,6 +87,9 @@ get_volume_label() {
         label="Disc_$(date '+%Y%m%d_%H%M%S')"
     fi
     
+    # Konvertiere in Kleinbuchstaben
+    label=$(echo "$label" | tr '[:upper:]' '[:lower:]')
+    
     # Bereinige Label (entferne Sonderzeichen)
     label=$(sanitize_filename "$label")
     
