@@ -42,8 +42,7 @@ detect_disc_type() {
     fi
     
     # Mounte Disc temporär um Struktur zu prüfen
-    local mount_point="/tmp/disk2iso_mount_$$"
-    mkdir -p "$mount_point"
+    local mount_point=$(get_tmp_mount)
     
     if mount -o ro "$CD_DEVICE" "$mount_point" 2>/dev/null; then
         # Prüfe auf Video-DVD (VIDEO_TS Ordner)
