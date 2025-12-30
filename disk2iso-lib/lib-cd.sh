@@ -378,14 +378,17 @@ copy_audio_cd() {
     # Metadaten abrufen (optional, Fehler nicht kritisch)
     get_musicbrainz_metadata || log_message "$MSG_CONTINUE_WITHOUT_METADATA"
     
-    # Erstelle Arbeitsverzeichnis im Ausgabe-temp-Verzeichnis
-    local temp_audio="${OUTPUT_DIR}/temp/disk2iso_audio_$$"
-    mkdir -p "$temp_audio"
+    # Nutze globales temp_pathname (wird von init_filenames erstellt)
+    # Falls nicht vorhanden (standalone-Aufruf), erstelle eigenes Verzeichnis
+    if [[ -z "$temp_pathname" ]]; then
+        temp_pathname="${OUTPUT_DIR}/temp/disk2iso_audio_$$"
+        mkdir -p "$temp_pathname"
+    fi
     
-    # Lade Album-Cover falls verfügbar (nach temp_audio Erstellung)
+    # Lade Album-Cover falls verfügbar (nach temp_pathname Sicherstellung)
     local cover_file=""
     if command -v eyeD3 >/dev/null 2>&1; then
-        cover_file=$(download_cover_art "$temp_audio")
+        cover_file=$(download_cover_art "$temp_pathname")
     else
         log_message "$MSG_INFO_EYED3_MISSING"
     fi
@@ -398,7 +401,7 @@ copy_audio_cd() {
         local safe_album=$(echo "$cd_album" | sed 's/[\/\\:*?"<>|]/_/g')
         
         # Struktur: AlbumArtist/Album/
-        album_dir="${temp_audio}/${safe_artist}/${safe_album}"
+        album_dir="${temp_pathname}/${safe_artist}/${safe_album}"
         
         # Setze disc_label für ISO-Dateinamen (lowercase für Dateinamen)
         local label_artist=$(echo "$cd_artist" | sed 's/[^a-zA-Z0-9_-]/_/g' | tr '[:upper:]' '[:lower:]')
@@ -407,11 +410,11 @@ copy_audio_cd() {
     else
         # Fallback: Verwende Disc-ID oder generischen Namen
         if [[ -n "$cd_discid" ]]; then
-            album_dir="${temp_audio}/Unknown_Artist/audio_cd_${cd_discid}"
+            album_dir="${temp_pathname}/Unknown_Artist/audio_cd_${cd_discid}"
             disc_label="audio_cd_${cd_discid}"
         else
             local timestamp=$(date +%Y%m%d_%H%M%S)
-            album_dir="${temp_audio}/Unknown_Artist/audio_cd_${timestamp}"
+            album_dir="${temp_pathname}/Unknown_Artist/audio_cd_${timestamp}"
             disc_label="audio_cd_${timestamp}"
         fi
     fi
@@ -426,7 +429,7 @@ copy_audio_cd() {
     
     if [[ $track_count -eq 0 ]]; then
         log_message "$MSG_ERROR_NO_TRACKS"
-        rm -rf "$temp_audio"
+        rm -rf "$temp_pathname"
         return 1
     fi
     
@@ -437,13 +440,13 @@ copy_audio_cd() {
     local track
     for track in $(seq 1 "$track_count"); do
         local track_num=$(printf "%02d" "$track")
-        local wav_file="${temp_audio}/track_${track_num}.wav"
+        local wav_file="${temp_pathname}/track_${track_num}.wav"
         
         log_message "$MSG_RIPPING_TRACK $track / $track_count"
         
         if ! cdparanoia -d "$CD_DEVICE" "$track" "$wav_file" >>"$log_filename" 2>&1; then
             log_message "$MSG_ERROR_TRACK_RIP_FAILED $track"
-            rm -rf "$temp_audio"
+            rm -rf "$temp_pathname"
             return 1
         fi
         
@@ -488,7 +491,7 @@ copy_audio_cd() {
         
         if ! eval lame $lame_opts \"$wav_file\" \"$mp3_file\" >>"$log_filename" 2>&1; then
             log_message "$MSG_ERROR_MP3_ENCODING_FAILED $track"
-            rm -rf "$temp_audio"
+            rm -rf "$temp_pathname"
             [[ -n "$cover_file" ]] && rm -f "$cover_file"
             return 1
         fi
@@ -522,7 +525,7 @@ copy_audio_cd() {
     
     if ! check_disk_space "$required_mb"; then
         log_message "$MSG_ERROR_INSUFFICIENT_SPACE_ISO"
-        rm -rf "$temp_audio"
+        rm -rf "$temp_pathname"
         return 1
     fi
     
@@ -538,19 +541,19 @@ copy_audio_cd() {
     log_message "$MSG_CREATE_ISO: $iso_filename"
     log_message "$MSG_VOLUME_ID: $volume_id"
     
-    # Erstelle ISO aus temp_audio (nicht album_dir!) um Ordnerstruktur zu erhalten
+    # Erstelle ISO aus temp_pathname (nicht album_dir!) um Ordnerstruktur zu erhalten
     # ISO enthält dann: AlbumArtist/Album/Tracks.mp3
     if ! genisoimage -R -J -joliet-long \
         -V "$volume_id" \
         -o "$iso_filename" \
-        "$temp_audio" >>"$log_filename" 2>&1; then
+        "$temp_pathname" >>"$log_filename" 2>&1; then
         log_message "$MSG_ERROR_ISO_CREATION_FAILED"
-        rm -rf "$temp_audio"
+        rm -rf "$temp_pathname"
         return 1
     fi
     
     # Cleanup temp-Verzeichnis und Cover-Datei
-    rm -rf "$temp_audio"
+    rm -rf "$temp_pathname"
     [[ -n "$cover_file" ]] && rm -f "$cover_file"
     
     # Prüfe ISO-Größe
