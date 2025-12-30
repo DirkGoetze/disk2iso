@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<album>
+  <review />
+  <outline />
+  <lockdata>false</lockdata>
+  <dateadded>2025-08-13 20:45:46</dateadded>
+  <title>Ronan</title>
+  <year>2000</year>
+  <premiered>2000-01-01</premiered>
+  <releasedate>2000-01-01</releasedate>
+  <runtime>55</runtime>
+  <genre>Pop</genre>
+  <audiodbartistid>111505</audiodbartistid>
+  <audiodbalbumid>2113051</audiodbalbumid>
+  <musicbrainzalbumid>092aeff3-a12f-4852-beff-13448c893a54</musicbrainzalbumid>
+  <musicbrainzalbumartistid>f1cd545b-f17b-4d3a-98de-68b695bfe211</musicbrainzalbumartistid>
+  <musicbrainzreleasegroupid>f51b43e1-e1f7-3a0c-8a6d-b7221937bcc0</musicbrainzreleasegroupid>
+  <actor>
+    <name>Ronan Keating</name>
+    <type>AlbumArtist</type>
+  </actor>
+  <actor>
+    <name>Ronan Keating</name>
+    <type>Artist</type>
+  </actor>
+  <artist>Ronan Keating</artist>
+  <albumartist>Ronan Keating</albumartist>
+  <track>
+    <position>1</position>
+    <title>Life Is a Rollercoaster</title>
+    <duration>03:56</duration>
+  </track>
+  <track>
+    <position>2</position>
+    <title>The Way You Make Me Feel</title>
+    <duration>03:54</duration>
+  </track>
+  <track>
+    <position>3</position>
+    <title>In This Life</title>
+    <duration>03:11</duration>
+  </track>
+  <track>
+    <position>4</position>
+    <title>Heal Me</title>
+    <duration>04:05</duration>
+  </track>
+  <track>
+    <position>5</position>
+    <title>Keep On Walking</title>
+    <duration>03:57</duration>
+  </track>
+  <track>
+    <position>6</position>
+    <title>When You Say Nothing at All</title>
+    <duration>04:18</duration>
+  </track>
+  <track>
+    <position>7</position>
+    <title>Brighter Days</title>
+    <duration>04:55</duration>
+  </track>
+  <track>
+    <position>8</position>
+    <title>If You Love Me</title>
+    <duration>03:27</duration>
+  </track>
+  <track>
+    <position>9</position>
+    <title>If I Don’t Tell You Now</title>
+    <duration>03:20</duration>
+  </track>
+  <track>
+    <position>10</position>
+    <title>Only for You</title>
+    <duration>04:29</duration>
+  </track>
+  <track>
+    <position>11</position>
+    <title>Addicted</title>
+    <duration>05:25</duration>
+  </track>
+  <track>
+    <position>12</position>
+    <title>When the World Was Mine</title>
+    <duration>05:18</duration>
+  </track>
+  <track>
+    <position>13</position>
+    <title>Believe</title>
+    <duration>05:04</duration>
+  </track>
+</album>
