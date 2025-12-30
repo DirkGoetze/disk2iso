@@ -195,6 +195,8 @@ get_musicbrainz_metadata() {
 # Funktion: Lade Album-Cover von Cover Art Archive
 # Rückgabe: Pfad zur Cover-Datei oder leer
 download_cover_art() {
+    local target_dir="${1:-/tmp}"
+    
     if [[ -z "$mb_response" ]]; then
         return 1
     fi
@@ -216,8 +218,8 @@ download_cover_art() {
         return 1
     fi
     
-    # Download Cover (mit -L für Redirects)
-    local cover_file="/tmp/disk2iso_cover_$$.jpg"
+    # Download Cover (mit -L für Redirects) in Zielverzeichnis
+    local cover_file="${target_dir}/disk2iso_cover_$$.jpg"
     local cover_url="https://coverartarchive.org/release/${release_id}/front"
     
     log_message "$MSG_DOWNLOAD_COVER"
@@ -376,17 +378,17 @@ copy_audio_cd() {
     # Metadaten abrufen (optional, Fehler nicht kritisch)
     get_musicbrainz_metadata || log_message "$MSG_CONTINUE_WITHOUT_METADATA"
     
-    # Lade Album-Cover falls verfügbar
-    local cover_file=""
-    if command -v eyeD3 >/dev/null 2>&1; then
-        cover_file=$(download_cover_art)
-    else
-        log_message "$MSG_INFO_EYED3_MISSING"
-    fi
-    
     # Erstelle Arbeitsverzeichnis im Ausgabe-temp-Verzeichnis
     local temp_audio="${OUTPUT_DIR}/temp/disk2iso_audio_$$"
     mkdir -p "$temp_audio"
+    
+    # Lade Album-Cover falls verfügbar (nach temp_audio Erstellung)
+    local cover_file=""
+    if command -v eyeD3 >/dev/null 2>&1; then
+        cover_file=$(download_cover_art "$temp_audio")
+    else
+        log_message "$MSG_INFO_EYED3_MISSING"
+    fi
     
     # Erstelle Jellyfin-kompatible Verzeichnisstruktur: AlbumArtist/Album/
     local album_dir
