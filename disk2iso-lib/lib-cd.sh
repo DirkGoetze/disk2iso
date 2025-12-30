@@ -536,10 +536,12 @@ copy_audio_cd() {
     log_message "Erstelle ISO: $iso_filename"
     log_message "Volume-ID: $volume_id"
     
+    # Erstelle ISO aus temp_audio (nicht album_dir!) um Ordnerstruktur zu erhalten
+    # ISO enthält dann: AlbumArtist/Album/Tracks.mp3
     if ! genisoimage -R -J -joliet-long \
         -V "$volume_id" \
         -o "$iso_filename" \
-        "$album_dir" >>"$log_filename" 2>&1; then
+        "$temp_audio" >>"$log_filename" 2>&1; then
         log_message "FEHLER: ISO-Erstellung fehlgeschlagen"
         rm -rf "$temp_audio"
         return 1
