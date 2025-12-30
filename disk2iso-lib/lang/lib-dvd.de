@@ -43,10 +43,9 @@ readonly MSG_ERROR_GENISOIMAGE_FAILED="FEHLER: genisoimage fehlgeschlagen"
 # DDRESCUE-METHODE
 # ============================================================================
 
-readonly MSG_METHOD_DDRESCUE_ENCRYPTED="Methode: ddrescue (verschlüsselt, robust)"
+# MSG_METHOD_DDRESCUE_ENCRYPTED bereits in lib-common.de definiert
 # MSG_ISO_VOLUME_DETECTED bereits in lib-common.de definiert
-readonly MSG_ISO_BLOCKS="Blöcke"
+# MSG_ISO_BLOCKS bereits in lib-common.de definiert
 readonly MSG_VIDEO_DVD_DDRESCUE_SUCCESS="✓ Video-DVD mit ddrescue erfolgreich kopiert"
 # MSG_ERROR_DDRESCUE_FAILED bereits in lib-common.de definiert
-readonly MSG_BLOCKS="Blöcke"
 readonly MSG_DVD_SUCCESS_DDRESCUE="✓ Video-DVD mit ddrescue erfolgreich kopiert"

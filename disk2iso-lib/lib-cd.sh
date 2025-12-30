@@ -384,8 +384,8 @@ copy_audio_cd() {
         log_message "$MSG_INFO_EYED3_MISSING"
     fi
     
-    # Erstelle Arbeitsverzeichnis
-    local temp_audio="/tmp/disk2iso_audio_$$"
+    # Erstelle Arbeitsverzeichnis im Ausgabe-temp-Verzeichnis
+    local temp_audio="${OUTPUT_DIR}/temp/disk2iso_audio_$$"
     mkdir -p "$temp_audio"
     
     # Erstelle Jellyfin-kompatible Verzeichnisstruktur: AlbumArtist/Album/
