@@ -14,3 +14,44 @@
 
 readonly MSG_MODULE_VIDEO_DVD="Modul: Video-DVD Backup (dvdbackup)"
 readonly MSG_DETECTED_TYPE_DVD="Erkannter Typ: Video-DVD"
+
+# ============================================================================
+# ABHÄNGIGKEITEN
+# ============================================================================
+
+readonly MSG_VIDEO_SUPPORT_AVAILABLE="Video-DVD/BD Support verfügbar mit:"
+readonly MSG_EXTENDED_METHODS_AVAILABLE="Erweiterte Methoden verfügbar nach Installation:"
+readonly MSG_INSTALLATION_DVD="Installation: apt-get install dvdbackup genisoimage gddrescue libdvdcss2"
+readonly MSG_ERROR_NO_VIDEO_METHOD="FEHLER: Keine Video-DVD/BD Methode verfügbar"
+
+# ============================================================================
+# DVDBACKUP-METHODE
+# ============================================================================
+
+readonly MSG_METHOD_DVDBACKUP="Methode: dvdbackup (entschlüsselt)"
+readonly MSG_DVD_SIZE="DVD-Größe:"
+readonly MSG_EXTRACT_DVD_STRUCTURE="Extrahiere DVD-Struktur..."
+readonly MSG_PROGRESS="Fortschritt:"
+readonly MSG_PROGRESS_MB="MB"
+readonly MSG_REMAINING="verbleibend:"
+readonly MSG_COPIED="kopiert"
+readonly MSG_ERROR_DVDBACKUP_FAILED="FEHLER: dvdbackup fehlgeschlagen"
+readonly MSG_DVD_STRUCTURE_EXTRACTED="✓ DVD-Struktur extrahiert (100%)"
+readonly MSG_ERROR_NO_VIDEO_TS="FEHLER: Kein VIDEO_TS Ordner gefunden"
+readonly MSG_CREATE_DECRYPTED_ISO="Erstelle entschlüsselte ISO aus VIDEO_TS..."
+readonly MSG_DECRYPTED_DVD_SUCCESS="✓ Entschlüsselte Video-DVD ISO erfolgreich erstellt"
+readonly MSG_ERROR_GENISOIMAGE_FAILED="FEHLER: genisoimage fehlgeschlagen"
+
+# ============================================================================
+# DDRESCUE-METHODE
+# ============================================================================
+
+readonly MSG_METHOD_DDRESCUE_ENCRYPTED="Methode: ddrescue (verschlüsselt, robust)"
+readonly MSG_ISO_VOLUME_DETECTED="ISO-Volume erkannt:"
+readonly MSG_ISO_BLOCKS="Blöcke"
+readonly MSG_VIDEO_DVD_DDRESCUE_SUCCESS="✓ Video-DVD mit ddrescue erfolgreich kopiert"
+readonly MSG_ERROR_DDRESCUE_FAILED="FEHLER: ddrescue fehlgeschlagen"
+readonly MSG_ISO_VOLUME_DETECTED="ISO-Volume erkannt:"
+readonly MSG_BLOCKS="Blöcke"
+readonly MSG_DVD_SUCCESS_DDRESCUE="✓ Video-DVD mit ddrescue erfolgreich kopiert"
+readonly MSG_ERROR_DDRESCUE_FAILED="FEHLER: ddrescue fehlgeschlagen"

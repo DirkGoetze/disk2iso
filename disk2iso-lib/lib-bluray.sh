@@ -93,21 +93,21 @@ check_bluray_dependencies() {
 # Nutzt MakeMKV Backup-Modus + genisoimage für ISO-Erstellung
 # KEIN Fallback - Methode wird zu Beginn gewählt
 copy_bluray_makemkv() {
-    log_message "Methode: MakeMKV (entschlüsselt)"
+    log_message "$MSG_METHOD_MAKEMKV"
     
     # Erstelle temporäres Verzeichnis für BD-Struktur
     local temp_bd="${temp_pathname}/bluray_backup"
     mkdir -p "$temp_bd"
     
     # Analysiere Blu-ray-Struktur
-    log_message "Analysiere Blu-ray mit MakeMKV..."
+    log_message "$MSG_ANALYZE_BLURAY"
     
     # Ermittle Disc-Info (Titel-Anzahl, Größe)
     local info_output
     info_output=$(makemkvcon -r info "disc:0" 2>/dev/null)
     
     if [[ -z "$info_output" ]]; then
-        log_message "FEHLER: MakeMKV kann Disc nicht erkennen"
+        log_message "$MSG_ERROR_MAKEMKV_NO_DISC"
         rm -rf "$temp_bd"
         return 1
     fi
@@ -117,18 +117,18 @@ copy_bluray_makemkv() {
     title_count=$(echo "$info_output" | grep "^TCOUNT:" | cut -d: -f2)
     
     if [[ -z "$title_count" ]] || [[ $title_count -eq 0 ]]; then
-        log_message "FEHLER: Keine Titel auf Blu-ray gefunden"
+        log_message "$MSG_ERROR_NO_BLURAY_TITLES"
         rm -rf "$temp_bd"
         return 1
     fi
     
-    log_message "Gefundene Titel auf Blu-ray: $title_count"
+    log_message "$MSG_BLURAY_TITLES_FOUND: $title_count"
     
     # Extrahiere Disc-Name falls verfügbar
     local disc_name
     disc_name=$(echo "$info_output" | grep "^CINFO:2," | cut -d, -f3 | tr -d '"')
     if [[ -n "$disc_name" ]]; then
-        log_message "Disc-Name: $disc_name"
+        log_message "$MSG_DISC_NAME: $disc_name"
     fi
     
     # Ermittle Gesamtgröße (optional, für Fortschritt)
@@ -138,7 +138,7 @@ copy_bluray_makemkv() {
     if [[ -n "$size_line" ]]; then
         # Konvertiere Bytes zu MB (falls verfügbar)
         total_size_mb=$((size_line / 1024 / 1024))
-        log_message "Blu-ray-Größe: ${total_size_mb} MB"
+        log_message "$MSG_BLURAY_SIZE: ${total_size_mb} $MSG_PROGRESS_MB"
     fi
     
     # Prüfe Speicherplatz (BD-Größe + 10% Puffer)
@@ -151,8 +151,8 @@ copy_bluray_makemkv() {
     fi
     
     # Starte MakeMKV Backup im Hintergrund
-    log_message "Starte MakeMKV Backup (entschlüsselt komplette Disc-Struktur)..."
-    log_message "Dies kann je nach Disc-Größe 30-60 Minuten dauern..."
+    log_message "$MSG_START_MAKEMKV_BACKUP"
+    log_message "$MSG_MAKEMKV_DURATION"
     
     # MakeMKV Backup-Modus: --decrypt sichert entschlüsselte BDMV-Struktur
     makemkvcon backup --decrypt --noscan -r --progress=-same "disc:0" "$temp_bd" >>"$log_filename" 2>&1 &
@@ -196,9 +196,9 @@ copy_bluray_makemkv() {
             
             # Formatierte Ausgabe
             if [[ $total_size_mb -gt 0 ]]; then
-                log_message "MakeMKV Fortschritt: ${copied_mb} MB von ${total_size_mb} MB (${percent}%) - verbleibend: ${eta}"
+                log_message "$MSG_MAKEMKV_PROGRESS: ${copied_mb} $MSG_PROGRESS_MB / ${total_size_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
             else
-                log_message "MakeMKV Fortschritt: ${copied_mb} MB kopiert"
+                log_message "$MSG_MAKEMKV_PROGRESS: ${copied_mb} $MSG_PROGRESS_MB $MSG_COPIED"
             fi
             
             last_log_time=$current_time
@@ -211,35 +211,35 @@ copy_bluray_makemkv() {
     
     # Prüfe Ergebnis
     if [[ $makemkv_exit -ne 0 ]]; then
-        log_message "FEHLER: MakeMKV Backup fehlgeschlagen (Exit-Code: $makemkv_exit)"
+        log_message "$MSG_ERROR_MAKEMKV_FAILED (Exit-Code: $makemkv_exit)"
         rm -rf "$temp_bd"
         return 1
     fi
     
-    log_message "✓ MakeMKV Backup erfolgreich abgeschlossen (100%)"
+    log_message "$MSG_MAKEMKV_SUCCESS"
     
     # Prüfe ob BDMV Ordner existiert
     local bdmv_dir
     bdmv_dir=$(find "$temp_bd" -type d -name "BDMV" | head -1)
     
     if [[ -z "$bdmv_dir" ]]; then
-        log_message "FEHLER: Kein BDMV Ordner im Backup gefunden"
+        log_message "$MSG_ERROR_NO_BDMV"
         rm -rf "$temp_bd"
         return 1
     fi
     
-    log_message "BDMV-Struktur gefunden: $bdmv_dir"
+    log_message "$MSG_BDMV_FOUND: $bdmv_dir"
     
     # Erstelle ISO aus entschlüsselter BDMV-Struktur
-    log_message "Erstelle entschlüsselte ISO aus BDMV-Struktur..."
+    log_message "$MSG_CREATE_DECRYPTED_ISO_BDMV"
     
     # UDF Dateisystem für Blu-ray Kompatibilität
     if genisoimage -udf -allow-limited-size -V "$disc_label" -o "$iso_filename" "$(dirname "$bdmv_dir")" 2>>"$log_filename"; then
-        log_message "✓ Entschlüsselte Blu-ray ISO erfolgreich erstellt"
+        log_message "$MSG_DECRYPTED_BLURAY_SUCCESS"
         rm -rf "$temp_bd"
         return 0
     else
-        log_message "FEHLER: ISO-Erstellung mit genisoimage fehlgeschlagen"
+        log_message "$MSG_ERROR_GENISOIMAGE_FAILED"
         rm -rf "$temp_bd"
         return 1
     fi
@@ -253,7 +253,7 @@ copy_bluray_makemkv() {
 # Schneller als dd bei Lesefehlern, ISO bleibt verschlüsselt
 # KEIN Fallback - Methode wird zu Beginn gewählt
 copy_bluray_ddrescue() {
-    log_message "Methode: ddrescue (verschlüsselt, robust)"
+    log_message "$MSG_METHOD_DDRESCUE_ENCRYPTED"
     
     # ddrescue benötigt Map-Datei
     local mapfile="${iso_filename}.mapfile"
@@ -266,7 +266,7 @@ copy_bluray_ddrescue() {
         volume_size=$(isoinfo -d -i "$CD_DEVICE" 2>/dev/null | grep "Volume size is:" | awk '{print $4}')
         if [[ -n "$volume_size" ]] && [[ "$volume_size" =~ ^[0-9]+$ ]]; then
             total_bytes=$((volume_size * 2048))
-            log_message "ISO-Volume erkannt: $volume_size Blöcke ($(( total_bytes / 1024 / 1024 )) MB)"
+            log_message "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
         fi
     fi
     
@@ -281,27 +281,27 @@ copy_bluray_ddrescue() {
     fi
     
     # Kopiere mit ddrescue
-    log_message "Starte ddrescue (Blu-ray bleibt verschlüsselt)..."
+    log_message "$MSG_START_DDRESCUE_BLURAY"
     
     if [[ $total_bytes -gt 0 ]]; then
         # Mit bekannter Größe
         if ddrescue -b 2048 -s "$total_bytes" -n "$CD_DEVICE" "$iso_filename" "$mapfile" 2>>"$log_filename"; then
-            log_message "✓ Blu-ray mit ddrescue erfolgreich kopiert"
+            log_message "$MSG_BLURAY_DDRESCUE_SUCCESS"
             rm -f "$mapfile"
             return 0
         else
-            log_message "FEHLER: ddrescue fehlgeschlagen"
+            log_message "$MSG_ERROR_DDRESCUE_FAILED"
             rm -f "$mapfile"
             return 1
         fi
     else
         # Ohne bekannte Größe (kopiert bis Ende)
         if ddrescue -b 2048 -n "$CD_DEVICE" "$iso_filename" "$mapfile" 2>>"$log_filename"; then
-            log_message "✓ Blu-ray mit ddrescue erfolgreich kopiert"
+            log_message "$MSG_BLURAY_DDRESCUE_SUCCESS"
             rm -f "$mapfile"
             return 0
         else
-            log_message "FEHLER: ddrescue fehlgeschlagen"
+            log_message "$MSG_ERROR_DDRESCUE_FAILED"
             rm -f "$mapfile"
             return 1
         fi

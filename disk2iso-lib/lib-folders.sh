@@ -21,6 +21,9 @@ _OUTPUT_DIR_CREATED=false
 _LOG_DIR_CREATED=false
 _TEMP_BASE_CREATED=false
 
+# Lade Sprachdatei für dieses Modul
+load_module_language "folders"
+
 # ============================================================================
 # TEMP FOLDER MANAGEMENT
 # Quelle: lib-diskinfos.sh
@@ -48,7 +51,7 @@ get_temp_pathname() {
     temp_pathname="${temp_base}/${basename_without_ext}_$$"
     mkdir -p "$temp_pathname"
     
-    log_message "Temp-Verzeichnis erstellt: $temp_pathname"
+    log_message "$MSG_TEMP_DIR_CREATED: $temp_pathname"
 }
 
 # Funktion zum Aufräumen des Temp-Verzeichnisses
@@ -56,7 +59,7 @@ get_temp_pathname() {
 cleanup_temp_pathname() {
     if [[ -n "$temp_pathname" ]] && [[ -d "$temp_pathname" ]]; then
         rm -rf "$temp_pathname"
-        log_message "Temp-Verzeichnis bereinigt: $temp_pathname"
+        log_message "$MSG_TEMP_DIR_CLEANED: $temp_pathname"
         temp_pathname=""
     fi
 }
@@ -94,7 +97,7 @@ get_log_folder() {
     if [[ "$_LOG_DIR_CREATED" == false ]]; then
         local log_dir="$(dirname "$log_filename")"
         mkdir -p "$log_dir"
-        log_message "Log-Verzeichnis sichergestellt: $log_dir"
+        log_message "$MSG_LOG_DIR_CREATED: $log_dir"
         _LOG_DIR_CREATED=true
     fi
 }
@@ -106,7 +109,7 @@ get_out_folder() {
     # Lazy Initialization: OUTPUT_DIR nur einmal erstellen
     if [[ "$_OUTPUT_DIR_CREATED" == false ]]; then
         mkdir -p "$OUTPUT_DIR"
-        log_message "Ausgabe-Verzeichnis sichergestellt: $OUTPUT_DIR"
+        log_message "$MSG_OUTPUT_DIR_CREATED: $OUTPUT_DIR"
         _OUTPUT_DIR_CREATED=true
     fi
 }
@@ -155,7 +158,7 @@ get_album_folder() {
     if ! mkdir -p "$album_dir"; then
         return 1
     fi
-    log_message "Album-Verzeichnis erstellt: $album_dir"
+    log_message "$MSG_ALBUM_DIR_CREATED: $album_dir"
     return 0
 }
 
@@ -170,10 +173,10 @@ get_bd_backup_folder() {
     get_out_folder
     
     if ! mkdir -p "$backup_dir"; then
-        log_message "FEHLER: Konnte Backup-Verzeichnis nicht erstellen: $backup_dir"
+        log_message "$MSG_ERROR_BACKUP_DIR_FAILED: $backup_dir"
         return 1
     fi
-    log_message "Backup-Verzeichnis erstellt: $backup_dir"
+    log_message "$MSG_BACKUP_DIR_CREATED: $backup_dir"
     return 0
 }
 

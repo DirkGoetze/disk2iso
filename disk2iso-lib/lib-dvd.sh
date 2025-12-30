@@ -64,16 +64,16 @@ check_video_dvd_dependencies() {
     
     # Logging
     if [[ ${#available_methods[@]} -gt 0 ]]; then
-        log_message "Video-DVD/BD Support verfügbar mit: ${available_methods[*]}"
+        log_message "$MSG_VIDEO_SUPPORT_AVAILABLE ${available_methods[*]}"
         
         if [[ ${#missing_methods[@]} -gt 0 ]]; then
-            log_message "Erweiterte Methoden verfügbar nach Installation: ${missing_methods[*]}"
-            log_message "Installation: apt-get install dvdbackup genisoimage gddrescue libdvdcss2"
+            log_message "$MSG_EXTENDED_METHODS_AVAILABLE ${missing_methods[*]}"
+            log_message "$MSG_INSTALLATION_DVD"
         fi
         
         return 0
     else
-        log_message "FEHLER: Keine Video-DVD/BD Methode verfügbar"
+        log_message "$MSG_ERROR_NO_VIDEO_METHOD"
         return 1
     fi
 }
@@ -86,7 +86,7 @@ check_video_dvd_dependencies() {
 # Nutzt dvdbackup (mit libdvdcss) + genisoimage
 # KEIN Fallback - Methode wird zu Beginn gewählt
 copy_video_dvd() {
-    log_message "Methode: dvdbackup (entschlüsselt)"
+    log_message "$MSG_METHOD_DVDBACKUP"
     
     # Erstelle temporäres Verzeichnis für DVD-Struktur
     local temp_dvd="${temp_pathname}/dvd_rip"
@@ -99,7 +99,7 @@ copy_video_dvd() {
         volume_blocks=$(isoinfo -d -i "$CD_DEVICE" 2>/dev/null | grep "Volume size is:" | awk '{print $4}')
         if [[ -n "$volume_blocks" ]] && [[ "$volume_blocks" =~ ^[0-9]+$ ]]; then
             dvd_size_mb=$((volume_blocks * 2048 / 1024 / 1024))
-            log_message "DVD-Größe: ${dvd_size_mb} MB"
+            log_message "$MSG_DVD_SIZE: ${dvd_size_mb} $MSG_PROGRESS_MB"
         fi
     fi
     
@@ -113,7 +113,7 @@ copy_video_dvd() {
     fi
     
     # Starte dvdbackup im Hintergrund mit Fortschrittsanzeige
-    log_message "Extrahiere DVD-Struktur..."
+    log_message "$MSG_EXTRACT_DVD_STRUCTURE"
     dvdbackup -M -i "$CD_DEVICE" -o "$temp_dvd" >>"$log_filename" 2>&1 &
     local dvdbackup_pid=$!
     
@@ -155,9 +155,9 @@ copy_video_dvd() {
             
             # Formatierte Ausgabe mit tatsächlichen Werten
             if [[ $dvd_size_mb -gt 0 ]]; then
-                log_message "Fortschritt: ${copied_mb} MB von ${dvd_size_mb} MB (${percent}%) - verbleibend: ${eta}"
+                log_message "$MSG_PROGRESS: ${copied_mb} $MSG_PROGRESS_MB / ${dvd_size_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
             else
-                log_message "Fortschritt: ${copied_mb} MB kopiert - verbleibend: ${eta}"
+                log_message "$MSG_PROGRESS: ${copied_mb} $MSG_PROGRESS_MB $MSG_COPIED - $MSG_REMAINING: ${eta}"
             fi
             
             last_log_time=$current_time
@@ -170,31 +170,31 @@ copy_video_dvd() {
     
     # Prüfe Ergebnis
     if [[ $dvdbackup_exit -ne 0 ]]; then
-        log_message "FEHLER: dvdbackup fehlgeschlagen (Exit-Code: $dvdbackup_exit)"
+        log_message "$MSG_ERROR_DVDBACKUP_FAILED (Exit-Code: $dvdbackup_exit)"
         rm -rf "$temp_dvd"
         return 1
     fi
     
-    log_message "✓ DVD-Struktur extrahiert (100%)"
+    log_message "$MSG_DVD_STRUCTURE_EXTRACTED"
     
     # Finde VIDEO_TS Ordner (dvdbackup erstellt Unterordner mit Titel)
     local video_ts_dir
     video_ts_dir=$(find "$temp_dvd" -type d -name "VIDEO_TS" | head -1)
     
     if [[ -z "$video_ts_dir" ]]; then
-        log_message "FEHLER: Kein VIDEO_TS Ordner gefunden"
+        log_message "$MSG_ERROR_NO_VIDEO_TS"
         rm -rf "$temp_dvd"
         return 1
     fi
     
     # Erstelle ISO aus VIDEO_TS Struktur
-    log_message "Erstelle entschlüsselte ISO aus VIDEO_TS..."
+    log_message "$MSG_CREATE_DECRYPTED_ISO"
     if genisoimage -dvd-video -V "$disc_label" -o "$iso_filename" "$(dirname "$video_ts_dir")" 2>>"$log_filename"; then
-        log_message "✓ Entschlüsselte Video-DVD ISO erfolgreich erstellt"
+        log_message "$MSG_DECRYPTED_DVD_SUCCESS"
         rm -rf "$temp_dvd"
         return 0
     else
-        log_message "FEHLER: genisoimage fehlgeschlagen"
+        log_message "$MSG_ERROR_GENISOIMAGE_FAILED"
         rm -rf "$temp_dvd"
         return 1
     fi
@@ -208,7 +208,7 @@ copy_video_dvd() {
 # Schneller als dd bei Lesefehlern, ISO bleibt verschlüsselt
 # KEIN Fallback - Methode wird zu Beginn gewählt
 copy_video_dvd_ddrescue() {
-    log_message "Methode: ddrescue (verschlüsselt, robust)"
+    log_message "$MSG_METHOD_DDRESCUE_ENCRYPTED"
     
     # ddrescue benötigt Map-Datei
     local mapfile="${iso_filename}.mapfile"
@@ -221,7 +221,7 @@ copy_video_dvd_ddrescue() {
         volume_size=$(isoinfo -d -i "$CD_DEVICE" 2>/dev/null | grep "Volume size is:" | awk '{print $4}')
         if [[ -n "$volume_size" ]] && [[ "$volume_size" =~ ^[0-9]+$ ]]; then
             total_bytes=$((volume_size * 2048))
-            log_message "ISO-Volume erkannt: $volume_size Blöcke ($(( total_bytes / 1024 / 1024 )) MB)"
+            log_message "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
         fi
     fi
     
@@ -239,22 +239,22 @@ copy_video_dvd_ddrescue() {
     if [[ $total_bytes -gt 0 ]]; then
         # Mit bekannter Größe
         if ddrescue -b 2048 -s "$total_bytes" -n "$CD_DEVICE" "$iso_filename" "$mapfile" 2>>"$log_filename"; then
-            log_message "✓ Video-DVD mit ddrescue erfolgreich kopiert"
+            log_message "$MSG_VIDEO_DVD_DDRESCUE_SUCCESS"
             rm -f "$mapfile"
             return 0
         else
-            log_message "FEHLER: ddrescue fehlgeschlagen"
+            log_message "$MSG_ERROR_DDRESCUE_FAILED"
             rm -f "$mapfile"
             return 1
         fi
     else
         # Ohne bekannte Größe (kopiert bis Ende)
         if ddrescue -b 2048 -n "$CD_DEVICE" "$iso_filename" "$mapfile" 2>>"$log_filename"; then
-            log_message "✓ Video-DVD mit ddrescue erfolgreich kopiert"
+            log_message "$MSG_VIDEO_DVD_DDRESCUE_SUCCESS"
             rm -f "$mapfile"
             return 0
         else
-            log_message "FEHLER: ddrescue fehlgeschlagen"
+            log_message "$MSG_ERROR_DDRESCUE_FAILED"
             rm -f "$mapfile"
             return 1
         fi

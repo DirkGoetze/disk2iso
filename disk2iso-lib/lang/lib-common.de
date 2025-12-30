@@ -27,6 +27,8 @@ readonly MSG_DEPS_CRITICAL_MISSING="FEHLER: Kritische Abhängigkeiten fehlen:"
 readonly MSG_DEPS_INSTALL_HINT="Bitte führen Sie './install.sh' aus, um die Abhängigkeiten zu installieren"
 readonly MSG_DEPS_OPTIONAL_MISSING="WARNUNG: Optionale Tools fehlen:"
 readonly MSG_DEPS_OPTIONAL_HINT="Einige Funktionen sind eingeschränkt. Führen Sie './install.sh' aus, um alle Tools zu installieren."
+readonly MSG_OPTIONAL_TOOLS_INFO="INFO: Optionale Tools für bessere Performance:"
+readonly MSG_INSTALL_GENISOIMAGE_GDDRESCUE="Installation: apt-get install genisoimage gddrescue"
 
 # ============================================================================
 # WORKFLOW-SCHRITTE
@@ -42,6 +44,24 @@ readonly MSG_STEP_6_FAILED="[6/7] Kopiervorgang fehlgeschlagen"
 readonly MSG_STEP_7="[7/7] Räume auf..."
 
 # ============================================================================
+# SPEICHERPLATZ
+# ============================================================================
+
+readonly MSG_DISK_SPACE_WARNING="WARNUNG: Konnte verfügbaren Speicherplatz nicht ermitteln"
+readonly MSG_DISK_SPACE_CHECK="Speicherplatz:"
+readonly MSG_DISK_SPACE_AVAILABLE="MB verfügbar,"
+readonly MSG_DISK_SPACE_REQUIRED="MB benötigt"
+readonly MSG_DISK_SPACE_ERROR="FEHLER: Nicht genug Speicherplatz! Benötigt:"
+readonly MSG_DISK_SPACE_ERROR_AVAILABLE="MB, Verfügbar:"
+
+# ============================================================================
+# METHODEN
+# ============================================================================
+
+readonly MSG_METHOD_DDRESCUE="Methode: ddrescue (robust)"
+readonly MSG_METHOD_DD="Methode: dd (Standard)"
+
+# ============================================================================
 # KOPIERVORGANG (DATEN-DISC)
 # ============================================================================
 
@@ -53,6 +73,20 @@ readonly MSG_COPY_FAILED="Fehler beim Kopieren - Alle Methoden fehlgeschlagen"
 readonly MSG_COPY_COMPLETE="✓ Abgeschlossen:"
 readonly MSG_COPY_ERROR="✗ Fehler bei:"
 readonly MSG_MODULE_DATA="Modul: Daten-Disc Kopie (ddrescue/dd)"
+
+readonly MSG_ISO_VOLUME_DETECTED="ISO-Volume erkannt:"
+readonly MSG_ISO_BLOCKS="Blöcke"
+readonly MSG_ISO_BLOCKS_SIZE="Blöcke à"
+readonly MSG_ISO_BYTES="Bytes"
+
+readonly MSG_COPYING_COMPLETE_DISC="Kopiere komplette Disc (kein isoinfo verfügbar)"
+readonly MSG_DATA_DISC_SUCCESS_DDRESCUE="✓ Daten-Disc mit ddrescue erfolgreich kopiert"
+readonly MSG_ERROR_DDRESCUE_FAILED="FEHLER: ddrescue fehlgeschlagen"
+
+readonly MSG_PROGRESS="Fortschritt:"
+readonly MSG_PROGRESS_OF="MB /"
+readonly MSG_PROGRESS_MB="MB"
+readonly MSG_PROGRESS_PERCENT="%"
 
 # ============================================================================
 # MD5-CHECKSUMME

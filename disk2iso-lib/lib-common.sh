@@ -60,8 +60,8 @@ check_common_dependencies() {
     command -v ddrescue >/dev/null 2>&1 || optional_missing+=("ddrescue")
     
     if [[ ${#optional_missing[@]} -gt 0 ]]; then
-        log_message "INFO: Optionale Tools für bessere Performance: ${optional_missing[*]}"
-        log_message "Installation: apt-get install genisoimage gddrescue"
+        log_message "$MSG_OPTIONAL_TOOLS_INFO ${optional_missing[*]}"
+        log_message "$MSG_INSTALL_GENISOIMAGE_GDDRESCUE"
     fi
     
     return 0
@@ -102,7 +102,7 @@ check_disk_space() {
 # Funktion zum Kopieren von Daten-Discs mit ddrescue
 # Schneller und robuster als dd
 copy_data_disc_ddrescue() {
-    log_message "Methode: ddrescue (robust)"
+    log_message "$MSG_METHOD_DDRESCUE"
     
     # ddrescue benötigt Map-Datei
     local mapfile="${iso_filename}.mapfile"
@@ -115,7 +115,7 @@ copy_data_disc_ddrescue() {
         volume_size=$(isoinfo -d -i "$CD_DEVICE" 2>/dev/null | grep "Volume size is:" | awk '{print $4}')
         if [[ -n "$volume_size" ]] && [[ "$volume_size" =~ ^[0-9]+$ ]]; then
             total_bytes=$((volume_size * 2048))
-            log_message "ISO-Volume erkannt: $volume_size Blöcke ($(( total_bytes / 1024 / 1024 )) MB)"
+            log_message "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
         fi
     fi
     
@@ -133,22 +133,22 @@ copy_data_disc_ddrescue() {
     if [[ $total_bytes -gt 0 ]]; then
         # Mit bekannter Größe
         if ddrescue -b 2048 -s "$total_bytes" -n "$CD_DEVICE" "$iso_filename" "$mapfile" 2>>"$log_filename"; then
-            log_message "✓ Daten-Disc mit ddrescue erfolgreich kopiert"
+            log_message "$MSG_DATA_DISC_SUCCESS_DDRESCUE"
             rm -f "$mapfile"
             return 0
         else
-            log_message "FEHLER: ddrescue fehlgeschlagen"
+            log_message "$MSG_ERROR_DDRESCUE_FAILED"
             rm -f "$mapfile"
             return 1
         fi
     else
         # Ohne bekannte Größe
         if ddrescue -b 2048 -n "$CD_DEVICE" "$iso_filename" "$mapfile" 2>>"$log_filename"; then
-            log_message "✓ Daten-Disc mit ddrescue erfolgreich kopiert"
+            log_message "$MSG_DATA_DISC_SUCCESS_DDRESCUE"
             rm -f "$mapfile"
             return 0
         else
-            log_message "FEHLER: ddrescue fehlgeschlagen"
+            log_message "$MSG_ERROR_DDRESCUE_FAILED"
             rm -f "$mapfile"
             return 1
         fi
@@ -173,7 +173,7 @@ copy_data_disc() {
         
         if [[ -n "$volume_size" ]] && [[ "$volume_size" =~ ^[0-9]+$ ]]; then
             total_bytes=$((volume_size * block_size))
-            log_message "ISO-Volume erkannt: $volume_size Blöcke à $block_size Bytes ($(( total_bytes / 1024 / 1024 )) MB)"
+            log_message "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE $block_size $MSG_ISO_BYTES ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
             
             # Prüfe Speicherplatz (ISO-Größe + 5% Puffer)
             local size_mb=$((total_bytes / 1024 / 1024))
@@ -196,7 +196,7 @@ copy_data_disc() {
     fi
     
     # Fallback: Kopiere komplette Disc (ohne Fortschrittsanzeige, da Größe unbekannt)
-    log_message "Kopiere komplette Disc (kein isoinfo verfügbar)"
+    log_message "$MSG_COPYING_COMPLETE_DISC"
     if dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" conv=noerror,sync status=progress 2>>"$log_filename"; then
         return 0
     else
@@ -231,7 +231,7 @@ monitor_copy_progress() {
             
             # Log-Eintrag alle 500 MB
             if (( current_mb % 500 == 0 )) && (( current_mb > 0 )); then
-                log_message "Fortschritt: ${current_mb} MB / ${total_mb} MB (${percent}%)"
+                log_message "$MSG_PROGRESS ${current_mb} $MSG_PROGRESS_OF ${total_mb} $MSG_PROGRESS_MB (${percent}$MSG_PROGRESS_PERCENT)"
             fi
         fi
         

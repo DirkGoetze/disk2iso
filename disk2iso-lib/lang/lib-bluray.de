@@ -14,3 +14,53 @@
 
 readonly MSG_MODULE_VIDEO_BLURAY="Modul: Video-Blu-ray Backup (MakeMKV)"
 readonly MSG_DETECTED_TYPE_BLURAY="Erkannter Typ: Video-Blu-ray"
+
+# ============================================================================
+# ABHÄNGIGKEITEN
+# ============================================================================
+
+readonly MSG_WARNING_NO_GENISOIMAGE="WARNUNG: genisoimage fehlt - MakeMKV Backup kann nicht zu ISO konvertiert werden"
+readonly MSG_BLURAY_SUPPORT_AVAILABLE="Blu-ray Support verfügbar mit:"
+readonly MSG_EXTENDED_METHODS_AVAILABLE="Erweiterte Methoden verfügbar nach Installation:"
+readonly MSG_MAKEMKV_DOWNLOAD="MakeMKV Download: https://www.makemkv.com/download/"
+readonly MSG_INSTALL_DDRESCUE="ddrescue: apt-get install gddrescue"
+readonly MSG_INSTALL_GENISOIMAGE="genisoimage: apt-get install genisoimage"
+readonly MSG_ERROR_NO_BLURAY_METHOD="FEHLER: Keine Blu-ray Methode verfügbar"
+
+# ============================================================================
+# MAKEMKV-METHODE
+# ============================================================================
+
+readonly MSG_METHOD_MAKEMKV="Methode: MakeMKV (entschlüsselt)"
+readonly MSG_ANALYZE_BLURAY="Analysiere Blu-ray mit MakeMKV..."
+readonly MSG_ERROR_MAKEMKV_NO_DISC="FEHLER: MakeMKV kann Disc nicht erkennen"
+readonly MSG_ERROR_NO_BLURAY_TITLES="FEHLER: Keine Titel auf Blu-ray gefunden"
+readonly MSG_BLURAY_TITLES_FOUND="Gefundene Titel auf Blu-ray:"
+readonly MSG_DISC_NAME="Disc-Name:"
+readonly MSG_BLURAY_SIZE="Blu-ray-Größe:"
+readonly MSG_PROGRESS_MB="MB"
+
+readonly MSG_START_MAKEMKV_BACKUP="Starte MakeMKV Backup (entschlüsselt komplette Disc-Struktur)..."
+readonly MSG_MAKEMKV_DURATION="Dies kann je nach Disc-Größe 30-60 Minuten dauern..."
+readonly MSG_MAKEMKV_PROGRESS="MakeMKV Fortschritt:"
+readonly MSG_REMAINING="verbleibend:"
+readonly MSG_COPIED="kopiert"
+readonly MSG_ERROR_MAKEMKV_FAILED="FEHLER: MakeMKV Backup fehlgeschlagen"
+readonly MSG_MAKEMKV_SUCCESS="✓ MakeMKV Backup erfolgreich abgeschlossen (100%)"
+
+readonly MSG_ERROR_NO_BDMV="FEHLER: Kein BDMV Ordner im Backup gefunden"
+readonly MSG_BDMV_FOUND="BDMV-Struktur gefunden:"
+readonly MSG_CREATE_DECRYPTED_ISO_BDMV="Erstelle entschlüsselte ISO aus BDMV-Struktur..."
+readonly MSG_DECRYPTED_BLURAY_SUCCESS="✓ Entschlüsselte Blu-ray ISO erfolgreich erstellt"
+readonly MSG_ERROR_GENISOIMAGE_FAILED="FEHLER: ISO-Erstellung mit genisoimage fehlgeschlagen"
+
+# ============================================================================
+# DDRESCUE-METHODE
+# ============================================================================
+
+readonly MSG_METHOD_DDRESCUE_ENCRYPTED="Methode: ddrescue (verschlüsselt, robust)"
+readonly MSG_ISO_VOLUME_DETECTED="ISO-Volume erkannt:"
+readonly MSG_ISO_BLOCKS="Blöcke"
+readonly MSG_START_DDRESCUE_BLURAY="Starte ddrescue (Blu-ray bleibt verschlüsselt)..."
+readonly MSG_BLURAY_DDRESCUE_SUCCESS="✓ Blu-ray mit ddrescue erfolgreich kopiert"
+readonly MSG_ERROR_DDRESCUE_FAILED="FEHLER: ddrescue fehlgeschlagen"
