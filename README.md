@@ -169,6 +169,9 @@ sudo systemctl stop disk2iso
 Bearbeite `disk2iso-lib/config.sh`:
 
 ```bash
+# Sprach-Einstellung
+LANGUAGE="de"                   # Sprache für Meldungen (de, en, ...)
+
 # Ausgabe-Verzeichnis
 OUTPUT_DIR="/mnt/hdd/nas/images"
 
@@ -181,6 +184,27 @@ AUDIO_USE_MUSICBRAINZ=true      # MusicBrainz Metadaten-Lookup
 AUDIO_USE_CDTEXT=true           # CD-TEXT Extraktion
 AUDIO_DOWNLOAD_COVER=true       # Album-Cover herunterladen
 ```
+
+### Mehrsprachigkeit
+
+Das Sprachsystem ist modular aufgebaut:
+
+- Jedes Modul hat eigene Sprachdateien: `lang/lib-[modul].[sprache]`
+- Beim Laden eines Moduls wird automatisch die Sprachdatei geladen
+- Fallback auf Englisch wenn Sprache nicht verfügbar
+
+**Verfügbare Sprachdateien:**
+
+- `lang/lib-common.de` - Kern-Funktionen
+- `lang/lib-cd.de` - Audio-CD Support
+- `lang/lib-dvd.de` - Video-DVD Support
+- `lang/lib-bluray.de` - Blu-ray Support
+
+**Neue Sprache hinzufügen:**
+
+1. Kopiere `.de` Dateien zu `.en` (oder andere Sprache)
+2. Übersetze die `MSG_*` Konstanten
+3. Setze `LANGUAGE="en"` in config.sh
 
 ## 🔧 Service-Modus (Automatisch)
 
@@ -211,7 +235,7 @@ disk2iso/
 ├── install.sh               # Installations-Script (modular)
 ├── uninstall.sh             # Deinstallations-Script
 └── disk2iso-lib/            # Bibliotheken
-    ├── config.sh            # Konfiguration
+    ├── config.sh            # Konfiguration + Sprach-Einstellung
     ├── lib-bluray.sh        # Blu-ray Funktionen (OPTIONAL) - Definiert BD_DIR
     ├── lib-cd.sh            # Audio-CD Funktionen (OPTIONAL) - Definiert AUDIO_DIR
     ├── lib-dvd.sh           # Video-DVD Funktionen (OPTIONAL) - Definiert DVD_DIR
@@ -220,9 +244,12 @@ disk2iso/
     ├── lib-drivestat.sh     # Laufwerk-Status (KERN)
     ├── lib-files.sh         # Dateinamen-Verwaltung (KERN)
     ├── lib-folders.sh       # Ordner-Verwaltung mit Gettern (KERN)
-    ├── lib-logging.sh       # Logging-System (KERN) - Definiert LOG_DIR
+    ├── lib-logging.sh       # Logging-System + Sprachsystem (KERN)
     └── lang/
-        └── messages.de      # Deutsche Sprachdatei
+        ├── lib-common.de    # Deutsche Meldungen für Kern-Funktionen
+        ├── lib-cd.de        # Deutsche Meldungen für Audio-CD
+        ├── lib-dvd.de       # Deutsche Meldungen für Video-DVD
+        └── lib-bluray.de    # Deutsche Meldungen für Blu-ray
 ```
 
 ### Modulare Architektur
@@ -244,6 +271,13 @@ disk2iso/
 - Jedes Modul definiert eigene Pfad-Konstanten (`AUDIO_DIR`, `DVD_DIR`, `BD_DIR`)
 - `lib-folders.sh` nutzt Getter-Methoden (`get_path_audio()`, `get_path_dvd()`, etc.)
 - Graceful Degradation: Fehlende Module → Fallback auf `data/`
+
+**Sprachsystem:**
+
+- Jedes Modul lädt eigene Sprachdatei beim Start: `load_module_language("cd")`
+- Sprachdateien: `lang/lib-[modul].[LANGUAGE]`
+- Fallback auf Englisch wenn Sprache fehlt
+- Konfigurierbar via `LANGUAGE` in config.sh
 
 **Vorteile:**
 

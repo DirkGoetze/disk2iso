@@ -34,6 +34,9 @@ get_path_data() {
 # DEPENDENCY CHECK
 # ============================================================================
 
+# Lade Sprachdatei für dieses Modul
+load_module_language "common"
+
 # Funktion: Prüfe Kern-Abhängigkeiten (kritisch)
 # Rückgabe: 0 = OK, 1 = Fehler
 check_common_dependencies() {

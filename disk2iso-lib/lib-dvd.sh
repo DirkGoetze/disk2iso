@@ -36,6 +36,9 @@ get_path_dvd() {
 # DEPENDENCY CHECK
 # ============================================================================
 
+# Lade Sprachdatei für dieses Modul
+load_module_language "dvd"
+
 # Funktion: Prüfe Video-DVD/BD Abhängigkeiten
 # Rückgabe: 0 = Mindestens eine Methode verfügbar, 1 = Keine Methode verfügbar
 check_video_dvd_dependencies() {

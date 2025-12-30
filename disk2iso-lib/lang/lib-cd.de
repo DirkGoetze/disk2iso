@@ -1,0 +1,23 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Deutsche Sprachdatei für lib-cd.sh
+# Filepath: disk2iso-lib/lang/lib-cd.de
+#
+# Beschreibung:
+#   Meldungstexte für Audio-CD Funktionen
+#
+################################################################################
+
+# ============================================================================
+# AUDIO-CD MODUL
+# ============================================================================
+
+readonly MSG_MODULE_AUDIO="Modul: Audio-CD Ripping (cdparanoia + lame)"
+readonly MSG_DETECTED_TYPE_AUDIO="Erkannter Typ: Audio-CD"
+
+# ============================================================================
+# BENACHRICHTIGUNGEN
+# ============================================================================
+
+readonly MSG_NOTIFY_AUDIO_SUCCESS="Audio-CD erfolgreich gerippt:"
+readonly MSG_NOTIFY_TITLE="disk2iso"

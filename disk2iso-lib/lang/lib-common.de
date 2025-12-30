@@ -1,0 +1,71 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Deutsche Sprachdatei für lib-common.sh
+# Filepath: disk2iso-lib/lang/lib-common.de
+#
+# Beschreibung:
+#   Meldungstexte für Kern-Funktionen (Daten-Disc Kopieren)
+#
+################################################################################
+
+# ============================================================================
+# SYSTEM-MELDUNGEN
+# ============================================================================
+
+readonly MSG_STARTUP="disk2iso gestartet"
+readonly MSG_SEARCH_DRIVE="Suche nach Laufwerk..."
+readonly MSG_DRIVE_FOUND="Verwende optisches Laufwerk:"
+readonly MSG_DRIVE_NOT_FOUND="FEHLER: Kein optisches Laufwerk gefunden"
+readonly MSG_DRIVE_NOT_AVAILABLE="Fehler: Laufwerk nicht verfügbar"
+readonly MSG_DRIVE_USB_TIP="Tipp: USB-Laufwerk anschließen oder /dev/sr0 prüfen"
+
+# ============================================================================
+# ABHÄNGIGKEITEN
+# ============================================================================
+
+readonly MSG_DEPS_CRITICAL_MISSING="FEHLER: Kritische Abhängigkeiten fehlen:"
+readonly MSG_DEPS_INSTALL_HINT="Bitte führen Sie './install.sh' aus, um die Abhängigkeiten zu installieren"
+readonly MSG_DEPS_OPTIONAL_MISSING="WARNUNG: Optionale Tools fehlen:"
+readonly MSG_DEPS_OPTIONAL_HINT="Einige Funktionen sind eingeschränkt. Führen Sie './install.sh' aus, um alle Tools zu installieren."
+
+# ============================================================================
+# WORKFLOW-SCHRITTE
+# ============================================================================
+
+readonly MSG_STEP_1="[1/7] Starte Analyse..."
+readonly MSG_STEP_2="[2/7] Ermittle Disc-Label..."
+readonly MSG_STEP_3="[3/7] Erkenne Disc-Typ..."
+readonly MSG_STEP_4="[4/7] Lade Kopier-Modul..."
+readonly MSG_STEP_5="[5/7] Starte Kopiervorgang..."
+readonly MSG_STEP_6_SUCCESS="[6/7] Kopiervorgang erfolgreich"
+readonly MSG_STEP_6_FAILED="[6/7] Kopiervorgang fehlgeschlagen"
+readonly MSG_STEP_7="[7/7] Räume auf..."
+
+# ============================================================================
+# KOPIERVORGANG (DATEN-DISC)
+# ============================================================================
+
+readonly MSG_COPY_START="Medium erkannt, starte Kopiervorgang..."
+readonly MSG_COPY_LABEL="Disc Label:"
+readonly MSG_COPY_TARGET="Ziel:"
+readonly MSG_COPY_SUCCESS="Erfolgreich kopiert:"
+readonly MSG_COPY_FAILED="Fehler beim Kopieren - Alle Methoden fehlgeschlagen"
+readonly MSG_COPY_COMPLETE="✓ Abgeschlossen:"
+readonly MSG_COPY_ERROR="✗ Fehler bei:"
+readonly MSG_MODULE_DATA="Modul: Daten-Disc Kopie (ddrescue/dd)"
+
+# ============================================================================
+# MD5-CHECKSUMME
+# ============================================================================
+
+readonly MSG_MD5_CREATED="MD5-Checksumme erstellt:"
+
+# ============================================================================
+# CLEANUP & SERVICE
+# ============================================================================
+
+readonly MSG_CLEANUP_SUCCESS="Aufräumen abgeschlossen (Erfolg)"
+readonly MSG_CLEANUP_FAILURE="Aufräumen abgeschlossen (Fehler)"
+readonly MSG_CLEANUP_INTERRUPTED="Aufräumen abgeschlossen (Unterbrochen)"
+readonly MSG_SERVICE_SHUTDOWN="Service-Beendigung empfangen..."
+readonly MSG_SERVICE_EXIT="disk2iso beendet"

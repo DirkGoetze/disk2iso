@@ -38,6 +38,9 @@ get_path_audio() {
 # DEPENDENCY CHECK
 # ============================================================================
 
+# Lade Sprachdatei für dieses Modul
+load_module_language "cd"
+
 # Funktion: Prüfe Audio-CD Abhängigkeiten
 # Rückgabe: 0 = Alle Tools OK, 1 = Kritische Tools fehlen
 check_audio_cd_dependencies() {

@@ -1,0 +1,16 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Deutsche Sprachdatei für lib-dvd.sh
+# Filepath: disk2iso-lib/lang/lib-dvd.de
+#
+# Beschreibung:
+#   Meldungstexte für Video-DVD Funktionen
+#
+################################################################################
+
+# ============================================================================
+# DVD MODUL
+# ============================================================================
+
+readonly MSG_MODULE_VIDEO_DVD="Modul: Video-DVD Backup (dvdbackup)"
+readonly MSG_DETECTED_TYPE_DVD="Erkannter Typ: Video-DVD"

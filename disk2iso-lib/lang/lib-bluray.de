@@ -1,0 +1,16 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Deutsche Sprachdatei für lib-bluray.sh
+# Filepath: disk2iso-lib/lang/lib-bluray.de
+#
+# Beschreibung:
+#   Meldungstexte für Blu-ray Funktionen
+#
+################################################################################
+
+# ============================================================================
+# BLU-RAY MODUL
+# ============================================================================
+
+readonly MSG_MODULE_VIDEO_BLURAY="Modul: Video-Blu-ray Backup (MakeMKV)"
+readonly MSG_DETECTED_TYPE_BLURAY="Erkannter Typ: Video-Blu-ray"
