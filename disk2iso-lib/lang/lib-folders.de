@@ -12,11 +12,11 @@
 # VERZEICHNIS-OPERATIONEN
 # ============================================================================
 
-readonly MSG_TEMP_DIR_CREATED="Temp-Verzeichnis erstellt:"
-readonly MSG_TEMP_DIR_CLEANED="Temp-Verzeichnis bereinigt:"
-readonly MSG_LOG_DIR_CREATED="Log-Verzeichnis sichergestellt:"
-readonly MSG_OUTPUT_DIR_CREATED="Ausgabe-Verzeichnis sichergestellt:"
-readonly MSG_ALBUM_DIR_CREATED="Album-Verzeichnis erstellt:"
-readonly MSG_BACKUP_DIR_CREATED="Backup-Verzeichnis erstellt:"
+readonly MSG_TEMP_DIR_CREATED="Temp-Verzeichnis erstellt"
+readonly MSG_TEMP_DIR_CLEANED="Temp-Verzeichnis bereinigt"
+readonly MSG_LOG_DIR_CREATED="Log-Verzeichnis sichergestellt"
+readonly MSG_OUTPUT_DIR_CREATED="Ausgabe-Verzeichnis sichergestellt"
+readonly MSG_ALBUM_DIR_CREATED="Album-Verzeichnis erstellt"
+readonly MSG_BACKUP_DIR_CREATED="Backup-Verzeichnis erstellt"
 
-readonly MSG_ERROR_BACKUP_DIR_FAILED="FEHLER: Konnte Backup-Verzeichnis nicht erstellen:"
+readonly MSG_ERROR_BACKUP_DIR_FAILED="FEHLER: Konnte Backup-Verzeichnis nicht erstellen"
