@@ -20,12 +20,14 @@ su -c 'dpkg-reconfigure libdvd-pkg'
 ```
 
 **Vorteile:**
+
 - ✓ Entschlüsselte ISOs (direkt verarbeitbar)
 - ✓ Schnell: ~10-15 Minuten für 4,7 GB DVD
 - ✓ Offizielles Debian contrib-Paket
 - ✓ Überspringt Kopierschutz-Bereiche
 
 **Nachteile:**
+
 - ✗ contrib Repository erforderlich (aber offiziell)
 
 ---
@@ -41,11 +43,13 @@ su -c 'apt-get update && apt-get install -y gddrescue genisoimage'
 ```
 
 **Vorteile:**
+
 - ✓ Nur Standard-Repos
 - ✓ Deutlich schneller als dd: ~15-30 Minuten
 - ✓ Intelligente Fehlerbehandlung
 
 **Nachteile:**
+
 - ✗ ISOs bleiben verschlüsselt (Weiterverarbeitung benötigt libdvdcss)
 
 ---
@@ -55,6 +59,7 @@ su -c 'apt-get update && apt-get install -y gddrescue genisoimage'
 Das Script nutzt automatisch `dd` als Fallback.
 
 **Nachteile:**
+
 - ✗ Sehr langsam bei kopiergeschützten DVDs (Stunden!)
 - ✗ ISOs bleiben verschlüsselt
 
