@@ -4,12 +4,12 @@
 # Filepath: uninstall.sh
 #
 # Beschreibung:
-#   Entfernt disk2iso Installation komplett
-#   - Stoppt und deaktiviert Service
-#   - Entfernt Dateien und Verzeichnisse
-#   - Optional: Entfernt installierte Pakete
+#   Wizard-basierte Deinstallation von disk2iso
+#   - 4-Seiten Deinstallations-Wizard mit whiptail
+#   - Entfernt Service, Dateien und optional Ausgabeverzeichnis
 #
 # Erstellt: 29.12.2025
+# Aktualisiert: 01.01.2026 - Wizard-UI
 ################################################################################
 
 set -e
@@ -25,6 +25,12 @@ NC='\033[0m' # No Color
 INSTALL_DIR="/opt/disk2iso"
 SERVICE_FILE="/etc/systemd/system/disk2iso.service"
 BIN_LINK="/usr/local/bin/disk2iso"
+
+# Ausgabeverzeichnis aus Service-Datei ermitteln
+OUTPUT_DIR=""
+if [[ -f "$SERVICE_FILE" ]]; then
+    OUTPUT_DIR=$(grep -oP 'ExecStart=.*-o\s+\K[^\s]+' "$SERVICE_FILE" 2>/dev/null || echo "")
+fi
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -52,20 +58,33 @@ print_info() {
     echo -e "${BLUE}ℹ${NC} $1"
 }
 
+# Whiptail-Wrapper
+use_whiptail() {
+    command -v whiptail >/dev/null 2>&1
+}
+
 ask_yes_no() {
     local question="$1"
     local default="${2:-n}"
-    local answer
     
-    if [[ "$default" == "y" ]]; then
-        read -p "$question [J/n]: " answer
-        answer=${answer:-j}
+    if use_whiptail; then
+        if [[ "$default" == "y" ]]; then
+            whiptail --title "disk2iso Deinstallation" --yesno "$question" 10 60 --defaultno
+        else
+            whiptail --title "disk2iso Deinstallation" --yesno "$question" 10 60
+        fi
+        return $?
     else
-        read -p "$question [j/N]: " answer
-        answer=${answer:-n}
+        local answer
+        if [[ "$default" == "y" ]]; then
+            read -p "$question [J/n]: " answer
+            answer=${answer:-j}
+        else
+            read -p "$question [j/N]: " answer
+            answer=${answer:-n}
+        fi
+        [[ "$answer" =~ ^[jJyY]$ ]]
     fi
-    
-    [[ "$answer" =~ ^[jJyY]$ ]]
 }
 
 # ============================================================================
@@ -81,135 +100,249 @@ check_root() {
 }
 
 # ============================================================================
-# DEINSTALLATION
+# WIZARD FUNCTIONS
 # ============================================================================
 
-stop_service() {
-    print_header "SYSTEMD SERVICE DEINSTALLATION"
-    
-    if [[ ! -f "$SERVICE_FILE" ]]; then
-        print_info "Kein Service installiert"
-        return 0
+# Seite 1: Warnhinweis
+wizard_page_warning() {
+    local service_status=""
+    if [[ -f "$SERVICE_FILE" ]]; then
+        service_status="\n• Systemd-Service wird gestoppt und entfernt"
     fi
     
-    print_info "Stoppe disk2iso Service..."
-    systemctl stop disk2iso.service 2>/dev/null || true
+    local output_info=""
+    if [[ -n "$OUTPUT_DIR" ]] && [[ -d "$OUTPUT_DIR" ]]; then
+        output_info="\n\nHinweis: Das Ausgabeverzeichnis ($OUTPUT_DIR) wird im nächsten Schritt abgefragt."
+    fi
     
-    print_info "Deaktiviere disk2iso Service..."
-    systemctl disable disk2iso.service 2>/dev/null || true
-    
-    print_info "Entferne Service-Datei..."
-    rm -f "$SERVICE_FILE"
-    
-    systemctl daemon-reload
-    
-    print_success "Service deinstalliert"
-}
+    local info="WARNUNG: Diese Aktion entfernt disk2iso komplett vom System!
 
-remove_files() {
-    print_header "DATEI-ENTFERNUNG"
-    
-    # Entferne Symlink
-    if [[ -L "$BIN_LINK" ]]; then
-        print_info "Entferne Symlink $BIN_LINK..."
-        rm -f "$BIN_LINK"
-        print_success "Symlink entfernt"
-    fi
-    
-    # Entferne Installationsverzeichnis
-    if [[ -d "$INSTALL_DIR" ]]; then
-        print_info "Entferne Installationsverzeichnis $INSTALL_DIR..."
-        rm -rf "$INSTALL_DIR"
-        print_success "Installationsverzeichnis entfernt"
-    fi
-}
+Was wird entfernt:
+• disk2iso Script und Bibliotheken ($INSTALL_DIR)
+• Symlink in /usr/local/bin${service_status}
 
-remove_packages() {
-    print_header "PAKET-ENTFERNUNG (OPTIONAL)"
-    
-    echo "Möchten Sie auch die installierten optionalen Pakete entfernen?"
-    echo ""
-    print_warning "Dies entfernt: genisoimage, gddrescue, dvdbackup, libdvdcss2"
-    print_warning "Andere Programme könnten diese Pakete ebenfalls benötigen!"
-    echo ""
-    
-    if ! ask_yes_no "Optionale Pakete entfernen?"; then
-        print_info "Pakete bleiben installiert"
-        return 0
-    fi
-    
-    local packages=(
-        "dvdbackup"
-        "libdvdcss2"
-        "gddrescue"
-        "genisoimage"
-    )
-    
-    for package in "${packages[@]}"; do
-        if dpkg -l | grep -q "^ii  $package "; then
-            print_info "Entferne $package..."
-            apt-get remove -y -qq "$package" 2>/dev/null || true
-            print_success "$package entfernt"
+Sie verlieren die Möglichkeit zur automatisierten ISO-Erstellung von optischen Medien.${output_info}
+
+Möchten Sie wirklich fortfahren?"
+
+    if use_whiptail; then
+        if whiptail --title "disk2iso Deinstallation - Seite 1/4" \
+            --yesno "$info" 20 70 \
+            --yes-button "Deinstallieren" \
+            --no-button "Abbrechen" \
+            --defaultno; then
+            return 0
+        else
+            return 1
         fi
-    done
-    
-    # Aufräumen
-    print_info "Räume Paket-Cache auf..."
-    apt-get autoremove -y -qq 2>/dev/null || true
-    print_success "Aufgeräumt"
+    else
+        echo "$info"
+        ask_yes_no "Wirklich deinstallieren?"
+    fi
 }
 
-remove_deb_multimedia() {
-    if [[ ! -f /etc/apt/sources.list.d/deb-multimedia.list ]]; then
+# Seite 2: Deinstallation durchführen
+wizard_page_uninstall() {
+    local steps=()
+    local step_count=0
+    
+    # Sammle Schritte
+    if [[ -f "$SERVICE_FILE" ]]; then
+        steps+=("Service stoppen und deaktivieren")
+        step_count=$((step_count + 1))
+    fi
+    
+    if [[ -L "$BIN_LINK" ]]; then
+        steps+=("Symlink entfernen")
+        step_count=$((step_count + 1))
+    fi
+    
+    if [[ -d "$INSTALL_DIR" ]]; then
+        steps+=("Installationsverzeichnis entfernen")
+        step_count=$((step_count + 1))
+    fi
+    
+    local total=${#steps[@]}
+    local current=0
+    
+    if use_whiptail; then
+        {
+            # Service stoppen
+            if [[ -f "$SERVICE_FILE" ]]; then
+                current=$((current + 1))
+                percent=$((current * 100 / total))
+                echo "$percent"
+                echo "XXX"
+                echo "Stoppe und deaktiviere Service ($current/$total)..."
+                echo "XXX"
+                
+                systemctl stop disk2iso.service 2>/dev/null || true
+                systemctl disable disk2iso.service 2>/dev/null || true
+                rm -f "$SERVICE_FILE"
+                systemctl daemon-reload
+                sleep 0.5
+            fi
+            
+            # Symlink entfernen
+            if [[ -L "$BIN_LINK" ]]; then
+                current=$((current + 1))
+                percent=$((current * 100 / total))
+                echo "$percent"
+                echo "XXX"
+                echo "Entferne Symlink ($current/$total)..."
+                echo "XXX"
+                
+                rm -f "$BIN_LINK"
+                sleep 0.3
+            fi
+            
+            # Installationsverzeichnis entfernen
+            if [[ -d "$INSTALL_DIR" ]]; then
+                current=$((current + 1))
+                percent=$((current * 100 / total))
+                echo "$percent"
+                echo "XXX"
+                echo "Entferne Installationsverzeichnis ($current/$total)..."
+                echo "XXX"
+                
+                rm -rf "$INSTALL_DIR"
+                sleep 0.3
+            fi
+            
+            echo "100"
+        } | whiptail --title "disk2iso Deinstallation - Seite 2/4" \
+            --gauge "Deinstalliere disk2iso..." 8 70 0
+    else
+        print_header "DEINSTALLATION"
+        
+        if [[ -f "$SERVICE_FILE" ]]; then
+            print_info "Stoppe Service..."
+            systemctl stop disk2iso.service 2>/dev/null || true
+            systemctl disable disk2iso.service 2>/dev/null || true
+            rm -f "$SERVICE_FILE"
+            systemctl daemon-reload
+            print_success "Service entfernt"
+        fi
+        
+        if [[ -L "$BIN_LINK" ]]; then
+            print_info "Entferne Symlink..."
+            rm -f "$BIN_LINK"
+            print_success "Symlink entfernt"
+        fi
+        
+        if [[ -d "$INSTALL_DIR" ]]; then
+            print_info "Entferne Installationsverzeichnis..."
+            rm -rf "$INSTALL_DIR"
+            print_success "Verzeichnis entfernt"
+        fi
+    fi
+}
+
+# Seite 3: Ausgabeverzeichnis löschen
+wizard_page_output_directory() {
+    # Prüfe ob Ausgabeverzeichnis existiert
+    if [[ -z "$OUTPUT_DIR" ]] || [[ ! -d "$OUTPUT_DIR" ]]; then
         return 0
     fi
     
-    print_header "DEB-MULTIMEDIA REPOSITORY (OPTIONAL)"
+    # Zähle ISO-Dateien
+    local iso_count=$(find "$OUTPUT_DIR" -maxdepth 1 -type f \( -name "*.iso" -o -name "*.bin" \) 2>/dev/null | wc -l)
+    local size_info=""
+    if [[ $iso_count -gt 0 ]]; then
+        local total_size=$(du -sh "$OUTPUT_DIR" 2>/dev/null | cut -f1)
+        size_info="\n\nDas Verzeichnis enthält $iso_count ISO/BIN-Datei(en) ($total_size)."
+    fi
     
-    echo "Das deb-multimedia.org Repository ist installiert."
-    echo ""
-    
-    if ask_yes_no "deb-multimedia.org Repository entfernen?"; then
-        print_info "Entferne Repository-Konfiguration..."
-        rm -f /etc/apt/sources.list.d/deb-multimedia.list
-        
-        print_info "Aktualisiere Paket-Cache..."
-        apt-get update -qq
-        
-        print_success "deb-multimedia.org Repository entfernt"
+    local info="Ausgabeverzeichnis gefunden:
+$OUTPUT_DIR${size_info}
+
+Möchten Sie dieses Verzeichnis und alle darin enthaltenen Dateien löschen?
+
+WARNUNG: Diese Aktion kann nicht rückgängig gemacht werden!"
+
+    if use_whiptail; then
+        if whiptail --title "disk2iso Deinstallation - Seite 3/4" \
+            --yesno "$info" 18 70 \
+            --yes-button "Löschen" \
+            --no-button "Überspringen" \
+            --defaultno; then
+            
+            # Lösche Verzeichnis
+            {
+                echo "50"
+                echo "XXX"
+                echo "Lösche Ausgabeverzeichnis..."
+                echo "XXX"
+                rm -rf "$OUTPUT_DIR"
+                sleep 0.5
+                echo "100"
+            } | whiptail --title "Ausgabeverzeichnis löschen" \
+                --gauge "Lösche $OUTPUT_DIR..." 8 70 0
+        fi
     else
-        print_info "Repository bleibt konfiguriert"
+        echo "$info"
+        if ask_yes_no "Ausgabeverzeichnis löschen?"; then
+            print_info "Lösche $OUTPUT_DIR..."
+            rm -rf "$OUTPUT_DIR"
+            print_success "Verzeichnis gelöscht"
+        else
+            print_info "Ausgabeverzeichnis bleibt erhalten"
+        fi
+    fi
+}
+
+# Seite 4: Abschluss
+wizard_page_complete() {
+    local info="Deinstallation erfolgreich abgeschlossen!
+
+disk2iso wurde vollständig vom System entfernt.
+
+Entfernte Komponenten:
+• disk2iso Script und Bibliotheken
+• Systemd-Service (falls vorhanden)
+• Symlink in /usr/local/bin"
+
+    if [[ -n "$OUTPUT_DIR" ]] && [[ ! -d "$OUTPUT_DIR" ]]; then
+        info="${info}\n• Ausgabeverzeichnis"
+    fi
+    
+    info="${info}\n\nHinweis: Installierte Pakete (genisoimage, gddrescue, etc.) wurden NICHT entfernt.
+Diese könnten von anderen Programmen verwendet werden.
+
+Bei Bedarf können Sie diese manuell entfernen mit:
+apt-get remove genisoimage gddrescue dvdbackup"
+
+    if use_whiptail; then
+        whiptail --title "disk2iso Deinstallation - Seite 4/4" \
+            --msgbox "$info" 22 70
+    else
+        print_header "DEINSTALLATION ABGESCHLOSSEN"
+        echo "$info"
     fi
 }
 
 # ============================================================================
-# MAIN
+# MAIN - WIZARD MODE
 # ============================================================================
 
 main() {
-    print_header "DISK2ISO DEINSTALLATION"
-    
-    echo "Dieses Script entfernt disk2iso komplett vom System."
-    echo ""
-    
-    if ! ask_yes_no "Wirklich fortfahren?"; then
-        echo "Abbruch."
-        exit 0
-    fi
-    
     # Root-Check
     check_root
     
-    # Deinstallation
-    stop_service
-    remove_files
-    remove_packages
-    remove_deb_multimedia
+    # Wizard Seite 1: Warnung
+    if ! wizard_page_warning; then
+        echo "Deinstallation abgebrochen."
+        exit 0
+    fi
     
-    # Abschluss
-    print_header "DEINSTALLATION ABGESCHLOSSEN"
-    print_success "disk2iso wurde erfolgreich entfernt"
-    echo ""
+    # Wizard Seite 2: Deinstallation durchführen
+    wizard_page_uninstall
+    
+    # Wizard Seite 3: Ausgabeverzeichnis löschen
+    wizard_page_output_directory
+    
+    # Wizard Seite 4: Abschluss
+    wizard_page_complete
 }
 
 # Script ausführen
