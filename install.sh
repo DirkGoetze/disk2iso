@@ -395,14 +395,14 @@ wizard_install_libdvdcss2() {
         apt-get update -qq
     fi
     
-    # Installiere libdvd-pkg
+    # Installiere libdvd-pkg (nicht-interaktiv)
     if use_whiptail; then
         {
             echo "50"
             echo "XXX"
             echo "Installiere libdvd-pkg..."
             echo "XXX"
-            apt-get install -y -qq libdvd-pkg >/dev/null 2>&1 || true
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libdvd-pkg >/dev/null 2>&1 || true
             
             echo "80"
             echo "XXX"
@@ -415,7 +415,7 @@ wizard_install_libdvdcss2() {
         } | whiptail --title "libdvdcss2 Installation" \
             --gauge "Installiere und konfiguriere libdvdcss2..." 8 70 0
     else
-        apt-get install -y -qq libdvd-pkg >/dev/null 2>&1 || true
+        DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libdvd-pkg >/dev/null 2>&1 || true
         DEBIAN_FRONTEND=noninteractive dpkg-reconfigure libdvd-pkg >/dev/null 2>&1 || true
     fi
 }
