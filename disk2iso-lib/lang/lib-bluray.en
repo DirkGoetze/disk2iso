@@ -1,0 +1,34 @@
+#!/bin/bash
+################################################################################
+# disk2iso - English Language File for lib-bluray.sh
+# Filepath: disk2iso-lib/lang/lib-bluray.en
+#
+# Description:
+#   Message texts for Blu-ray functions
+#
+################################################################################
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
+
+readonly MSG_BLURAY_SUPPORT_INFO="Blu-ray support available with:"
+readonly MSG_RECOMMENDED_INSTALLATION="Recommended installation for better performance:"
+readonly MSG_INSTALL_DDRESCUE_INFO="ddrescue: apt-get install gddrescue"
+readonly MSG_INSTALL_GENISOIMAGE="genisoimage: apt-get install genisoimage"
+readonly MSG_ERROR_NO_BLURAY_METHOD_AVAILABLE="ERROR: No Blu-ray method available"
+
+# ============================================================================
+# BLU-RAY COPYING
+# ============================================================================
+
+readonly MSG_DISC_SIZE_DETECTED="Disc size detected:"
+readonly MSG_DISC_SIZE_MB="MB"
+
+# ============================================================================
+# DDRESCUE METHOD
+# ============================================================================
+
+readonly MSG_START_DDRESCUE_BLURAY="Starting copy process..."
+readonly MSG_BLURAY_PROGRESS="Blu-ray progress:"
+readonly MSG_BLURAY_DDRESCUE_SUCCESS="✓ Blu-ray successfully copied"

@@ -1,0 +1,39 @@
+#!/bin/bash
+################################################################################
+# disk2iso - English Language File for lib-dvd.sh
+# Filepath: disk2iso-lib/lang/lib-dvd.en
+#
+# Description:
+#   Message texts for Video-DVD functions
+#
+################################################################################
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
+
+readonly MSG_VIDEO_SUPPORT_AVAILABLE="Video-DVD/BD support available with:"
+readonly MSG_EXTENDED_METHODS_AVAILABLE="Extended methods available after installation:"
+readonly MSG_INSTALLATION_DVD="Installation: apt-get install dvdbackup genisoimage gddrescue libdvdcss2"
+readonly MSG_ERROR_NO_VIDEO_METHOD="ERROR: No Video-DVD/BD method available"
+
+# ============================================================================
+# DVDBACKUP METHOD
+# ============================================================================
+
+readonly MSG_METHOD_DVDBACKUP="Method: Decrypted copying"
+readonly MSG_DVD_SIZE="DVD size:"
+readonly MSG_EXTRACT_DVD_STRUCTURE="Copying DVD contents..."
+readonly MSG_ERROR_DVDBACKUP_FAILED="ERROR: dvdbackup failed"
+readonly MSG_DVD_STRUCTURE_EXTRACTED="✓ DVD contents copied (100%)"
+readonly MSG_ERROR_NO_VIDEO_TS="ERROR: No VIDEO_TS folder found"
+readonly MSG_CREATE_DECRYPTED_ISO="Creating ISO file..."
+readonly MSG_DECRYPTED_DVD_SUCCESS="✓ Video-DVD ISO successfully created"
+readonly MSG_ERROR_GENISOIMAGE_FAILED="ERROR: genisoimage failed"
+
+# ============================================================================
+# DDRESCUE METHOD
+# ============================================================================
+
+readonly MSG_VIDEO_DVD_DDRESCUE_SUCCESS="✓ Video-DVD successfully copied"
+readonly MSG_DVD_PROGRESS="Video-DVD progress:"

@@ -1,0 +1,21 @@
+#!/bin/bash
+################################################################################
+# disk2iso - English Language File for lib-folders.sh
+# Filepath: disk2iso-lib/lang/lib-folders.en
+#
+# Description:
+#   Message texts for directory management
+#
+################################################################################
+
+# ============================================================================
+# DIRECTORY OPERATIONS
+# ============================================================================
+
+readonly MSG_TEMP_DIR_CREATED="Temp directory created"
+readonly MSG_TEMP_DIR_CLEANED="Temp directory cleaned"
+readonly MSG_LOG_DIR_CREATED="Log directory ensured"
+readonly MSG_OUTPUT_DIR_CREATED="Output directory ensured"
+readonly MSG_ALBUM_DIR_CREATED="Album directory created"
+readonly MSG_BACKUP_DIR_CREATED="Backup directory created"
+readonly MSG_ERROR_BACKUP_DIR_FAILED="ERROR: Could not create backup directory"

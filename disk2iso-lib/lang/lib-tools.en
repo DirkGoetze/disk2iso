@@ -1,0 +1,20 @@
+#!/bin/bash
+################################################################################
+# disk2iso - English Language File for lib-tools.sh
+# Filepath: disk2iso-lib/lang/lib-tools.en
+#
+# Description:
+#   Message texts for tool detection and recommendations
+#
+################################################################################
+
+# ============================================================================
+# TOOL AVAILABILITY
+# ============================================================================
+
+readonly MSG_AVAILABLE_OPTIONAL_TOOLS="Available optional tools:"
+readonly MSG_MISSING_OPTIONAL_TOOLS="Missing optional tools:"
+readonly MSG_VIDEO_DVD_OPTIONS="Video-DVD options:"
+readonly MSG_DVD_OPTION_1="  Option 1 (decrypted): apt-get install dvdbackup libdvdcss2 genisoimage"
+readonly MSG_DVD_OPTION_2="  Option 2 (encrypted, fast): apt-get install gddrescue"
+readonly MSG_DVD_OPTION_3="  Option 3 (encrypted, slow): dd (always available)"

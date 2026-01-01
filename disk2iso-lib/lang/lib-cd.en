@@ -1,0 +1,99 @@
+#!/bin/bash
+################################################################################
+# disk2iso - English Language File for lib-cd.sh
+# Filepath: disk2iso-lib/lang/lib-cd.en
+#
+# Description:
+#   Message texts for Audio-CD functions
+#
+################################################################################
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
+
+readonly MSG_AUDIO_SUPPORT_NOT_AVAILABLE="Audio-CD support NOT available - missing tools:"
+readonly MSG_INSTALL_AUDIO_TOOLS="Installation: apt-get install cdparanoia lame genisoimage"
+readonly MSG_AUDIO_OPTIONAL_LIMITED="Audio-CD: Optional features limited - missing tools:"
+readonly MSG_INSTALL_MUSICBRAINZ_TOOLS="For MusicBrainz/Cover: apt-get install cd-discid curl jq eyed3"
+readonly MSG_AUDIO_SUPPORT_AVAILABLE="Audio-CD support available"
+
+# ============================================================================
+# METADATA
+# ============================================================================
+
+readonly MSG_RETRIEVE_METADATA="Retrieving CD information..."
+readonly MSG_WARNING_CDISCID_MISSING="WARNING: cd-discid not installed - metadata query not possible"
+readonly MSG_WARNING_CURL_JQ_MISSING="WARNING: curl/jq not installed - metadata query not possible"
+readonly MSG_ERROR_DISCID_FAILED="ERROR: Could not retrieve disc ID"
+readonly MSG_DISCID="Disc ID:"
+readonly MSG_TRACKS="Tracks:"
+readonly MSG_WARNING_LEADOUT_FAILED="WARNING: Could not retrieve leadout"
+
+readonly MSG_QUERY_MUSICBRAINZ="Querying CD information..."
+readonly MSG_WARNING_MUSICBRAINZ_FAILED="WARNING: CD information not available (no network?)"
+readonly MSG_WARNING_NO_MUSICBRAINZ_ENTRY="WARNING: No CD information found for disc ID:"
+readonly MSG_ALBUM="Album:"
+readonly MSG_ARTIST="Artist:"
+readonly MSG_YEAR="Year:"
+readonly MSG_MUSICBRAINZ_TRACKS_FOUND="MusicBrainz:"
+readonly MSG_COVER_AVAILABLE="Cover art available"
+readonly MSG_WARNING_INCOMPLETE_METADATA="WARNING: Incomplete CD information"
+
+readonly MSG_WARNING_NO_RELEASE_ID="WARNING: No release ID for cover download"
+readonly MSG_DOWNLOAD_COVER="Downloading album cover..."
+readonly MSG_COVER_DOWNLOADED="Cover downloaded:"
+readonly MSG_WARNING_COVER_DOWNLOAD_FAILED="WARNING: Cover download failed"
+
+# ============================================================================
+# NFO CREATION
+# ============================================================================
+
+readonly MSG_INFO_NO_MUSICBRAINZ_NFO_SKIPPED="INFO: No CD information - album.nfo skipped"
+readonly MSG_CREATE_ALBUM_NFO="Creating album.nfo..."
+readonly MSG_NFO_FILE_CREATED="album.nfo created"
+
+# ============================================================================
+# COVER
+# ============================================================================
+
+readonly MSG_ERROR_COVER_COPY_FAILED="ERROR: Could not copy cover"
+readonly MSG_ERROR_COVER_FILE_NOT_FOUND="ERROR: Cover file not found:"
+
+# ============================================================================
+# AUDIO-CD RIPPING
+# ============================================================================
+
+readonly MSG_START_AUDIO_RIPPING="Starting copy process..."
+readonly MSG_ERROR_CDPARANOIA_MISSING="ERROR: cdparanoia not installed"
+readonly MSG_ERROR_LAME_MISSING="ERROR: lame not installed"
+readonly MSG_ERROR_GENISOIMAGE_MISSING="ERROR: genisoimage not installed"
+readonly MSG_CONTINUE_WITHOUT_METADATA="Continuing without metadata..."
+readonly MSG_INFO_EYED3_MISSING="INFO: eyeD3 not installed - cover embedding skipped"
+
+readonly MSG_ALBUM_DIRECTORY="Album directory:"
+readonly MSG_ALBUM_DIR="Album directory:"
+readonly MSG_ERROR_NO_TRACKS="ERROR: No tracks found"
+readonly MSG_TRACKS_FOUND="Tracks found:"
+
+readonly MSG_START_CDPARANOIA_RIPPING="Reading audio tracks..."
+readonly MSG_RIPPING_TRACK="Reading track $1 / $2"
+readonly MSG_ERROR_TRACK_RIP_FAILED="ERROR: Could not read track $1"
+
+readonly MSG_ENCODING_TRACK_WITH_TITLE="Encoding track"
+readonly MSG_ENCODING_TRACK="Encoding track"
+readonly MSG_ERROR_MP3_ENCODING_FAILED="ERROR: MP3 encoding failed for track"
+
+readonly MSG_COVER_SAVED_FOLDER_JPG="Cover saved as folder.jpg in album directory"
+readonly MSG_RIPPING_COMPLETE_CREATE_ISO="Copy process completed - creating ISO..."
+readonly MSG_ERROR_INSUFFICIENT_SPACE_ISO="ERROR: Insufficient disk space for ISO creation"
+
+readonly MSG_CREATE_ISO="Creating ISO:"
+readonly MSG_VOLUME_ID="Volume ID:"
+readonly MSG_ERROR_ISO_CREATION_FAILED="ERROR: ISO creation failed"
+readonly MSG_ERROR_ISO_NOT_CREATED="ERROR: ISO file was not created"
+readonly MSG_ISO_CREATED="ISO created:"
+
+readonly MSG_CREATE_MD5="Creating MD5 checksum..."
+readonly MSG_WARNING_MD5_FAILED="WARNING: MD5 checksum could not be created"
+readonly MSG_AUDIO_CD_SUCCESS="Audio-CD successfully copied and saved as ISO"

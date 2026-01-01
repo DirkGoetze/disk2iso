@@ -1,0 +1,100 @@
+#!/bin/bash
+################################################################################
+# disk2iso - English Language File for lib-common.sh
+# Filepath: disk2iso-lib/lang/lib-common.en
+#
+# Description:
+#   Message texts for core functions (Data Disc Copying)
+#
+################################################################################
+
+# ============================================================================
+# SYSTEM
+# ============================================================================
+
+readonly MSG_CORE_MODULES_LOADED="Core modules loaded"
+readonly MSG_AUDIO_CD_SUPPORT_ENABLED="✓ Audio-CD support enabled"
+readonly MSG_AUDIO_CD_SUPPORT_DISABLED="✗ Audio-CD support disabled (missing tools)"
+readonly MSG_AUDIO_CD_NOT_INSTALLED="✗ Audio-CD support not installed"
+readonly MSG_VIDEO_DVD_SUPPORT_ENABLED="✓ Video-DVD support enabled"
+readonly MSG_VIDEO_DVD_SUPPORT_DISABLED="✗ Video-DVD support disabled (missing tools)"
+readonly MSG_VIDEO_DVD_NOT_INSTALLED="✗ Video-DVD support not installed"
+readonly MSG_BLURAY_SUPPORT_ENABLED="✓ Blu-ray support enabled"
+readonly MSG_BLURAY_SUPPORT_DISABLED="✗ Blu-ray support disabled (missing tools)"
+readonly MSG_BLURAY_NOT_INSTALLED="✗ Blu-ray support not installed"
+
+readonly MSG_WARNING_AUDIO_CD_NO_SUPPORT="WARNING: Audio-CD detected, but no support installed"
+readonly MSG_FALLBACK_DATA_DISC="Fallback: Copy as data disc"
+readonly MSG_START_COPY_PROCESS="Start copy process:"
+readonly MSG_ERROR_AUDIO_CD_NOT_AVAILABLE="ERROR: Audio-CD support not available"
+readonly MSG_ERROR_VIDEO_DVD_NOT_AVAILABLE="ERROR: Video-DVD support not available"
+readonly MSG_ERROR_BLURAY_NOT_AVAILABLE="ERROR: Blu-ray support not available"
+
+# ============================================================================
+# WORKFLOW
+# ============================================================================
+
+readonly MSG_DISK2ISO_STARTED="disk2iso started"
+readonly MSG_OUTPUT_DIRECTORY="Output directory:"
+readonly MSG_DRIVE_MONITORING_STARTED="Drive monitoring started"
+readonly MSG_MEDIUM_DETECTED="Medium inserted detected"
+readonly MSG_DISC_TYPE_DETECTED="Disc type detected:"
+readonly MSG_VOLUME_LABEL="Volume label:"
+readonly MSG_UNMOUNTING_DISC="Unmounting disc for direct access..."
+readonly MSG_WAITING_FOR_REMOVAL="Waiting for medium removal..."
+readonly MSG_WAITING_FOR_MEDIUM="Waiting for medium..."
+readonly MSG_DRIVE_DETECTED="Drive detected:"
+readonly MSG_SEARCHING_USB_DRIVE="Searching for USB drive... (Attempt"
+readonly MSG_OF_ATTEMPTS="/"
+readonly MSG_ERROR_NO_DRIVE_FOUND="ERROR: No drive detected after"
+readonly MSG_ATTEMPTS="attempts"
+readonly MSG_DRIVE_NOT_AVAILABLE="Drive not available:"
+readonly MSG_COPY_SUCCESS_FINAL="Copy process successful:"
+readonly MSG_COPY_FAILED_FINAL="Copy process failed:"
+readonly MSG_SERVICE_STOPPING="Service stopping"
+
+# ============================================================================
+# DISK SPACE
+# ============================================================================
+
+readonly MSG_WARNING_DISK_SPACE_CHECK_FAILED="WARNING: Could not determine disk space"
+readonly MSG_DISK_SPACE_INFO="Disk space:"
+readonly MSG_DISK_SPACE_MB_AVAILABLE="MB available,"
+readonly MSG_DISK_SPACE_MB_REQUIRED="MB required"
+readonly MSG_ERROR_INSUFFICIENT_DISK_SPACE="ERROR: Not enough disk space! Required:"
+readonly MSG_DISK_SPACE_MB_AVAILABLE_SHORT="MB, Available:"
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
+
+readonly MSG_OPTIONAL_TOOLS_INFO="INFO: Optional tools for better performance:"
+readonly MSG_INSTALL_GENISOIMAGE_GDDRESCUE="Installation: apt-get install genisoimage gddrescue"
+
+# ============================================================================
+# METHODS
+# ============================================================================
+
+readonly MSG_METHOD_DDRESCUE="Method: Robust copying"
+readonly MSG_METHOD_DD="Method: Standard copying"
+
+# ============================================================================
+# COPY PROCESS (DATA DISC)
+# ============================================================================
+
+readonly MSG_ISO_VOLUME_DETECTED="ISO volume detected:"
+readonly MSG_ISO_BLOCKS="blocks"
+readonly MSG_ISO_BLOCKS_SIZE="blocks of"
+readonly MSG_ISO_BYTES="bytes"
+
+readonly MSG_COPYING_COMPLETE_DISC="Copying complete disc (no isoinfo available)"
+readonly MSG_DATA_PROGRESS="Data disc progress:"
+readonly MSG_DATA_DISC_SUCCESS_DDRESCUE="✓ Data disc successfully copied"
+readonly MSG_ERROR_DDRESCUE_FAILED="ERROR: ddrescue failed"
+
+readonly MSG_PROGRESS="Progress:"
+readonly MSG_PROGRESS_OF="MB /"
+readonly MSG_PROGRESS_MB="MB"
+readonly MSG_PROGRESS_PERCENT="%"
+readonly MSG_REMAINING="Remaining"
+readonly MSG_COPIED="copied"
