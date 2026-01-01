@@ -155,7 +155,7 @@ wizard_page_welcome() {
 disk2iso ist ein Tool zur automatischen Erstellung von ISO-Images von optischen Medien (CD, DVD, Blu-ray).
 
 Funktionen:
-• Automatische Erkennung eingeleg ter Discs
+• Automatische Erkennung eingelegter Discs
 • Unterstützung für Audio-CDs, Video-DVDs und Blu-rays
 • MusicBrainz-Integration für Audio-CD Metadaten
 • Optional als systemd-Service für Autostart
@@ -229,9 +229,9 @@ wizard_page_module_selection() {
         choices=$(whiptail --title "disk2iso Installation - Seite 3/8" \
             --checklist "Welche Module möchten Sie installieren?\n\nNavigieren: ↑/↓  Auswählen: Leertaste  Weiter: Enter" \
             18 70 3 \
-            "AUDIO_CD" "Audio-CD Ripping (cdparanoia, lame, MusicBrainz)" OFF \
-            "VIDEO_DVD" "Video-DVD Support (dvdbackup, libdvdcss2)" OFF \
-            "VIDEO_BD" "Video-Blu-ray Support (nur ddrescue)" ON \
+            "AUDIO_CD" "Audio-CD Ripping (cdparanoia, lame, MusicBrainz)" ON \
+            "VIDEO_DVD" "Video-DVD Support (dvdbackup, libdvdcss2)" ON \
+            "VIDEO_BD" "Video-Blu-ray Support (nur ddrescue)" OFF \
             3>&1 1>&2 2>&3)
         
         if [[ $? -ne 0 ]]; then
