@@ -14,6 +14,9 @@
 
 set -e
 
+# Ermittle Script-Verzeichnis (auch wenn via sudo ausgeführt)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Farben für Output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -52,20 +55,47 @@ print_info() {
     echo -e "${BLUE}ℹ${NC} $1"
 }
 
+# Whiptail-Wrapper für bessere UX
+use_whiptail() {
+    command -v whiptail >/dev/null 2>&1
+}
+
 ask_yes_no() {
     local question="$1"
     local default="${2:-n}"
-    local answer
     
-    if [[ "$default" == "y" ]]; then
-        read -p "$question [J/n]: " answer
-        answer=${answer:-j}
+    if use_whiptail; then
+        if [[ "$default" == "y" ]]; then
+            whiptail --title "disk2iso Installation" --yesno "$question" 10 60 --defaultno
+        else
+            whiptail --title "disk2iso Installation" --yesno "$question" 10 60
+        fi
+        return $?
     else
-        read -p "$question [j/N]: " answer
-        answer=${answer:-n}
+        # Fallback auf klassische Eingabe
+        local answer
+        if [[ "$default" == "y" ]]; then
+            read -p "$question [J/n]: " answer
+            answer=${answer:-j}
+        else
+            read -p "$question [j/N]: " answer
+            answer=${answer:-n}
+        fi
+        [[ "$answer" =~ ^[jJyY]$ ]]
     fi
+}
+
+show_info() {
+    local title="$1"
+    local message="$2"
     
-    [[ "$answer" =~ ^[jJyY]$ ]]
+    if use_whiptail; then
+        whiptail --title "$title" --msgbox "$message" 20 70
+    else
+        echo -e "\n${BLUE}$title${NC}"
+        echo "$message"
+        read -p "Drücken Sie Enter zum Fortfahren..."
+    fi
 }
 
 # ============================================================================
@@ -105,13 +135,13 @@ install_package() {
     local package="$1"
     local description="$2"
     
-    if dpkg -l | grep -q "^ii  $package "; then
+    if dpkg -l 2>/dev/null | grep -q "^ii  $package "; then
         print_success "$description bereits installiert"
         return 0
     fi
     
     print_info "Installiere $description..."
-    if apt-get install -y -qq "$package" 2>&1 | grep -v "^Selecting\|^Preparing\|^Unpacking"; then
+    if apt-get install -y -qq "$package" >/dev/null 2>&1; then
         print_success "$description installiert"
         return 0
     else
@@ -141,25 +171,27 @@ install_critical_packages() {
 install_optional_packages() {
     print_header "OPTIONALE PAKETE"
     
-    echo "disk2iso kann mit zusätzlichen Paketen erweitert werden:"
-    echo ""
-    echo "1. genisoimage   - ISO-Erstellung und isoinfo (empfohlen)"
-    echo "                   → Ermöglicht exakte Volume-Größen-Erkennung"
-    echo "                   → Schnelleres Kopieren durch gezielte Blockanzahl"
-    echo ""
-    echo "2. gddrescue     - Intelligentes Rettungs-Tool (empfohlen)"
-    echo "                   → Deutlich schneller als dd bei Lesefehlern"
-    echo "                   → Besseres Fehlerhandling"
-    echo ""
-    echo "3. dvdbackup     - DVD-Entschlüsselung (optional)"
-    echo "                   → Entschlüsselt kommerzielle Video-DVDs"
-    echo "                   → Benötigt libdvdcss2 (siehe nächster Schritt)"
-    echo ""
-    echo "4. Audio-CD      - CD-Ripping mit MusicBrainz-Metadaten (optional)"
-    echo "                   → cdparanoia: Fehlerkorrektur beim Rippen"
-    echo "                   → lame: MP3-Encoding"
-    echo "                   → cd-discid + curl + jq: MusicBrainz-Abfrage"
-    echo ""
+    if ! use_whiptail; then
+        echo "disk2iso kann mit zusätzlichen Paketen erweitert werden:"
+        echo ""
+        echo "1. genisoimage   - ISO-Erstellung und isoinfo (empfohlen)"
+        echo "                   → Ermöglicht exakte Volume-Größen-Erkennung"
+        echo "                   → Schnelleres Kopieren durch gezielte Blockanzahl"
+        echo ""
+        echo "2. gddrescue     - Intelligentes Rettungs-Tool (empfohlen)"
+        echo "                   → Deutlich schneller als dd bei Lesefehlern"
+        echo "                   → Besseres Fehlerhandling"
+        echo ""
+        echo "3. dvdbackup     - DVD-Entschlüsselung (optional)"
+        echo "                   → Entschlüsselt kommerzielle Video-DVDs"
+        echo "                   → Benötigt libdvdcss2 (siehe nächster Schritt)"
+        echo ""
+        echo "4. Audio-CD      - CD-Ripping mit MusicBrainz-Metadaten (optional)"
+        echo "                   → cdparanoia: Fehlerkorrektur beim Rippen"
+        echo "                   → lame: MP3-Encoding"
+        echo "                   → cd-discid + curl + jq: MusicBrainz-Abfrage"
+        echo ""
+    fi
     
     # genisoimage (sehr empfohlen)
     if ask_yes_no "genisoimage installieren?" "y"; then
@@ -279,25 +311,36 @@ install_libdvd_pkg() {
 install_disk2iso_files() {
     print_header "DISK2ISO INSTALLATION"
     
+    # Prüfe ob Quell-Dateien existieren
+    if [[ ! -f "$SCRIPT_DIR/disk2iso.sh" ]]; then
+        print_error "disk2iso.sh nicht gefunden in $SCRIPT_DIR"
+        exit 1
+    fi
+    
+    if [[ ! -d "$SCRIPT_DIR/disk2iso-lib" ]]; then
+        print_error "disk2iso-lib Verzeichnis nicht gefunden in $SCRIPT_DIR"
+        exit 1
+    fi
+    
     # Erstelle Installationsverzeichnis
     print_info "Erstelle Verzeichnis $INSTALL_DIR..."
     mkdir -p "$INSTALL_DIR"
     
     # Kopiere Haupt-Script
     print_info "Kopiere disk2iso Script..."
-    cp -f disk2iso.sh "$INSTALL_DIR/"
+    cp -f "$SCRIPT_DIR/disk2iso.sh" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/disk2iso.sh"
     
     # Kopiere Library
     print_info "Kopiere disk2iso Bibliothek..."
-    cp -rf disk2iso-lib "$INSTALL_DIR/"
+    cp -rf "$SCRIPT_DIR/disk2iso-lib" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR"/disk2iso-lib/*.sh
     
     # Erstelle Symlink
     print_info "Erstelle Symlink in /usr/local/bin..."
     ln -sf "$INSTALL_DIR/disk2iso.sh" "$BIN_LINK"
     
-    print_success "disk2iso Dateien installiert"
+    print_success "disk2iso Dateien installiert nach $INSTALL_DIR"
 }
 
 configure_service() {

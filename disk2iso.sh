@@ -162,16 +162,10 @@ select_copy_method() {
         echo "dd"
         return 0
     
-    # Für Blu-ray Video: MakeMKV (entschlüsselt) oder ddrescue/dd (verschlüsselt)
+    # Für Blu-ray Video: ddrescue (Priorität 1) oder dd (Fallback)
     elif [[ "$disc_type" == "bd-video" ]]; then
         if [[ "$BLURAY_SUPPORT" == true ]]; then
-            # Priorität 1: MakeMKV (entschlüsselt, langsam)
-            if command -v makemkvcon >/dev/null 2>&1 && command -v genisoimage >/dev/null 2>&1; then
-                echo "makemkv"
-                return 0
-            fi
-            
-            # Priorität 2: ddrescue (verschlüsselt, schneller)
+            # Priorität 1: ddrescue (verschlüsselt/unverschlüsselt, robust, schnell)
             if command -v ddrescue >/dev/null 2>&1; then
                 echo "bluray-ddrescue"
                 return 0
@@ -250,16 +244,6 @@ copy_disc_to_iso() {
                 return 1
             fi
             ;;
-        makemkv)
-            if [[ "$BLURAY_SUPPORT" == true ]] && declare -f copy_bluray_makemkv >/dev/null 2>&1; then
-                if copy_bluray_makemkv; then
-                    copy_success=true
-                fi
-            else
-                log_message "FEHLER: Blu-ray Support (MakeMKV) nicht verfügbar"
-                return 1
-            fi
-            ;;
         bluray-ddrescue)
             if [[ "$BLURAY_SUPPORT" == true ]] && declare -f copy_bluray_ddrescue >/dev/null 2>&1; then
                 if copy_bluray_ddrescue; then
@@ -328,6 +312,14 @@ monitor_cdrom() {
             if [[ "$disc_type" != "audio-cd" ]]; then
                 get_disc_label
                 log_message "Volume-Label: $disc_label"
+            fi
+            
+            # Unmounte Disc falls sie auto-gemountet wurde (z.B. von udisks2)
+            # Dies ist wichtig für ddrescue/MakeMKV die direkten Block-Device-Zugriff brauchen
+            if mount | grep -q "$CD_DEVICE"; then
+                log_message "Unmounte Disc für direkten Zugriff..."
+                umount "$CD_DEVICE" 2>/dev/null || sudo umount "$CD_DEVICE" 2>/dev/null
+                sleep 1
             fi
             
             # Kopiere Disc als ISO
