@@ -18,9 +18,25 @@
 detect_disc_type() {
     disc_type="unknown"
     
+    # blkid kann unter /usr/sbin/ liegen
+    local blkid_cmd=""
+    if command -v blkid >/dev/null 2>&1; then
+        blkid_cmd="blkid"
+    elif [[ -x /usr/sbin/blkid ]]; then
+        blkid_cmd="/usr/sbin/blkid"
+    fi
+    
     # Prüfe zuerst mit blkid (funktioniert besser für UDF/Blu-ray)
-    local blkid_output
-    blkid_output=$(blkid "$CD_DEVICE" 2>/dev/null)
+    local blkid_output=""
+    if [[ -n "$blkid_cmd" ]]; then
+        blkid_output=$($blkid_cmd "$CD_DEVICE" 2>/dev/null)
+    fi
+    
+    # Extrahiere Dateisystem-Typ aus blkid
+    local fs_type=""
+    if [[ -n "$blkid_output" ]]; then
+        fs_type=$(echo "$blkid_output" | grep -o 'TYPE="[^"]*"' | cut -d'"' -f2)
+    fi
     
     # Wenn blkid fehlschlägt, versuche isoinfo
     if [[ -z "$blkid_output" ]]; then
@@ -90,6 +106,26 @@ detect_disc_type() {
         volume_size=$(isoinfo -d -i "$CD_DEVICE" 2>/dev/null | grep "Volume size is:" | awk '{print $4}')
     fi
     
+    # Wenn isoinfo keine Größe liefert (z.B. bei UDF), versuche Blockgerät-Größe
+    if [[ -z "$volume_size" ]] || [[ ! "$volume_size" =~ ^[0-9]+$ ]]; then
+        if [[ -b "$CD_DEVICE" ]]; then
+            # blockdev kann unter /usr/sbin/ liegen
+            local blockdev_cmd=""
+            if command -v blockdev >/dev/null 2>&1; then
+                blockdev_cmd="blockdev"
+            elif [[ -x /usr/sbin/blockdev ]]; then
+                blockdev_cmd="/usr/sbin/blockdev"
+            fi
+            
+            if [[ -n "$blockdev_cmd" ]]; then
+                local device_size=$($blockdev_cmd --getsize64 "$CD_DEVICE" 2>/dev/null)
+                if [[ -n "$device_size" ]] && [[ "$device_size" =~ ^[0-9]+$ ]]; then
+                    volume_size=$((device_size / 2048))
+                fi
+            fi
+        fi
+    fi
+    
     if [[ -n "$volume_size" ]] && [[ "$volume_size" =~ ^[0-9]+$ ]]; then
         local size_mb=$((volume_size * 2048 / 1024 / 1024))
         
@@ -99,7 +135,12 @@ detect_disc_type() {
         elif [[ $size_mb -lt 9000 ]]; then
             disc_type="dvd-rom"
         else
-            disc_type="bd-rom"
+            # Bei UDF und großer Disc → bd-video (kommerzielle Blu-rays sind immer UDF)
+            if [[ "$fs_type" == "udf" ]]; then
+                disc_type="bd-video"
+            else
+                disc_type="bd-rom"
+            fi
         fi
     else
         disc_type="data"
@@ -117,8 +158,18 @@ detect_disc_type() {
 get_volume_label() {
     local label=""
     
+    # blkid kann unter /usr/sbin/ liegen
+    local blkid_cmd=""
+    if command -v blkid >/dev/null 2>&1; then
+        blkid_cmd="blkid"
+    elif [[ -x /usr/sbin/blkid ]]; then
+        blkid_cmd="/usr/sbin/blkid"
+    fi
+    
     # Versuche zuerst mit blkid (funktioniert besser für UDF/Blu-ray)
-    label=$(blkid "$CD_DEVICE" 2>/dev/null | grep -o 'LABEL="[^"]*"' | cut -d'"' -f2)
+    if [[ -n "$blkid_cmd" ]]; then
+        label=$($blkid_cmd "$CD_DEVICE" 2>/dev/null | grep -o 'LABEL="[^"]*"' | cut -d'"' -f2)
+    fi
     
     # Fallback: Versuche Volume ID mit isoinfo zu lesen
     if [[ -z "$label" ]] && command -v isoinfo >/dev/null 2>&1; then

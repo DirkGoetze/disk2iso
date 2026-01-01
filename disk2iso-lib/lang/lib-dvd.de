@@ -48,4 +48,5 @@ readonly MSG_ERROR_GENISOIMAGE_FAILED="FEHLER: genisoimage fehlgeschlagen"
 # MSG_ISO_BLOCKS bereits in lib-common.de definiert
 readonly MSG_VIDEO_DVD_DDRESCUE_SUCCESS="✓ Video-DVD mit ddrescue erfolgreich kopiert"
 # MSG_ERROR_DDRESCUE_FAILED bereits in lib-common.de definiert
+readonly MSG_DVD_PROGRESS="Video-DVD Fortschritt:"
 readonly MSG_DVD_SUCCESS_DDRESCUE="✓ Video-DVD mit ddrescue erfolgreich kopiert"

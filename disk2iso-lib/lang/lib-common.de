@@ -80,6 +80,7 @@ readonly MSG_ISO_BLOCKS_SIZE="Blöcke à"
 readonly MSG_ISO_BYTES="Bytes"
 
 readonly MSG_COPYING_COMPLETE_DISC="Kopiere komplette Disc (kein isoinfo verfügbar)"
+readonly MSG_DATA_PROGRESS="Daten-Disc Fortschritt:"
 readonly MSG_DATA_DISC_SUCCESS_DDRESCUE="✓ Daten-Disc mit ddrescue erfolgreich kopiert"
 readonly MSG_ERROR_DDRESCUE_FAILED="FEHLER: ddrescue fehlgeschlagen"
 
@@ -87,6 +88,8 @@ readonly MSG_PROGRESS="Fortschritt:"
 readonly MSG_PROGRESS_OF="MB /"
 readonly MSG_PROGRESS_MB="MB"
 readonly MSG_PROGRESS_PERCENT="%"
+readonly MSG_REMAINING="Verbleibend"
+readonly MSG_COPIED="kopiert"
 
 # ============================================================================
 # MD5-CHECKSUMME

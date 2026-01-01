@@ -236,27 +236,74 @@ copy_video_dvd_ddrescue() {
     fi
     
     # Kopiere mit ddrescue
+    # Starte ddrescue im Hintergrund
     if [[ $total_bytes -gt 0 ]]; then
-        # Mit bekannter Größe
-        if ddrescue -b 2048 -s "$total_bytes" -n "$CD_DEVICE" "$iso_filename" "$mapfile" 2>>"$log_filename"; then
-            log_message "$MSG_VIDEO_DVD_DDRESCUE_SUCCESS"
-            rm -f "$mapfile"
-            return 0
-        else
-            log_message "$MSG_ERROR_DDRESCUE_FAILED"
-            rm -f "$mapfile"
-            return 1
-        fi
+        ddrescue -b 2048 -s "$total_bytes" -n "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
     else
-        # Ohne bekannte Größe (kopiert bis Ende)
-        if ddrescue -b 2048 -n "$CD_DEVICE" "$iso_filename" "$mapfile" 2>>"$log_filename"; then
-            log_message "$MSG_VIDEO_DVD_DDRESCUE_SUCCESS"
-            rm -f "$mapfile"
-            return 0
-        else
-            log_message "$MSG_ERROR_DDRESCUE_FAILED"
-            rm -f "$mapfile"
-            return 1
+        ddrescue -b 2048 -n "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+    fi
+    local ddrescue_pid=$!
+    
+    # Überwache Fortschritt (alle 60 Sekunden)
+    local start_time=$(date +%s)
+    local last_log_time=$start_time
+    
+    while kill -0 "$ddrescue_pid" 2>/dev/null; do
+        sleep 30
+        
+        local current_time=$(date +%s)
+        local elapsed=$((current_time - last_log_time))
+        
+        # Log alle 60 Sekunden
+        if [[ $elapsed -ge 60 ]]; then
+            local copied_mb=0
+            if [[ -f "$iso_filename" ]]; then
+                local file_size=$(stat -c %s "$iso_filename" 2>/dev/null)
+                if [[ -n "$file_size" ]]; then
+                    copied_mb=$((file_size / 1024 / 1024))
+                fi
+            fi
+            
+            local percent=0
+            local eta="--:--:--"
+            
+            if [[ $total_bytes -gt 0 ]] && [[ $copied_mb -gt 0 ]]; then
+                local total_mb=$((total_bytes / 1024 / 1024))
+                percent=$((copied_mb * 100 / total_mb))
+                if [[ $percent -gt 100 ]]; then percent=100; fi
+                
+                # Berechne geschätzte Restzeit
+                local total_elapsed=$((current_time - start_time))
+                if [[ $percent -gt 0 ]]; then
+                    local estimated_total=$((total_elapsed * 100 / percent))
+                    local remaining=$((estimated_total - total_elapsed))
+                    local hours=$((remaining / 3600))
+                    local minutes=$(((remaining % 3600) / 60))
+                    local seconds=$((remaining % 60))
+                    eta=$(printf "%02d:%02d:%02d" $hours $minutes $seconds)
+                fi
+                
+                log_message "$MSG_DVD_PROGRESS: ${copied_mb} $MSG_PROGRESS_MB / ${total_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
+            else
+                log_message "$MSG_DVD_PROGRESS: ${copied_mb} $MSG_PROGRESS_MB $MSG_COPIED"
+            fi
+            
+            last_log_time=$current_time
         fi
+    done
+    
+    # Warte auf ddrescue Prozess-Ende
+    wait "$ddrescue_pid"
+    local ddrescue_exit=$?
+    
+    # Prüfe Ergebnis
+    if [[ $ddrescue_exit -eq 0 ]]; then
+        log_message "$MSG_VIDEO_DVD_DDRESCUE_SUCCESS"
+        rm -f "$mapfile"
+        return 0
+    else
+        log_message "$MSG_ERROR_DDRESCUE_FAILED"
+        rm -f "$mapfile"
+        return 1
     fi
 }

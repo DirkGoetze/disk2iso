@@ -61,5 +61,6 @@ readonly MSG_DECRYPTED_BLURAY_SUCCESS="✓ Entschlüsselte Blu-ray ISO erfolgrei
 # MSG_ISO_VOLUME_DETECTED bereits in lib-common.de definiert
 # MSG_ISO_BLOCKS bereits in lib-common.de definiert
 readonly MSG_START_DDRESCUE_BLURAY="Starte ddrescue (Blu-ray bleibt verschlüsselt)..."
+readonly MSG_BLURAY_PROGRESS="Blu-ray Fortschritt:"
 readonly MSG_BLURAY_DDRESCUE_SUCCESS="✓ Blu-ray mit ddrescue erfolgreich kopiert"
 # MSG_ERROR_DDRESCUE_FAILED bereits in lib-common.de definiert

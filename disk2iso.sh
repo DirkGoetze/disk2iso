@@ -333,10 +333,11 @@ monitor_cdrom() {
             # Kopiere Disc als ISO
             copy_disc_to_iso
             
-            # Warte bis Medium entfernt wurde
+            # Warte bis Medium entfernt wurde (OHNE ständig zu prüfen während Kopiervorgang läuft)
             log_message "Warte auf Medium-Entnahme..."
+            sleep 5  # Kurze Pause vor erster Prüfung
             while is_disc_inserted; do
-                sleep 2
+                sleep 5  # Längere Pause zwischen Prüfungen (statt 2 Sekunden)
             done
         else
             # Warte bis Medium eingelegt wird

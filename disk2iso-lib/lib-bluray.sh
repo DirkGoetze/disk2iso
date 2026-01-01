@@ -345,6 +345,25 @@ copy_bluray_ddrescue() {
         fi
     fi
     
+    # Fallback: Bei UDF-Blu-rays liefert isoinfo keine Größe - verwende blockdev
+    if [[ $total_bytes -eq 0 ]]; then
+        local blockdev_cmd=""
+        if command -v blockdev >/dev/null 2>&1; then
+            blockdev_cmd="blockdev"
+        elif [[ -x /usr/sbin/blockdev ]]; then
+            blockdev_cmd="/usr/sbin/blockdev"
+        fi
+        
+        if [[ -n "$blockdev_cmd" ]] && [[ -b "$CD_DEVICE" ]]; then
+            local device_size=$($blockdev_cmd --getsize64 "$CD_DEVICE" 2>/dev/null)
+            if [[ -n "$device_size" ]] && [[ "$device_size" =~ ^[0-9]+$ ]]; then
+                total_bytes=$device_size
+                volume_size=$((device_size / 2048))
+                log_message "Disc-Größe ermittelt: $(( total_bytes / 1024 / 1024 )) MB (via blockdev)"
+            fi
+        fi
+    fi
+    
     # Prüfe Speicherplatz (ISO-Größe + 5% Puffer)
     if [[ $total_bytes -gt 0 ]]; then
         local size_mb=$((total_bytes / 1024 / 1024))
@@ -358,27 +377,47 @@ copy_bluray_ddrescue() {
     # Kopiere mit ddrescue
     log_message "$MSG_START_DDRESCUE_BLURAY"
     
-    if [[ $total_bytes -gt 0 ]]; then
-        # Mit bekannter Größe
-        if ddrescue -b 2048 -s "$total_bytes" -n "$CD_DEVICE" "$iso_filename" "$mapfile" 2>>"$log_filename"; then
-            log_message "$MSG_BLURAY_DDRESCUE_SUCCESS"
-            rm -f "$mapfile"
-            return 0
+    # ddrescue Parameter:
+    # -b 2048: Blockgröße für optische Medien
+    # -r 1: Max 1 Retry bei Lesefehlern (verhindert wildes Hin-und-Her-Springen)
+    # -s: Größe begrenzen (falls bekannt)
+    
+    # Verhindere konkurrierende Zugriffe durch udisks/automount während ddrescue läuft
+    # Öffne das Device mit flock (exklusives Lock) falls verfügbar
+    local use_flock=false
+    if command -v flock >/dev/null 2>&1; then
+        use_flock=true
+    fi
+    
+    # Starte ddrescue im Hintergrund (mit oder ohne flock)
+    if $use_flock; then
+        if [[ $total_bytes -gt 0 ]]; then
+            flock -x "$CD_DEVICE" ddrescue -b 2048 -r 1 -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
         else
-            log_message "$MSG_ERROR_DDRESCUE_FAILED"
-            rm -f "$mapfile"
-            return 1
+            flock -x "$CD_DEVICE" ddrescue -b 2048 -r 1 "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
         fi
     else
-        # Ohne bekannte Größe (kopiert bis Ende)
-        if ddrescue -b 2048 -n "$CD_DEVICE" "$iso_filename" "$mapfile" 2>>"$log_filename"; then
-            log_message "$MSG_BLURAY_DDRESCUE_SUCCESS"
-            rm -f "$mapfile"
-            return 0
+        if [[ $total_bytes -gt 0 ]]; then
+            ddrescue -b 2048 -r 1 -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
         else
-            log_message "$MSG_ERROR_DDRESCUE_FAILED"
-            rm -f "$mapfile"
-            return 1
+            ddrescue -b 2048 -r 1 "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
         fi
+    fi
+    local ddrescue_pid=$!
+    
+    # Warte auf ddrescue Prozess-Ende (blockiert bis ddrescue fertig ist)
+    # WICHTIG: Kein is_disc_inserted() Check während ddrescue läuft!
+    wait "$ddrescue_pid"
+    local ddrescue_exit=$?
+    
+    # Prüfe Ergebnis
+    if [[ $ddrescue_exit -eq 0 ]]; then
+        log_message "$MSG_BLURAY_DDRESCUE_SUCCESS"
+        rm -f "$mapfile"
+        return 0
+    else
+        log_message "$MSG_ERROR_DDRESCUE_FAILED"
+        rm -f "$mapfile"
+        return 1
     fi
 }
