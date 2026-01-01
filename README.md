@@ -15,7 +15,7 @@
 - 🔄 **Intelligente Methoden-Wahl** - Beste Kopiermethode basierend auf Disc-Typ und verfügbaren Tools
 - ✅ **MD5-Checksummen** - Automatische Integritätsprüfung
 - 🔧 **Systemd-Integration** - Automatischer Betrieb als Service
-- 🌍 **Mehrsprachig** - Modulares Sprachsystem (aktuell: Deutsch)
+- 🌍 **Mehrsprachig** - Modulares Sprachsystem (Deutsch & Englisch)
 - 🎨 **Whiptail-Wizard** - Komfortable grafische Installation (8 Seiten)
 
 ## 🚀 Quick Start
@@ -161,12 +161,10 @@ disk2iso/
 Bearbeite `disk2iso-lib/config.sh`:
 
 ```bash
-LANGUAGE="de"                    # Sprache
-OUTPUT_DIR="/srv/iso"            # Ausgabeverzeichnis
-AUDIO_QUALITY="V2"               # MP3-Qualität (V0-V9)
-AUDIO_USE_MUSICBRAINZ=true       # MusicBrainz-Lookup
-AUDIO_DOWNLOAD_COVER=true        # Cover-Download
+LANGUAGE="de"                    # Sprache (de oder en)
 ```
+
+**Hinweis:** OUTPUT_DIR wird als Parameter übergeben (`-o /pfad`), nicht in config.sh konfiguriert.
 
 ## 🧪 Debug-Modi
 
@@ -382,20 +380,10 @@ Bearbeite `disk2iso-lib/config.sh`:
 
 ```bash
 # Sprach-Einstellung
-LANGUAGE="de"                   # Sprache für Meldungen (de, en, ...)
-
-# Ausgabe-Verzeichnis
-OUTPUT_DIR="/mnt/hdd/nas/images"
-
-# CD-Device (automatisch erkannt)
-CD_DEVICE=""  # Leer lassen für Auto-Detect
-
-# Audio-CD Einstellungen
-AUDIO_QUALITY="V2"              # LAME VBR Qualität (V0-V9)
-AUDIO_USE_MUSICBRAINZ=true      # MusicBrainz Metadaten-Lookup
-AUDIO_USE_CDTEXT=true           # CD-TEXT Extraktion
-AUDIO_DOWNLOAD_COVER=true       # Album-Cover herunterladen
+LANGUAGE="de"                   # Sprache für Meldungen (de oder en)
 ```
+
+**Hinweis:** OUTPUT_DIR wird per Kommandozeilen-Parameter übergeben (`-o /pfad`), nicht in der Konfigurationsdatei.
 
 ### Mehrsprachigkeit
 
@@ -403,20 +391,26 @@ Das Sprachsystem ist modular aufgebaut:
 
 - Jedes Modul hat eigene Sprachdateien: `lang/lib-[modul].[sprache]`
 - Beim Laden eines Moduls wird automatisch die Sprachdatei geladen
-- Fallback auf Englisch wenn Sprache nicht verfügbar
+- Standard: Deutsch, optional: Englisch
 
-**Verfügbare Sprachdateien:**
+**Verfügbare Sprachen:**
 
-- `lang/lib-common.de` - Kern-Funktionen
-- `lang/lib-cd.de` - Audio-CD Support
-- `lang/lib-dvd.de` - Video-DVD Support
-- `lang/lib-bluray.de` - Blu-ray Support
+- **Deutsch** (de) - Standard
+- **Englisch** (en) - Vollständig
 
-**Neue Sprache hinzufügen:**
+**Sprachdateien:**
 
-1. Kopiere `.de` Dateien zu `.en` (oder andere Sprache)
-2. Übersetze die `MSG_*` Konstanten
-3. Setze `LANGUAGE="en"` in config.sh
+- `lang/lib-common.[de|en]` - Kern-Funktionen
+- `lang/lib-cd.[de|en]` - Audio-CD Support
+- `lang/lib-dvd.[de|en]` - Video-DVD Support
+- `lang/lib-bluray.[de|en]` - Blu-ray Support
+- `lang/lib-folders.[de|en]` - Verzeichnisverwaltung
+- `lang/lib-tools.[de|en]` - Tool-Erkennung
+- `lang/debugmsg.en` - Debug-Meldungen (nur Englisch)
+
+**Sprache ändern:**
+
+Setze `LANGUAGE="en"` in `disk2iso-lib/config.sh`
 
 ## 🔧 Service-Modus (Automatisch)
 
