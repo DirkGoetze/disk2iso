@@ -1,13 +1,19 @@
 #!/bin/bash
 ################################################################################
-# Tool Detection Library - Minimal (nur Debian Standard-Tools)
+# disk2iso v1.0.0 - Tool Detection Library
 # Filepath: disk2iso-lib/lib-tools.sh
 #
 # Beschreibung:
-#   Nur Prüfung der Debian-Standard-Tools (dd, md5sum, lsblk)
+#   Prüfung von Debian-Standard-Tools:
+#   - dd, md5sum, lsblk, eject
 #
-# Vereinfacht: 24.12.2025
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
+
+# Lade Sprachdatei
+SCRIPT_DIR_TOOLS="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+source "${SCRIPT_DIR_TOOLS}/lang/lib-tools.${LANGUAGE:-de}"
 
 # Prüfe ob dd verfügbar ist
 check_dd() {
@@ -71,15 +77,15 @@ check_all_optional_tools() {
     check_ddrescue && available+=("ddrescue") || missing+=("ddrescue (Paket: gddrescue)")
     
     if [[ ${#available[@]} -gt 0 ]]; then
-        log_message "Verfügbare optionale Tools: ${available[*]}"
+        log_message "$MSG_AVAILABLE_OPTIONAL_TOOLS ${available[*]}"
     fi
     
     if [[ ${#missing[@]} -gt 0 ]]; then
-        log_message "Fehlende optionale Tools: ${missing[*]}"
-        log_message "Video-DVD Optionen:"
-        log_message "  Option 1 (entschlüsselt): apt-get install dvdbackup libdvdcss2 genisoimage"
-        log_message "  Option 2 (verschlüsselt, schnell): apt-get install gddrescue"
-        log_message "  Option 3 (verschlüsselt, langsam): dd (immer verfügbar)"
+        log_message "$MSG_MISSING_OPTIONAL_TOOLS ${missing[*]}"
+        log_message "$MSG_VIDEO_DVD_OPTIONS"
+        log_message "$MSG_DVD_OPTION_1"
+        log_message "$MSG_DVD_OPTION_2"
+        log_message "$MSG_DVD_OPTION_3"
         return 1
     fi
     

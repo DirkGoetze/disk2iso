@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso - DVD Library
+# disk2iso v1.0.0 - DVD Library
 # Filepath: disk2iso-lib/lib-dvd.sh
 #
 # Beschreibung:
@@ -8,7 +8,8 @@
 #   - copy_video_dvd() - Video-DVD mit dvdbackup + genisoimage (entschlüsselt)
 #   - copy_video_dvd_ddrescue() - Video-DVD/BD mit ddrescue (verschlüsselt)
 #
-# Erstellt: 30.12.2025
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 # ============================================================================

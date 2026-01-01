@@ -1,19 +1,16 @@
 #!/bin/bash
 ################################################################################
-# Folder Management Library
+# disk2iso v1.0.0 - Folder Management Library
 # Filepath: disk2iso-lib/lib-folders.sh
 #
 # Beschreibung:
-#   Sammlung aller Funktionen zur Verwaltung von Dateipfaden und Verzeichnissen:
+#   Verwaltung von Verzeichnissen:
 #   - Temp-Verzeichnis-Erstellung
 #   - Temp-Verzeichnis-Bereinigung
-#   - Lazy Initialization für wiederholte Aufrufe
+#   - Lazy Initialization für Output-Ordner
 #
-# Quellen:
-#   - lib-diskinfos.sh (get_temp_pathname, cleanup_temp_pathname)
-#
-# Konsolidiert: 13.12.2025
-# Optimiert: 13.12.2025 - Lazy Initialization hinzugefügt
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 # Globale Flags für Lazy Initialization
@@ -65,7 +62,7 @@ cleanup_temp_pathname() {
 }
 
 # Funktion zum Erstellen eines temporären Mount-Points
-# Erstellt Mount-Point im OUTPUT_DIR/temp/mountpoints für sichere Schreibrechte
+# Erstellt Mount-Point im OUTPUT_DIR/.temp/mountpoints für sichere Schreibrechte
 # Gibt den Pfad zurück
 # Rückgabe: Mount-Point Pfad
 get_tmp_mount() {

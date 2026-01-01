@@ -9,13 +9,6 @@
 ################################################################################
 
 # ============================================================================
-# DVD MODUL
-# ============================================================================
-
-readonly MSG_MODULE_VIDEO_DVD="Modul: Video-DVD Backup (dvdbackup)"
-readonly MSG_DETECTED_TYPE_DVD="Erkannter Typ: Video-DVD"
-
-# ============================================================================
 # ABHÄNGIGKEITEN
 # ============================================================================
 
@@ -28,25 +21,19 @@ readonly MSG_ERROR_NO_VIDEO_METHOD="FEHLER: Keine Video-DVD/BD Methode verfügba
 # DVDBACKUP-METHODE
 # ============================================================================
 
-readonly MSG_METHOD_DVDBACKUP="Methode: dvdbackup (entschlüsselt)"
+readonly MSG_METHOD_DVDBACKUP="Methode: Entschlüsseltes Kopieren"
 readonly MSG_DVD_SIZE="DVD-Größe:"
-readonly MSG_EXTRACT_DVD_STRUCTURE="Extrahiere DVD-Struktur..."
-# MSG_PROGRESS, MSG_PROGRESS_MB, MSG_REMAINING, MSG_COPIED bereits in lib-common.de definiert
+readonly MSG_EXTRACT_DVD_STRUCTURE="Kopiere DVD-Inhalte..."
 readonly MSG_ERROR_DVDBACKUP_FAILED="FEHLER: dvdbackup fehlgeschlagen"
-readonly MSG_DVD_STRUCTURE_EXTRACTED="✓ DVD-Struktur extrahiert (100%)"
+readonly MSG_DVD_STRUCTURE_EXTRACTED="✓ DVD-Inhalte kopiert (100%)"
 readonly MSG_ERROR_NO_VIDEO_TS="FEHLER: Kein VIDEO_TS Ordner gefunden"
-readonly MSG_CREATE_DECRYPTED_ISO="Erstelle entschlüsselte ISO aus VIDEO_TS..."
-readonly MSG_DECRYPTED_DVD_SUCCESS="✓ Entschlüsselte Video-DVD ISO erfolgreich erstellt"
+readonly MSG_CREATE_DECRYPTED_ISO="Erstelle ISO-Datei..."
+readonly MSG_DECRYPTED_DVD_SUCCESS="✓ Video-DVD ISO erfolgreich erstellt"
 readonly MSG_ERROR_GENISOIMAGE_FAILED="FEHLER: genisoimage fehlgeschlagen"
 
 # ============================================================================
 # DDRESCUE-METHODE
 # ============================================================================
 
-# MSG_METHOD_DDRESCUE_ENCRYPTED bereits in lib-common.de definiert
-# MSG_ISO_VOLUME_DETECTED bereits in lib-common.de definiert
-# MSG_ISO_BLOCKS bereits in lib-common.de definiert
-readonly MSG_VIDEO_DVD_DDRESCUE_SUCCESS="✓ Video-DVD mit ddrescue erfolgreich kopiert"
-# MSG_ERROR_DDRESCUE_FAILED bereits in lib-common.de definiert
+readonly MSG_VIDEO_DVD_DDRESCUE_SUCCESS="✓ Video-DVD erfolgreich kopiert"
 readonly MSG_DVD_PROGRESS="Video-DVD Fortschritt:"
-readonly MSG_DVD_SUCCESS_DDRESCUE="✓ Video-DVD mit ddrescue erfolgreich kopiert"

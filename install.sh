@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso Installation Script
+# disk2iso v1.0.0 - Installation Script
 # Filepath: install.sh
 #
 # Beschreibung:
@@ -9,8 +9,8 @@
 #   - Modulare Paket-Installation (Audio-CD, Video-DVD, Video-BD)
 #   - Optionale systemd Service-Konfiguration
 #
-# Erstellt: 29.12.2025
-# Aktualisiert: 01.01.2026 - Wizard-UI
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 set -e

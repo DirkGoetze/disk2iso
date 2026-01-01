@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# Common Functions Library
+# disk2iso v1.0.0 - Common Functions Library
 # Filepath: disk2iso-lib/lib-common.sh
 #
 # Beschreibung:
@@ -9,7 +9,8 @@
 #   - reset_disc_variables, cleanup_disc_operation
 #   - check_disk_space, monitor_copy_progress
 #
-# Erweitert: 30.12.2025
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 # ============================================================================
@@ -17,8 +18,8 @@
 # ============================================================================
 
 readonly DATA_DIR="data"
-readonly TEMP_DIR="temp"
-readonly MOUNTPOINTS_DIR="temp/mountpoints"
+readonly TEMP_DIR=".temp"
+readonly MOUNTPOINTS_DIR=".temp/mountpoints"
 
 # ============================================================================
 # PATH GETTER
@@ -81,14 +82,14 @@ check_disk_space() {
     local available_mb=$(df -BM "$OUTPUT_DIR" 2>/dev/null | tail -1 | awk '{print $4}' | sed 's/M//')
     
     if [[ -z "$available_mb" ]] || [[ ! "$available_mb" =~ ^[0-9]+$ ]]; then
-        log_message "WARNUNG: Konnte verfügbaren Speicherplatz nicht ermitteln"
+        log_message "$MSG_WARNING_DISK_SPACE_CHECK_FAILED"
         return 0  # Fahre fort, wenn Prüfung fehlschlägt
     fi
     
-    log_message "Speicherplatz: ${available_mb} MB verfügbar, ${required_mb} MB benötigt"
+    log_message "$MSG_DISK_SPACE_INFO ${available_mb} $MSG_DISK_SPACE_MB_AVAILABLE ${required_mb} $MSG_DISK_SPACE_MB_REQUIRED"
     
     if [[ $available_mb -lt $required_mb ]]; then
-        log_message "FEHLER: Nicht genug Speicherplatz! Benötigt: ${required_mb} MB, Verfügbar: ${available_mb} MB"
+        log_message "$MSG_ERROR_INSUFFICIENT_DISK_SPACE ${required_mb} $MSG_DISK_SPACE_MB_AVAILABLE_SHORT ${available_mb} MB"
         return 1
     fi
     

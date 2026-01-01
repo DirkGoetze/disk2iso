@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso Deinstallations-Script
+# disk2iso v1.0.0 - Deinstallations-Script
 # Filepath: uninstall.sh
 #
 # Beschreibung:
@@ -8,8 +8,8 @@
 #   - 4-Seiten Deinstallations-Wizard mit whiptail
 #   - Entfernt Service, Dateien und optional Ausgabeverzeichnis
 #
-# Erstellt: 29.12.2025
-# Aktualisiert: 01.01.2026 - Wizard-UI
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 set -e

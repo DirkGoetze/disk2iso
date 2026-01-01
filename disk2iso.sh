@@ -1,13 +1,15 @@
 #!/bin/bash
 ################################################################################
-# disk2iso
+# disk2iso v1.0.0
 # Filepath: /usr/local/bin/disk2iso.sh
 #
 # Beschreibung:
-#   Automatisches Rippen von CDs und DVDs beim Einlegen des Mediums.
+#   Automatisches Archivieren optischer Medien als ISO-Images.
 #   Unterstützt verschiedene Kopiermethoden für optimale Ergebnisse:
-#   - Video-DVDs: dvdbackup + mkisofs (erhält DVD-Struktur)
-#   - Daten-CDs/DVDs: ddrescue (robust) oder dd (Fallback)
+#   - Audio-CDs: cdparanoia + lame (MP3 mit MusicBrainz)
+#   - Video-DVDs: dvdbackup + genisoimage (entschlüsselt)
+#   - Blu-rays: ddrescue (robust) oder dd (Fallback)
+#   - Daten-Discs: ddrescue (robust) oder dd (Fallback)
 #
 # Features:
 #   - Automatische DVD-Typ-Erkennung (Video/Daten)
@@ -16,6 +18,9 @@
 #   - Fortschrittsanzeige mit pv (optional)
 #   - Service-Modus für automatischen Betrieb
 #   - Modulare Struktur mit lazy-loading
+#
+# Version: 1.0.0
+# Datum: 01.01.2026
 #
 # Abhängigkeiten:
 #   Pflicht: dd, md5sum, lsblk, isoinfo
@@ -69,7 +74,7 @@ if ! check_common_dependencies; then
     exit 1
 fi
 
-log_message "Kern-Module geladen und geprüft"
+log_message "$MSG_CORE_MODULES_LOADED"
 
 # ============================================================================
 # OPTIONALE MODULE MIT DEPENDENCY-CHECKS
@@ -82,12 +87,12 @@ if [[ -f "${SCRIPT_DIR}/disk2iso-lib/lib-cd.sh" ]]; then
     
     if check_audio_cd_dependencies; then
         AUDIO_CD_SUPPORT=true
-        log_message "✓ Audio-CD Support aktiviert"
+        log_message "$MSG_AUDIO_CD_SUPPORT_ENABLED"
     else
-        log_message "✗ Audio-CD Support deaktiviert (fehlende Tools)"
+        log_message "$MSG_AUDIO_CD_SUPPORT_DISABLED"
     fi
 else
-    log_message "✗ Audio-CD Support nicht installiert (lib-cd.sh fehlt)"
+    log_message "$MSG_AUDIO_CD_NOT_INSTALLED"
 fi
 
 # Video-DVD Support (optional)
@@ -97,12 +102,12 @@ if [[ -f "${SCRIPT_DIR}/disk2iso-lib/lib-dvd.sh" ]]; then
     
     if check_video_dvd_dependencies; then
         VIDEO_DVD_SUPPORT=true
-        log_message "✓ Video-DVD Support aktiviert"
+        log_message "$MSG_VIDEO_DVD_SUPPORT_ENABLED"
     else
-        log_message "✗ Video-DVD Support deaktiviert (fehlende Tools)"
+        log_message "$MSG_VIDEO_DVD_SUPPORT_DISABLED"
     fi
 else
-    log_message "✗ Video-DVD Support nicht installiert (lib-dvd.sh fehlt)"
+    log_message "$MSG_VIDEO_DVD_NOT_INSTALLED"
 fi
 
 # Blu-ray Support (optional)
@@ -112,12 +117,12 @@ if [[ -f "${SCRIPT_DIR}/disk2iso-lib/lib-bluray.sh" ]]; then
     
     if check_bluray_dependencies; then
         BLURAY_SUPPORT=true
-        log_message "✓ Blu-ray Support aktiviert"
+        log_message "$MSG_BLURAY_SUPPORT_ENABLED"
     else
-        log_message "✗ Blu-ray Support deaktiviert (fehlende Tools)"
+        log_message "$MSG_BLURAY_SUPPORT_DISABLED"
     fi
 else
-    log_message "✗ Blu-ray Support nicht installiert (lib-bluray.sh fehlt)"
+    log_message "$MSG_BLURAY_NOT_INSTALLED"
 fi
 
 # ============================================================================
@@ -135,8 +140,8 @@ select_copy_method() {
             echo "audio-cd"
             return 0
         else
-            log_message "WARNUNG: Audio-CD erkannt, aber kein Audio-CD Support installiert"
-            log_message "Fallback: Kopiere als Daten-Disc mit dd (kein Audio-Ripping)"
+            log_message "$MSG_WARNING_AUDIO_CD_NO_SUPPORT"
+            log_message "$MSG_FALLBACK_DATA_DISC"
             echo "dd"
             return 0
         fi
@@ -205,20 +210,10 @@ copy_disc_to_iso() {
     # Erstelle Log-Datei
     touch "$log_filename"
     
-    log_message "Start Kopiervorgang: $disc_label -> $iso_filename"
+    log_message "$MSG_START_COPY_PROCESS $disc_label -> $iso_filename"
     
     # Wähle Kopiermethode basierend auf Disc-Typ und verfügbaren Tools
     local method=$(select_copy_method "$disc_type")
-    
-    # Logge gewählte Methode
-    case "$method" in
-        audio-cd) log_message "Gewählte Methode: Audio-CD Ripping (cdparanoia + lame)" ;;
-        dvdbackup) log_message "Gewählte Methode: dvdbackup (entschlüsselt)" ;;
-        makemkv) log_message "Gewählte Methode: MakeMKV (Blu-ray entschlüsselt)" ;;
-        bluray-ddrescue) log_message "Gewählte Methode: ddrescue (Blu-ray verschlüsselt, robust)" ;;
-        ddrescue) log_message "Gewählte Methode: ddrescue (robust)" ;;
-        dd) log_message "Gewählte Methode: dd (Basis-Methode)" ;;
-    esac
     
     # Kopiere mit gewählter Methode (KEIN Fallback bei Fehler)
     local copy_success=false
@@ -230,7 +225,7 @@ copy_disc_to_iso() {
                     copy_success=true
                 fi
             else
-                log_message "FEHLER: Audio-CD Support nicht verfügbar"
+                log_message "$MSG_ERROR_AUDIO_CD_NOT_AVAILABLE"
                 return 1
             fi
             ;;
@@ -240,7 +235,7 @@ copy_disc_to_iso() {
                     copy_success=true
                 fi
             else
-                log_message "FEHLER: Video-DVD Support nicht verfügbar"
+                log_message "$MSG_ERROR_VIDEO_DVD_NOT_AVAILABLE"
                 return 1
             fi
             ;;
@@ -250,7 +245,7 @@ copy_disc_to_iso() {
                     copy_success=true
                 fi
             else
-                log_message "FEHLER: Blu-ray Support (ddrescue) nicht verfügbar"
+                log_message "$MSG_ERROR_BLURAY_NOT_AVAILABLE"
                 return 1
             fi
             ;;
@@ -280,11 +275,11 @@ copy_disc_to_iso() {
             echo "$md5sum  $iso_basename" > "$md5_filename"
         fi
         
-        log_message "Kopiervorgang erfolgreich: $iso_filename"
+        log_message "$MSG_COPY_SUCCESS_FINAL $iso_filename"
         cleanup_disc_operation "success"
         return 0
     else
-        log_message "Kopiervorgang fehlgeschlagen: $disc_label"
+        log_message "$MSG_COPY_FAILED_FINAL $disc_label"
         cleanup_disc_operation "failure"
         return 1
     fi
@@ -293,11 +288,11 @@ copy_disc_to_iso() {
 # Funktion zum Überwachen des CD/DVD-Laufwerks
 # Erkennt Disc-Typ und kopiert entsprechend
 monitor_cdrom() {
-    log_message "Laufwerksüberwachung gestartet"
+    log_message "$MSG_DRIVE_MONITORING_STARTED"
     
     while true; do
         if is_disc_inserted; then
-            log_message "Medium eingelegt erkannt"
+            log_message "$MSG_MEDIUM_DETECTED"
             
             # Warte bis Medium bereit ist (Spin-Up)
             if ! wait_for_disc_ready 3; then
@@ -306,18 +301,18 @@ monitor_cdrom() {
             
             # Erkenne Disc-Typ
             detect_disc_type
-            log_message "Disc-Typ erkannt: $disc_type"
+            log_message "$MSG_DISC_TYPE_DETECTED $disc_type"
             
             # Generiere Label (für Audio-CDs wird Label in copy_audio_cd() gesetzt)
             if [[ "$disc_type" != "audio-cd" ]]; then
                 get_disc_label
-                log_message "Volume-Label: $disc_label"
+                log_message "$MSG_VOLUME_LABEL $disc_label"
             fi
             
             # Unmounte Disc falls sie auto-gemountet wurde (z.B. von udisks2)
-            # Dies ist wichtig für ddrescue/MakeMKV die direkten Block-Device-Zugriff brauchen
+            # Dies ist wichtig für ddrescue/dd die direkten Block-Device-Zugriff brauchen
             if mount | grep -q "$CD_DEVICE"; then
-                log_message "Unmounte Disc für direkten Zugriff..."
+                log_message "$MSG_UNMOUNTING_DISC"
                 umount "$CD_DEVICE" 2>/dev/null || sudo umount "$CD_DEVICE" 2>/dev/null
                 sleep 1
             fi
@@ -326,14 +321,14 @@ monitor_cdrom() {
             copy_disc_to_iso
             
             # Warte bis Medium entfernt wurde (OHNE ständig zu prüfen während Kopiervorgang läuft)
-            log_message "Warte auf Medium-Entnahme..."
+            log_message "$MSG_WAITING_FOR_REMOVAL"
             sleep 5  # Kurze Pause vor erster Prüfung
             while is_disc_inserted; do
                 sleep 5  # Längere Pause zwischen Prüfungen (statt 2 Sekunden)
             done
         else
             # Warte bis Medium eingelegt wird
-            log_message "Warte auf Medium..."
+            log_message "$MSG_WAITING_FOR_MEDIUM"
             while ! is_disc_inserted; do
                 sleep 2
             done
@@ -377,8 +372,8 @@ main() {
         exit 1
     fi
     
-    log_message "disk2iso gestartet"
-    log_message "Ausgabeverzeichnis: $OUTPUT_DIR"
+    log_message "$MSG_DISK2ISO_STARTED"
+    log_message "$MSG_OUTPUT_DIRECTORY $OUTPUT_DIR"
     
     # Prüfe ob ein Optisches-Device angeschlossen ist (mit Retry für USB-Laufwerke)
     local max_attempts=5
@@ -386,23 +381,23 @@ main() {
     
     while [[ $attempt -le $max_attempts ]]; do
         if detect_device; then
-            log_message "Laufwerk erkannt: $CD_DEVICE"
+            log_message "$MSG_DRIVE_DETECTED $CD_DEVICE"
             break
         fi
         
         if [[ $attempt -lt $max_attempts ]]; then
-            log_message "Suche USB-Laufwerk... (Versuch $attempt/$max_attempts)"
+            log_message "$MSG_SEARCHING_USB_DRIVE $attempt$MSG_OF_ATTEMPTS$max_attempts)"
             sleep 10
             ((attempt++))
         else
-            log_message "FEHLER: Kein Laufwerk erkannt nach $max_attempts Versuchen"
+            log_message "$MSG_ERROR_NO_DRIVE_FOUND $max_attempts $MSG_ATTEMPTS"
             exit 1
         fi
     done
     
     # Stelle sicher dass Device bereit ist (lädt sr_mod, wartet auf udev)
     if ! ensure_device_ready "$CD_DEVICE"; then
-        log_message "Laufwerk nicht verfügbar: $CD_DEVICE"
+        log_message "$MSG_DRIVE_NOT_AVAILABLE $CD_DEVICE"
         exit 1
     fi
     
@@ -417,7 +412,7 @@ main() {
 
 # Signal-Handler für sauberes Service-Beenden
 cleanup_service() {
-    log_message "Service wird beendet"
+    log_message "$MSG_SERVICE_STOPPING"
     cleanup_disc_operation "interrupted"
     exit 0
 }

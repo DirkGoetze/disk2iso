@@ -9,13 +9,6 @@
 ################################################################################
 
 # ============================================================================
-# AUDIO-CD MODUL
-# ============================================================================
-
-readonly MSG_MODULE_AUDIO="Modul: Audio-CD Ripping (cdparanoia + lame)"
-readonly MSG_DETECTED_TYPE_AUDIO="Erkannter Typ: Audio-CD"
-
-# ============================================================================
 # ABHÄNGIGKEITEN
 # ============================================================================
 
@@ -23,116 +16,84 @@ readonly MSG_AUDIO_SUPPORT_NOT_AVAILABLE="Audio-CD Support NICHT verfügbar - fe
 readonly MSG_INSTALL_AUDIO_TOOLS="Installation: apt-get install cdparanoia lame genisoimage"
 readonly MSG_AUDIO_OPTIONAL_LIMITED="Audio-CD: Optionale Features eingeschränkt - fehlende Tools:"
 readonly MSG_INSTALL_MUSICBRAINZ_TOOLS="Für MusicBrainz/Cover: apt-get install cd-discid curl jq eyed3"
-readonly MSG_AUDIO_SUPPORT_AVAILABLE="Audio-CD Support verfügbar: cdparanoia + lame + genisoimage"
+readonly MSG_AUDIO_SUPPORT_AVAILABLE="Audio-CD Support verfügbar"
 
 # ============================================================================
 # METADATEN
 # ============================================================================
 
-readonly MSG_RETRIEVE_METADATA="Ermittle Audio-CD Metadaten..."
-readonly MSG_GET_METADATA="Ermittle Audio-CD Metadaten..."
+readonly MSG_RETRIEVE_METADATA="Ermittle CD-Informationen..."
 readonly MSG_WARNING_CDISCID_MISSING="WARNUNG: cd-discid nicht installiert - Metadaten-Abfrage nicht möglich"
-readonly MSG_WARNING_NO_DISCID="WARNUNG: cd-discid nicht installiert - Metadaten-Abfrage nicht möglich"
 readonly MSG_WARNING_CURL_JQ_MISSING="WARNUNG: curl/jq nicht installiert - Metadaten-Abfrage nicht möglich"
-readonly MSG_WARNING_NO_CURL_JQ="WARNUNG: curl/jq nicht installiert - Metadaten-Abfrage nicht möglich"
 readonly MSG_ERROR_DISCID_FAILED="FEHLER: Konnte Disc-ID nicht ermitteln"
 readonly MSG_DISCID="Disc-ID:"
-readonly MSG_DISC_ID="Disc-ID:"
 readonly MSG_TRACKS="Tracks:"
 readonly MSG_WARNING_LEADOUT_FAILED="WARNUNG: Konnte Leadout nicht ermitteln"
-readonly MSG_WARNING_NO_LEADOUT="WARNUNG: Konnte Leadout nicht ermitteln"
 
-readonly MSG_QUERY_MUSICBRAINZ="Frage MusicBrainz-Datenbank ab..."
-readonly MSG_MUSICBRAINZ_QUERY="Frage MusicBrainz-Datenbank ab..."
-readonly MSG_WARNING_MUSICBRAINZ_FAILED="WARNUNG: MusicBrainz-Abfrage fehlgeschlagen (kein Netzwerk?)"
-readonly MSG_MUSICBRAINZ_QUERY_FAILED="WARNUNG: MusicBrainz-Abfrage fehlgeschlagen (kein Netzwerk?)"
-readonly MSG_WARNING_NO_MUSICBRAINZ_ENTRY="WARNUNG: Keine MusicBrainz-Einträge gefunden für Disc-ID:"
-readonly MSG_MUSICBRAINZ_NOT_FOUND="WARNUNG: Keine MusicBrainz-Einträge gefunden für Disc-ID:"
+readonly MSG_QUERY_MUSICBRAINZ="Rufe CD-Informationen ab..."
+readonly MSG_WARNING_MUSICBRAINZ_FAILED="WARNUNG: CD-Informationen nicht verfügbar (kein Netzwerk?)"
+readonly MSG_WARNING_NO_MUSICBRAINZ_ENTRY="WARNUNG: Keine CD-Informationen gefunden für Disc-ID:"
 readonly MSG_ALBUM="Album:"
 readonly MSG_ARTIST="Künstler:"
 readonly MSG_YEAR="Jahr:"
 readonly MSG_MUSICBRAINZ_TRACKS_FOUND="MusicBrainz:"
-readonly MSG_TRACK_TITLES_FOUND="Track-Titel gefunden"
 readonly MSG_COVER_AVAILABLE="Cover-Art verfügbar"
-readonly MSG_COVER_ART_AVAILABLE="Cover-Art verfügbar"
-readonly MSG_WARNING_INCOMPLETE_METADATA="WARNUNG: Unvollständige Metadaten von MusicBrainz"
-readonly MSG_MUSICBRAINZ_INCOMPLETE="WARNUNG: Unvollständige Metadaten von MusicBrainz"
+readonly MSG_WARNING_INCOMPLETE_METADATA="WARNUNG: Unvollständige CD-Informationen"
 
 readonly MSG_WARNING_NO_RELEASE_ID="WARNUNG: Keine Release-ID für Cover-Download"
 readonly MSG_DOWNLOAD_COVER="Lade Album-Cover herunter..."
-readonly MSG_DOWNLOADING_COVER="Lade Album-Cover herunter..."
 readonly MSG_COVER_DOWNLOADED="Cover heruntergeladen:"
 readonly MSG_WARNING_COVER_DOWNLOAD_FAILED="WARNUNG: Cover-Download fehlgeschlagen"
-readonly MSG_COVER_DOWNLOAD_FAILED="WARNUNG: Cover-Download fehlgeschlagen"
 
 # ============================================================================
 # NFO-ERSTELLUNG
 # ============================================================================
 
-readonly MSG_INFO_NO_MUSICBRAINZ_NFO_SKIPPED="INFO: Keine MusicBrainz-Daten - album.nfo übersprungen"
-readonly MSG_NO_MUSICBRAINZ_SKIP_NFO="INFO: Keine MusicBrainz-Daten - album.nfo übersprungen"
+readonly MSG_INFO_NO_MUSICBRAINZ_NFO_SKIPPED="INFO: Keine CD-Informationen - album.nfo übersprungen"
 readonly MSG_CREATE_ALBUM_NFO="Erstelle album.nfo..."
-readonly MSG_CREATING_NFO="Erstelle album.nfo..."
-readonly MSG_NFO_CREATED="album.nfo erstellt"
+readonly MSG_NFO_FILE_CREATED="album.nfo erstellt"
 
 # ============================================================================
-# RIPPING-PROZESS
+# COVER
 # ============================================================================
 
-readonly MSG_START_AUDIO_RIPPING="Starte Audio-CD Ripping..."
+readonly MSG_ERROR_COVER_COPY_FAILED="FEHLER: Cover konnte nicht kopiert werden"
+readonly MSG_ERROR_COVER_FILE_NOT_FOUND="FEHLER: Cover-Datei nicht gefunden:"
+
+# ============================================================================
+# AUDIO-CD KOPIEREN
+# ============================================================================
+
+readonly MSG_START_AUDIO_RIPPING="Starte Kopiervorgang..."
 readonly MSG_ERROR_CDPARANOIA_MISSING="FEHLER: cdparanoia nicht installiert"
-readonly MSG_ERROR_NO_CDPARANOIA="FEHLER: cdparanoia nicht installiert"
 readonly MSG_ERROR_LAME_MISSING="FEHLER: lame nicht installiert"
-readonly MSG_ERROR_NO_LAME="FEHLER: lame nicht installiert"
 readonly MSG_ERROR_GENISOIMAGE_MISSING="FEHLER: genisoimage nicht installiert"
-readonly MSG_ERROR_NO_GENISOIMAGE="FEHLER: genisoimage nicht installiert"
 readonly MSG_CONTINUE_WITHOUT_METADATA="Fahre ohne Metadaten fort..."
 readonly MSG_INFO_EYED3_MISSING="INFO: eyeD3 nicht installiert - Cover-Einbettung übersprungen"
-readonly MSG_INFO_NO_EYED3="INFO: eyeD3 nicht installiert - Cover-Einbettung übersprungen"
 
 readonly MSG_ALBUM_DIRECTORY="Album-Verzeichnis:"
 readonly MSG_ALBUM_DIR="Album-Verzeichnis:"
 readonly MSG_ERROR_NO_TRACKS="FEHLER: Keine Tracks gefunden"
 readonly MSG_TRACKS_FOUND="Gefundene Tracks:"
-readonly MSG_FOUND_TRACKS="Gefundene Tracks:"
 
-readonly MSG_START_CDPARANOIA_RIPPING="Starte Ripping mit cdparanoia..."
-readonly MSG_START_RIPPING_CDPARANOIA="Starte Ripping mit cdparanoia..."
-readonly MSG_RIPPING_TRACK="Rippe Track $1 / $2"
-readonly MSG_OF="von"
-readonly MSG_ERROR_TRACK_RIP_FAILED="FEHLER: Track $1 konnte nicht gerippt werden"
-readonly MSG_COULD_NOT_BE_RIPPED="konnte nicht gerippt werden"
+readonly MSG_START_CDPARANOIA_RIPPING="Lese Audio-Tracks..."
+readonly MSG_RIPPING_TRACK="Lese Track $1 / $2"
+readonly MSG_ERROR_TRACK_RIP_FAILED="FEHLER: Track $1 konnte nicht gelesen werden"
 
 readonly MSG_ENCODING_TRACK_WITH_TITLE="Kodiere Track"
 readonly MSG_ENCODING_TRACK="Kodiere Track"
-readonly MSG_ENCODING_TRACK_MP3="Kodiere Track"
-readonly MSG_TO_MP3="zu MP3:"
-readonly MSG_ENCODING_TO_MP3="zu MP3..."
 readonly MSG_ERROR_MP3_ENCODING_FAILED="FEHLER: MP3-Encoding für Track"
-readonly MSG_FAILED="fehlgeschlagen"
 
 readonly MSG_COVER_SAVED_FOLDER_JPG="Cover als folder.jpg im Album-Verzeichnis gespeichert"
-readonly MSG_COVER_SAVED_AS_FOLDER_JPG="Cover als folder.jpg gespeichert"
-readonly MSG_RIPPING_COMPLETE_CREATE_ISO="Ripping abgeschlossen - erstelle ISO..."
+readonly MSG_RIPPING_COMPLETE_CREATE_ISO="Kopiervorgang abgeschlossen - erstelle ISO..."
 readonly MSG_ERROR_INSUFFICIENT_SPACE_ISO="FEHLER: Nicht genügend Speicherplatz für ISO-Erstellung"
-readonly MSG_ERROR_NO_DISK_SPACE_ISO="FEHLER: Nicht genügend Speicherplatz für ISO-Erstellung"
 
 readonly MSG_CREATE_ISO="Erstelle ISO:"
-readonly MSG_CREATING_ISO="Erstelle ISO:"
 readonly MSG_VOLUME_ID="Volume-ID:"
 readonly MSG_ERROR_ISO_CREATION_FAILED="FEHLER: ISO-Erstellung fehlgeschlagen"
 readonly MSG_ERROR_ISO_NOT_CREATED="FEHLER: ISO-Datei wurde nicht erstellt"
-readonly MSG_ERROR_ISO_FILE_NOT_CREATED="FEHLER: ISO-Datei wurde nicht erstellt"
 readonly MSG_ISO_CREATED="ISO erstellt:"
 
 readonly MSG_CREATE_MD5="Erstelle MD5-Checksumme..."
-readonly MSG_CREATING_MD5="Erstelle MD5-Checksumme..."
 readonly MSG_WARNING_MD5_FAILED="WARNUNG: MD5-Checksumme konnte nicht erstellt werden"
-readonly MSG_AUDIO_CD_SUCCESS="Audio-CD erfolgreich gerippt und als ISO gespeichert"
-
-# ============================================================================
-# BENACHRICHTIGUNGEN
-# ============================================================================
-
-readonly MSG_NOTIFY_AUDIO_SUCCESS="Audio-CD erfolgreich gerippt:"
-readonly MSG_NOTIFY_TITLE="disk2iso"
+readonly MSG_AUDIO_CD_SUCCESS="Audio-CD erfolgreich kopiert und als ISO gespeichert"

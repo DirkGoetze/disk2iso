@@ -1,21 +1,17 @@
 #!/bin/bash
 ################################################################################
-# File Management Library
+# disk2iso v1.0.0 - File Management Library
 # Filepath: disk2iso-lib/lib-files.sh
 #
 # Beschreibung:
-#   Sammlung aller Funktionen zur Verwaltung von Dateinamen:
-#   - Dateinamen-Bereinigung
+#   Verwaltung von Dateinamen:
+#   - Dateinamen-Bereinigung (sanitize_filename)
 #   - ISO-Dateinamen-Generierung
-#   - MD5-Dateinamen-Ableitung
-#   - LOG-Dateinamen-Ableitung
+#   - MD5/LOG-Dateinamen-Ableitung
 #   - Basename-Extraktion
 #
-# Quellen:
-#   - functions.sh (sanitize_filename)
-#   - lib-diskinfos.sh (get_iso_filename, get_md5_filename, get_log_filename, get_iso_basename)
-#
-# Konsolidiert: 13.12.2025
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 # ============================================================================

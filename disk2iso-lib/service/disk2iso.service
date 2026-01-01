@@ -1,17 +1,28 @@
 [Unit]
-Description=disk2iso - Automatic CD/DVD to ISO Ripper
+Description=disk2iso - Automatische ISO Erstellung von optischen Medien
 After=multi-user.target
+Wants=systemd-udevd.service
+After=systemd-udevd.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/disk2iso.sh
-WorkingDirectory=/usr/local/bin
+ExecStart=/usr/local/bin/disk2iso.sh -o /srv/iso
 Restart=always
-RestartSec=10
-TimeoutStopSec=600
-User=root
+RestartSec=5
 StandardOutput=journal
 StandardError=journal
+
+# Benötigt Zugriff auf optische Laufwerke
+DevicePolicy=closed
+DeviceAllow=/dev/sr0 rw
+DeviceAllow=/dev/cdrom rw
+
+# Sicherheits-Einschränkungen
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/iso
 
 [Install]
 WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso - Blu-ray Library
+# disk2iso v1.0.0 - Blu-ray Library
 # Filepath: disk2iso-lib/lib-bluray.sh
 #
 # Beschreibung:
@@ -8,7 +8,8 @@
 #   - copy_bluray_ddrescue() - Blu-ray mit ddrescue (verschlüsselt, robust)
 #   - copy_bluray_dd() - Blu-ray mit dd (verschlüsselt, langsam)
 #
-# Erstellt: 30.12.2025
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 # ============================================================================
@@ -57,16 +58,16 @@ check_bluray_dependencies() {
     
     # Logging
     if [[ ${#available_methods[@]} -gt 0 ]]; then
-        log_message "Blu-ray Support verfügbar mit: ${available_methods[*]}"
+        log_message "$MSG_BLURAY_SUPPORT_INFO ${available_methods[*]}"
         
         if [[ ${#missing_methods[@]} -gt 0 ]]; then
-            log_message "Empfohlene Installation für bessere Performance: ${missing_methods[*]}"
-            log_message "ddrescue: apt-get install gddrescue"
+            log_message "$MSG_RECOMMENDED_INSTALLATION ${missing_methods[*]}"
+            log_message "$MSG_INSTALL_DDRESCUE_INFO"
         fi
         
         return 0
     else
-        log_message "FEHLER: Keine Blu-ray Methode verfügbar"
+        log_message "$MSG_ERROR_NO_BLURAY_METHOD_AVAILABLE"
         return 1
     fi
 }
@@ -110,7 +111,7 @@ copy_bluray_ddrescue() {
             if [[ -n "$device_size" ]] && [[ "$device_size" =~ ^[0-9]+$ ]]; then
                 total_bytes=$device_size
                 volume_size=$((device_size / 2048))
-                log_message "Disc-Größe ermittelt: $(( total_bytes / 1024 / 1024 )) MB (via blockdev)"
+                log_message "$MSG_DISC_SIZE_DETECTED $(( total_bytes / 1024 / 1024 )) $MSG_DISC_SIZE_MB"
             fi
         fi
     fi

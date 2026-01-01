@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# Logging Library
+# disk2iso v1.0.0 - Logging Library
 # Filepath: disk2iso-lib/lib-logging.sh
 #
 # Beschreibung:
@@ -9,18 +9,15 @@
 #   - Modulares Sprachsystem
 #   - Wird von allen Modulen verwendet
 #
-# Quellen:
-#   - functions.sh (log_message)
-#
-# Konsolidiert: 13.12.2025
-# Erweitert: 30.12.2025 - Modulares Sprachsystem
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 # ============================================================================
 # PATH CONSTANTS
 # ============================================================================
 
-readonly LOG_DIR="log"
+readonly LOG_DIR=".log"
 
 # ============================================================================
 # PATH GETTER
@@ -66,6 +63,15 @@ load_module_language() {
         fi
     fi
 }
+
+# Lade Debug-Messages (immer Englisch - Entwicklersprache)
+# Diese werden nur benötigt wenn DEBUG=1 gesetzt ist
+if [[ "${DEBUG:-0}" == "1" ]] || [[ "${VERBOSE:-0}" == "1" ]]; then
+    DEBUG_LANG_FILE="${SCRIPT_DIR}/disk2iso-lib/lang/debugmsg.en"
+    if [[ -f "$DEBUG_LANG_FILE" ]]; then
+        source "$DEBUG_LANG_FILE"
+    fi
+fi
 
 # ============================================================================
 # LOGGING FUNCTIONS

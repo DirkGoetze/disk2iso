@@ -1,12 +1,15 @@
 #!/bin/bash
-#############################################################################
-# Disk Information Library - Mit Typ-Erkennung
+################################################################################
+# disk2iso v1.0.0 - Disk Information Library
 # Filepath: disk2iso-lib/lib-diskinfos.sh
 #
 # Beschreibung:
-#   Typ-Erkennung und Label-Extraktion mit isoinfo
+#   Typ-Erkennung und Label-Extraktion für optische Medien:
+#   - Audio-CD, Video-DVD, Blu-ray, Daten-Discs
+#   - UDF, ISO9660, Audio-TOC Erkennung
 #
-# Erweitert: 24.12.2025
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 # ============================================================================

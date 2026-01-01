@@ -1,0 +1,20 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Deutsche Sprachdatei für lib-tools.sh
+# Filepath: disk2iso-lib/lang/lib-tools.de
+#
+# Beschreibung:
+#   Meldungstexte für Tool-Erkennung und -Empfehlungen
+#
+################################################################################
+
+# ============================================================================
+# TOOL-VERFÜGBARKEIT
+# ============================================================================
+
+readonly MSG_AVAILABLE_OPTIONAL_TOOLS="Verfügbare optionale Tools:"
+readonly MSG_MISSING_OPTIONAL_TOOLS="Fehlende optionale Tools:"
+readonly MSG_VIDEO_DVD_OPTIONS="Video-DVD Optionen:"
+readonly MSG_DVD_OPTION_1="  Option 1 (entschlüsselt): apt-get install dvdbackup libdvdcss2 genisoimage"
+readonly MSG_DVD_OPTION_2="  Option 2 (verschlüsselt, schnell): apt-get install gddrescue"
+readonly MSG_DVD_OPTION_3="  Option 3 (verschlüsselt, langsam): dd (immer verfügbar)"

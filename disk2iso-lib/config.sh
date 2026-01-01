@@ -1,12 +1,14 @@
 #!/bin/bash
 ################################################################################
-# Auto CD/DVD Ripper - Configuration
-# Filepath: lib/config.sh
+# disk2iso v1.0.0 - Configuration
+# Filepath: disk2iso-lib/config.sh
 #
 # Beschreibung:
-#   Zentrale Konfiguration und globale Variablen für den Auto CD/DVD Ripper.
-#   Wird von auto-cd-ripper.sh beim Start geladen.
+#   Zentrale Konfiguration und globale Variablen für disk2iso.
+#   Wird von disk2iso.sh beim Start geladen.
 #
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 # ============================================================================

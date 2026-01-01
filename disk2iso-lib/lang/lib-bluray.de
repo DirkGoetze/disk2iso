@@ -9,30 +9,26 @@
 ################################################################################
 
 # ============================================================================
-# BLU-RAY MODUL
-# ============================================================================
-
-readonly MSG_MODULE_VIDEO_BLURAY="Modul: Video-Blu-ray Backup (ddrescue)"
-readonly MSG_DETECTED_TYPE_BLURAY="Erkannter Typ: Video-Blu-ray"
-
-# ============================================================================
 # ABHÄNGIGKEITEN
 # ============================================================================
 
-readonly MSG_BLURAY_SUPPORT_AVAILABLE="Blu-ray Support verfügbar mit:"
-# MSG_EXTENDED_METHODS_AVAILABLE bereits in lib-common.de definiert
-readonly MSG_INSTALL_DDRESCUE="ddrescue: apt-get install gddrescue"
+readonly MSG_BLURAY_SUPPORT_INFO="Blu-ray Unterstützung verfügbar mit:"
+readonly MSG_RECOMMENDED_INSTALLATION="Empfohlene Installation für bessere Performance:"
+readonly MSG_INSTALL_DDRESCUE_INFO="ddrescue: apt-get install gddrescue"
 readonly MSG_INSTALL_GENISOIMAGE="genisoimage: apt-get install genisoimage"
-readonly MSG_ERROR_NO_BLURAY_METHOD="FEHLER: Keine Blu-ray Methode verfügbar"
+readonly MSG_ERROR_NO_BLURAY_METHOD_AVAILABLE="FEHLER: Keine Blu-ray Methode verfügbar"
+
+# ============================================================================
+# BLU-RAY KOPIEREN
+# ============================================================================
+
+readonly MSG_DISC_SIZE_DETECTED="Disc-Größe ermittelt:"
+readonly MSG_DISC_SIZE_MB="MB"
 
 # ============================================================================
 # DDRESCUE-METHODE
 # ============================================================================
 
-# MSG_METHOD_DDRESCUE_ENCRYPTED bereits in lib-common.de definiert
-# MSG_ISO_VOLUME_DETECTED bereits in lib-common.de definiert
-# MSG_ISO_BLOCKS bereits in lib-common.de definiert
-readonly MSG_START_DDRESCUE_BLURAY="Starte ddrescue (Blu-ray bleibt verschlüsselt)..."
+readonly MSG_START_DDRESCUE_BLURAY="Starte Kopiervorgang..."
 readonly MSG_BLURAY_PROGRESS="Blu-ray Fortschritt:"
-readonly MSG_BLURAY_DDRESCUE_SUCCESS="✓ Blu-ray mit ddrescue erfolgreich kopiert"
-# MSG_ERROR_DDRESCUE_FAILED bereits in lib-common.de definiert
+readonly MSG_BLURAY_DDRESCUE_SUCCESS="✓ Blu-ray erfolgreich kopiert"

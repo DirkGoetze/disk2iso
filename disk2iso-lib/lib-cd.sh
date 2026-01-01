@@ -1,16 +1,17 @@
 #!/bin/bash
 ################################################################################
-# disk2iso - Audio CD Library
+# disk2iso v1.0.0 - Audio CD Library
 # Filepath: disk2iso-lib/lib-cd.sh
 #
 # Beschreibung:
 #   Funktionen für Audio-CD Ripping mit MusicBrainz-Metadaten
 #   - MusicBrainz-Abfrage via cd-discid
 #   - CD-Ripping mit cdparanoia
-#   - MP3-Encoding mit lame
+#   - MP3-Encoding mit lame (VBR V2)
 #   - ISO-Erstellung mit gerippten MP3s
 #
-# Erstellt: 30.12.2025
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 # ============================================================================
@@ -346,7 +347,7 @@ EOF
     # Schließe XML
     echo "</album>" >> "$nfo_file"
     
-    log_message "album.nfo erstellt"
+    log_message "$MSG_NFO_FILE_CREATED"
     return 0
 }
 
@@ -506,20 +507,22 @@ copy_audio_cd() {
     done
     
     # Kopiere Cover als folder.jpg ins Album-Verzeichnis (Jellyfin-Standard)
-    log_message "DEBUG: Prüfe Cover-Kopieren: cover_file='$cover_file', album_dir='$album_dir'"
+    if [[ "${DEBUG:-0}" == "1" ]]; then
+        log_message "${DBG_CHECKING_COVER_COPY/\%s/$cover_file}" | sed "s/%s/$album_dir/"
+    fi
     if [[ -n "$cover_file" ]]; then
         if [[ -f "$cover_file" ]]; then
-            log_message "DEBUG: Cover-Datei existiert: $cover_file"
+            [[ "${DEBUG:-0}" == "1" ]] && log_message "${DBG_COVER_FILE_EXISTS/\%s/$cover_file}"
             if cp "$cover_file" "${album_dir}/folder.jpg" 2>>/dev/stderr; then
                 log_message "$MSG_COVER_SAVED_FOLDER_JPG"
             else
-                log_message "FEHLER: Cover konnte nicht als folder.jpg kopiert werden (cp exit code: $?)"
+                log_message "$MSG_ERROR_COVER_COPY_FAILED"
             fi
         else
-            log_message "FEHLER: Cover-Datei nicht gefunden: $cover_file"
+            log_message "$MSG_ERROR_COVER_FILE_NOT_FOUND $cover_file"
         fi
     else
-        log_message "DEBUG: cover_file Variable ist leer"
+        [[ "${DEBUG:-0}" == "1" ]] && log_message "$DBG_COVER_FILE_EMPTY"
     fi
     
     log_message "$MSG_RIPPING_COMPLETE_CREATE_ISO"

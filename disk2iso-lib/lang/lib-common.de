@@ -9,70 +9,78 @@
 ################################################################################
 
 # ============================================================================
-# SYSTEM-MELDUNGEN
+# SYSTEM
 # ============================================================================
 
-readonly MSG_STARTUP="disk2iso gestartet"
-readonly MSG_SEARCH_DRIVE="Suche nach Laufwerk..."
-readonly MSG_DRIVE_FOUND="Verwende optisches Laufwerk:"
-readonly MSG_DRIVE_NOT_FOUND="FEHLER: Kein optisches Laufwerk gefunden"
-readonly MSG_DRIVE_NOT_AVAILABLE="Fehler: Laufwerk nicht verfügbar"
-readonly MSG_DRIVE_USB_TIP="Tipp: USB-Laufwerk anschließen oder /dev/sr0 prüfen"
+readonly MSG_CORE_MODULES_LOADED="Grundfunktionen geladen"
+readonly MSG_AUDIO_CD_SUPPORT_ENABLED="✓ Audio-CD Unterstützung aktiviert"
+readonly MSG_AUDIO_CD_SUPPORT_DISABLED="✗ Audio-CD Unterstützung deaktiviert (fehlende Tools)"
+readonly MSG_AUDIO_CD_NOT_INSTALLED="✗ Audio-CD Unterstützung nicht installiert"
+readonly MSG_VIDEO_DVD_SUPPORT_ENABLED="✓ Video-DVD Unterstützung aktiviert"
+readonly MSG_VIDEO_DVD_SUPPORT_DISABLED="✗ Video-DVD Unterstützung deaktiviert (fehlende Tools)"
+readonly MSG_VIDEO_DVD_NOT_INSTALLED="✗ Video-DVD Unterstützung nicht installiert"
+readonly MSG_BLURAY_SUPPORT_ENABLED="✓ Blu-ray Unterstützung aktiviert"
+readonly MSG_BLURAY_SUPPORT_DISABLED="✗ Blu-ray Unterstützung deaktiviert (fehlende Tools)"
+readonly MSG_BLURAY_NOT_INSTALLED="✗ Blu-ray Unterstützung nicht installiert"
+
+readonly MSG_WARNING_AUDIO_CD_NO_SUPPORT="WARNUNG: Audio-CD erkannt, aber keine Unterstützung installiert"
+readonly MSG_FALLBACK_DATA_DISC="Fallback: Kopiere als Daten-Disc"
+readonly MSG_START_COPY_PROCESS="Start Kopiervorgang:"
+readonly MSG_ERROR_AUDIO_CD_NOT_AVAILABLE="FEHLER: Audio-CD Unterstützung nicht verfügbar"
+readonly MSG_ERROR_VIDEO_DVD_NOT_AVAILABLE="FEHLER: Video-DVD Unterstützung nicht verfügbar"
+readonly MSG_ERROR_BLURAY_NOT_AVAILABLE="FEHLER: Blu-ray Unterstützung nicht verfügbar"
 
 # ============================================================================
-# ABHÄNGIGKEITEN
+# WORKFLOW
 # ============================================================================
 
-readonly MSG_DEPS_CRITICAL_MISSING="FEHLER: Kritische Abhängigkeiten fehlen:"
-readonly MSG_DEPS_INSTALL_HINT="Bitte führen Sie './install.sh' aus, um die Abhängigkeiten zu installieren"
-readonly MSG_DEPS_OPTIONAL_MISSING="WARNUNG: Optionale Tools fehlen:"
-readonly MSG_DEPS_OPTIONAL_HINT="Einige Funktionen sind eingeschränkt. Führen Sie './install.sh' aus, um alle Tools zu installieren."
-readonly MSG_OPTIONAL_TOOLS_INFO="INFO: Optionale Tools für bessere Performance:"
-readonly MSG_INSTALL_GENISOIMAGE_GDDRESCUE="Installation: apt-get install genisoimage gddrescue"
-
-# ============================================================================
-# WORKFLOW-SCHRITTE
-# ============================================================================
-
-readonly MSG_STEP_1="[1/7] Starte Analyse..."
-readonly MSG_STEP_2="[2/7] Ermittle Disc-Label..."
-readonly MSG_STEP_3="[3/7] Erkenne Disc-Typ..."
-readonly MSG_STEP_4="[4/7] Lade Kopier-Modul..."
-readonly MSG_STEP_5="[5/7] Starte Kopiervorgang..."
-readonly MSG_STEP_6_SUCCESS="[6/7] Kopiervorgang erfolgreich"
-readonly MSG_STEP_6_FAILED="[6/7] Kopiervorgang fehlgeschlagen"
-readonly MSG_STEP_7="[7/7] Räume auf..."
+readonly MSG_DISK2ISO_STARTED="disk2iso gestartet"
+readonly MSG_OUTPUT_DIRECTORY="Ausgabeverzeichnis:"
+readonly MSG_DRIVE_MONITORING_STARTED="Laufwerksüberwachung gestartet"
+readonly MSG_MEDIUM_DETECTED="Medium eingelegt erkannt"
+readonly MSG_DISC_TYPE_DETECTED="Disc-Typ erkannt:"
+readonly MSG_VOLUME_LABEL="Volume-Label:"
+readonly MSG_UNMOUNTING_DISC="Unmounte Disc für direkten Zugriff..."
+readonly MSG_WAITING_FOR_REMOVAL="Warte auf Medium-Entnahme..."
+readonly MSG_WAITING_FOR_MEDIUM="Warte auf Medium..."
+readonly MSG_DRIVE_DETECTED="Laufwerk erkannt:"
+readonly MSG_SEARCHING_USB_DRIVE="Suche USB-Laufwerk... (Versuch"
+readonly MSG_OF_ATTEMPTS="/"
+readonly MSG_ERROR_NO_DRIVE_FOUND="FEHLER: Kein Laufwerk erkannt nach"
+readonly MSG_ATTEMPTS="Versuchen"
+readonly MSG_DRIVE_NOT_AVAILABLE="Laufwerk nicht verfügbar:"
+readonly MSG_COPY_SUCCESS_FINAL="Kopiervorgang erfolgreich:"
+readonly MSG_COPY_FAILED_FINAL="Kopiervorgang fehlgeschlagen:"
+readonly MSG_SERVICE_STOPPING="Service wird beendet"
 
 # ============================================================================
 # SPEICHERPLATZ
 # ============================================================================
 
-readonly MSG_DISK_SPACE_WARNING="WARNUNG: Konnte verfügbaren Speicherplatz nicht ermitteln"
-readonly MSG_DISK_SPACE_CHECK="Speicherplatz:"
-readonly MSG_DISK_SPACE_AVAILABLE="MB verfügbar,"
-readonly MSG_DISK_SPACE_REQUIRED="MB benötigt"
-readonly MSG_DISK_SPACE_ERROR="FEHLER: Nicht genug Speicherplatz! Benötigt:"
-readonly MSG_DISK_SPACE_ERROR_AVAILABLE="MB, Verfügbar:"
+readonly MSG_WARNING_DISK_SPACE_CHECK_FAILED="WARNUNG: Konnte Speicherplatz nicht ermitteln"
+readonly MSG_DISK_SPACE_INFO="Speicherplatz:"
+readonly MSG_DISK_SPACE_MB_AVAILABLE="MB verfügbar,"
+readonly MSG_DISK_SPACE_MB_REQUIRED="MB benötigt"
+readonly MSG_ERROR_INSUFFICIENT_DISK_SPACE="FEHLER: Nicht genug Speicherplatz! Benötigt:"
+readonly MSG_DISK_SPACE_MB_AVAILABLE_SHORT="MB, Verfügbar:"
+
+# ============================================================================
+# ABHÄNGIGKEITEN
+# ============================================================================
+
+readonly MSG_OPTIONAL_TOOLS_INFO="INFO: Optionale Tools für bessere Performance:"
+readonly MSG_INSTALL_GENISOIMAGE_GDDRESCUE="Installation: apt-get install genisoimage gddrescue"
 
 # ============================================================================
 # METHODEN
 # ============================================================================
 
-readonly MSG_METHOD_DDRESCUE="Methode: ddrescue (robust)"
-readonly MSG_METHOD_DD="Methode: dd (Standard)"
+readonly MSG_METHOD_DDRESCUE="Methode: Robustes Kopieren"
+readonly MSG_METHOD_DD="Methode: Standard-Kopieren"
 
 # ============================================================================
 # KOPIERVORGANG (DATEN-DISC)
 # ============================================================================
-
-readonly MSG_COPY_START="Medium erkannt, starte Kopiervorgang..."
-readonly MSG_COPY_LABEL="Disc Label:"
-readonly MSG_COPY_TARGET="Ziel:"
-readonly MSG_COPY_SUCCESS="Erfolgreich kopiert:"
-readonly MSG_COPY_FAILED="Fehler beim Kopieren - Alle Methoden fehlgeschlagen"
-readonly MSG_COPY_COMPLETE="✓ Abgeschlossen:"
-readonly MSG_COPY_ERROR="✗ Fehler bei:"
-readonly MSG_MODULE_DATA="Modul: Daten-Disc Kopie (ddrescue/dd)"
 
 readonly MSG_ISO_VOLUME_DETECTED="ISO-Volume erkannt:"
 readonly MSG_ISO_BLOCKS="Blöcke"
@@ -81,7 +89,7 @@ readonly MSG_ISO_BYTES="Bytes"
 
 readonly MSG_COPYING_COMPLETE_DISC="Kopiere komplette Disc (kein isoinfo verfügbar)"
 readonly MSG_DATA_PROGRESS="Daten-Disc Fortschritt:"
-readonly MSG_DATA_DISC_SUCCESS_DDRESCUE="✓ Daten-Disc mit ddrescue erfolgreich kopiert"
+readonly MSG_DATA_DISC_SUCCESS_DDRESCUE="✓ Daten-Disc erfolgreich kopiert"
 readonly MSG_ERROR_DDRESCUE_FAILED="FEHLER: ddrescue fehlgeschlagen"
 
 readonly MSG_PROGRESS="Fortschritt:"
@@ -90,19 +98,3 @@ readonly MSG_PROGRESS_MB="MB"
 readonly MSG_PROGRESS_PERCENT="%"
 readonly MSG_REMAINING="Verbleibend"
 readonly MSG_COPIED="kopiert"
-
-# ============================================================================
-# MD5-CHECKSUMME
-# ============================================================================
-
-readonly MSG_MD5_CREATED="MD5-Checksumme erstellt:"
-
-# ============================================================================
-# CLEANUP & SERVICE
-# ============================================================================
-
-readonly MSG_CLEANUP_SUCCESS="Aufräumen abgeschlossen (Erfolg)"
-readonly MSG_CLEANUP_FAILURE="Aufräumen abgeschlossen (Fehler)"
-readonly MSG_CLEANUP_INTERRUPTED="Aufräumen abgeschlossen (Unterbrochen)"
-readonly MSG_SERVICE_SHUTDOWN="Service-Beendigung empfangen..."
-readonly MSG_SERVICE_EXIT="disk2iso beendet"

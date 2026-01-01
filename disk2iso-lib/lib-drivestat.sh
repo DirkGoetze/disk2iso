@@ -1,6 +1,6 @@
 #!/bin/bash
-#############################################################################
-# Drive Status Library
+################################################################################
+# disk2iso v1.0.0 - Drive Status Library
 # Filepath: disk2iso-lib/lib-drivestat.sh
 #
 # Beschreibung:
@@ -11,10 +11,11 @@
 #   - detect_device()       : Findet erstes optisches Laufwerk
 #   - is_drive_closed()     : Prüft ob Schublade geschlossen ist
 #   - is_disc_inserted()    : Prüft ob Medium eingelegt ist
-#   - wait_for_disc_change(): Wartet auf Status-Änderung (Schublade/Medium)
-#   - wait_for_disc_ready() : Wartet bis Medium bereit ist (Spin-Up)
+#   - wait_for_disc_change(): Wartet auf Status-Änderung
+#   - wait_for_disc_ready() : Wartet bis Medium bereit ist
 #
-# Verschoben: 13.12.2025 (detection/drivestatus.sh → lib-drivestat.sh)
+# Version: 1.0.0
+# Datum: 01.01.2026
 ################################################################################
 
 # ===========================================================================
