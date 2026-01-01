@@ -4,12 +4,13 @@
 # Filepath: install.sh
 #
 # Beschreibung:
-#   Interaktive Installation von disk2iso als Script oder systemd Service
-#   - Prüft und installiert benötigte Software-Pakete
-#   - Bietet optionale Pakete mit Benutzerabfrage an
-#   - Konfiguriert systemd Service (optional)
+#   Wizard-basierte Installation von disk2iso
+#   - 8-Seiten Installations-Wizard mit whiptail
+#   - Modulare Paket-Installation (Audio-CD, Video-DVD, Video-BD)
+#   - Optionale systemd Service-Konfiguration
 #
 # Erstellt: 29.12.2025
+# Aktualisiert: 01.01.2026 - Wizard-UI
 ################################################################################
 
 set -e
@@ -28,6 +29,12 @@ NC='\033[0m' # No Color
 INSTALL_DIR="/opt/disk2iso"
 SERVICE_FILE="/etc/systemd/system/disk2iso.service"
 BIN_LINK="/usr/local/bin/disk2iso"
+
+# Wizard-Zustandsvariablen
+INSTALL_AUDIO_CD=false
+INSTALL_VIDEO_DVD=false
+INSTALL_VIDEO_BD=true  # Standard: aktiviert
+INSTALL_SERVICE=false
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -125,182 +132,386 @@ check_debian() {
 # PACKAGE MANAGEMENT
 # ============================================================================
 
-update_package_cache() {
-    print_info "Aktualisiere Paket-Cache..."
-    apt-get update -qq
-    print_success "Paket-Cache aktualisiert"
-}
-
 install_package() {
     local package="$1"
     local description="$2"
     
     if dpkg -l 2>/dev/null | grep -q "^ii  $package "; then
-        print_success "$description bereits installiert"
         return 0
     fi
     
-    print_info "Installiere $description..."
-    if apt-get install -y -qq "$package" >/dev/null 2>&1; then
-        print_success "$description installiert"
-        return 0
-    else
-        print_error "Installation von $description fehlgeschlagen"
-        return 1
-    fi
+    apt-get install -y -qq "$package" >/dev/null 2>&1
+    return $?
 }
 
-# Kritische Standard-Pakete (immer erforderlich)
-install_critical_packages() {
-    print_header "INSTALLATION KRITISCHER PAKETE"
-    
-    local packages=(
-        "coreutils:Basis-Utilities (dd, md5sum)"
-        "util-linux:System-Utilities (lsblk)"
-        "eject:Disc-Auswurf"
-        "mount:Mount-Tools"
-    )
-    
-    for pkg_info in "${packages[@]}"; do
-        IFS=':' read -r package description <<< "$pkg_info"
-        install_package "$package" "$description" || exit 1
-    done
-}
+# ============================================================================
+# WIZARD FUNCTIONS
+# ============================================================================
 
-# Optionale Pakete für erweiterte Funktionen
-install_optional_packages() {
-    print_header "OPTIONALE PAKETE"
-    
-    if ! use_whiptail; then
-        echo "disk2iso kann mit zusätzlichen Paketen erweitert werden:"
-        echo ""
-        echo "1. genisoimage   - ISO-Erstellung und isoinfo (empfohlen)"
-        echo "                   → Ermöglicht exakte Volume-Größen-Erkennung"
-        echo "                   → Schnelleres Kopieren durch gezielte Blockanzahl"
-        echo ""
-        echo "2. gddrescue     - Intelligentes Rettungs-Tool (empfohlen)"
-        echo "                   → Deutlich schneller als dd bei Lesefehlern"
-        echo "                   → Besseres Fehlerhandling"
-        echo ""
-        echo "3. dvdbackup     - DVD-Entschlüsselung (optional)"
-        echo "                   → Entschlüsselt kommerzielle Video-DVDs"
-        echo "                   → Benötigt libdvdcss2 (siehe nächster Schritt)"
-        echo ""
-        echo "4. Audio-CD      - CD-Ripping mit MusicBrainz-Metadaten (optional)"
-        echo "                   → cdparanoia: Fehlerkorrektur beim Rippen"
-        echo "                   → lame: MP3-Encoding"
-        echo "                   → cd-discid + curl + jq: MusicBrainz-Abfrage"
-        echo ""
-    fi
-    
-    # genisoimage (sehr empfohlen)
-    if ask_yes_no "genisoimage installieren?" "y"; then
-        install_package "genisoimage" "genisoimage + isoinfo"
-    fi
-    
-    # gddrescue (sehr empfohlen)
-    if ask_yes_no "gddrescue installieren?" "y"; then
-        install_package "gddrescue" "ddrescue (GNU)"
-    fi
-    
-    # dvdbackup (optional, benötigt libdvdcss2)
-    local install_dvdbackup=false
-    if ask_yes_no "dvdbackup installieren?" "n"; then
-        install_package "genisoimage" "genisoimage (Abhängigkeit)" || true
-        install_package "dvdbackup" "dvdbackup"
-        install_dvdbackup=true
-    fi
-    
-    # Audio-CD Ripping (optional)
-    if ask_yes_no "Audio-CD Ripping installieren?" "n"; then
-        install_package "genisoimage" "genisoimage (für ISO-Erstellung)" || true
-        install_package "cdparanoia" "cdparanoia (CD-Ripper)"
-        install_package "lame" "lame (MP3-Encoder)"
-        install_package "cd-discid" "cd-discid (MusicBrainz Disc-ID)"
-        install_package "curl" "curl (HTTP-Client)"
-        install_package "jq" "jq (JSON-Parser)"
-        install_package "eyed3" "eyeD3 (ID3-Tag Editor für Cover-Art)"
-    fi
-    
-    # libdvdcss2 Konfiguration (nur wenn dvdbackup installiert)
-    if $install_dvdbackup; then
-        setup_libdvdcss2
-    fi
-}
+# Seite 1: Willkommen
+wizard_page_welcome() {
+    local info="Willkommen zur disk2iso Installation!
 
-# Setup für libdvdcss2 (über libdvd-pkg aus contrib)
-setup_libdvdcss2() {
-    print_header "LIBDVDCSS2 SETUP"
-    
-    echo "libdvdcss2 wird für die Entschlüsselung kommerzieller Video-DVDs benötigt."
-    echo ""
-    echo "Option 1: libdvd-pkg verwenden (empfohlen)"
-    echo "          → Offizielles Debian contrib-Paket"
-    echo "          → Kompiliert libdvdcss2 automatisch"
-    echo "          → Benötigt 'contrib' in /etc/apt/sources.list"
-    echo ""
-    echo "Option 2: Nur ddrescue/dd verwenden (bereits installiert)"
-    echo "          → Kopiert verschlüsselte ISOs"
-    echo "          → Langsamer bei kopierschützten DVDs"
-    echo "          → Keine zusätzlichen Repositories"
-    echo ""
-    
-    if ask_yes_no "libdvd-pkg installieren (empfohlen)?"; then
-        enable_contrib_repo
-        install_libdvd_pkg
-    else
-        print_info "OK - dvdbackup funktioniert nur mit unverschlüsselten DVDs"
-        print_info "Verschlüsselte DVDs werden mit ddrescue/dd kopiert (langsamer)"
-    fi
-}
+disk2iso ist ein Tool zur automatischen Erstellung von ISO-Images von optischen Medien (CD, DVD, Blu-ray).
 
-# Aktiviere contrib Repository
-enable_contrib_repo() {
-    print_info "Prüfe contrib Repository..."
-    
-    # Prüfe ob contrib bereits aktiviert ist
-    if grep -qE '^\s*deb\s+.*debian.*\bcontrib\b' /etc/apt/sources.list; then
-        print_success "contrib Repository bereits aktiviert"
-        return 0
-    fi
-    
-    # Füge contrib zu allen Zeilen hinzu, die main enthalten
-    print_info "Aktiviere contrib Repository..."
-    sed -i 's/\(deb.*debian.*main\)\(\s\|$\)/\1 contrib\2/' /etc/apt/sources.list
-    
-    # Prüfe ob erfolgreich
-    if grep -qE '^\s*deb\s+.*debian.*\bcontrib\b' /etc/apt/sources.list; then
-        # Cache aktualisieren
-        apt-get update -qq
-        print_success "contrib Repository aktiviert"
-        return 0
-    else
-        print_warning "Konnte contrib nicht automatisch aktivieren"
-        print_info "Bitte fügen Sie 'contrib' manuell zu /etc/apt/sources.list hinzu"
-        return 1
-    fi
-}
+Funktionen:
+• Automatische Erkennung eingeleg ter Discs
+• Unterstützung für Audio-CDs, Video-DVDs und Blu-rays
+• MusicBrainz-Integration für Audio-CD Metadaten
+• Optional als systemd-Service für Autostart
 
-# Installiere libdvd-pkg
-install_libdvd_pkg() {
-    print_info "Installiere libdvd-pkg..."
-    
-    if install_package "libdvd-pkg" "libdvd-pkg"; then
-        print_info "Konfiguriere libdvd-pkg (kompiliert libdvdcss2)..."
-        
-        # Konfiguriere libdvd-pkg automatisch
-        DEBIAN_FRONTEND=noninteractive dpkg-reconfigure libdvd-pkg
-        
-        if [[ $? -eq 0 ]]; then
-            print_success "libdvdcss2 erfolgreich kompiliert und installiert"
-            print_info "Video-DVDs können nun entschlüsselt kopiert werden"
+Der Wizard führt Sie durch die Installation in 8 einfachen Schritten.
+
+Möchten Sie fortfahren?"
+
+    if use_whiptail; then
+        if whiptail --title "disk2iso Installation - Seite 1/8" \
+            --yesno "$info" 20 70 \
+            --yes-button "Installation" \
+            --no-button "Abbrechen"; then
+            return 0
         else
-            print_warning "libdvdcss2 Kompilierung fehlgeschlagen"
-            print_info "Fallback auf ddrescue/dd für verschlüsselte DVDs"
+            return 1
         fi
     else
-        print_warning "libdvd-pkg Installation fehlgeschlagen"
-        print_info "Fallback auf ddrescue/dd für verschlüsselte DVDs"
+        echo "$info"
+        ask_yes_no "Fortfahren?"
+    fi
+}
+
+# Seite 2: Basis-Pakete installieren
+wizard_page_base_packages() {
+    local packages=(
+        "coreutils:Basis-Utilities"
+        "util-linux:System-Utilities"
+        "eject:Disc-Auswurf"
+        "mount:Mount-Tools"
+        "genisoimage:ISO-Erstellung"
+        "gddrescue:ddrescue (robust)"
+    )
+    
+    local total=${#packages[@]}
+    local current=0
+    
+    if use_whiptail; then
+        {
+            for pkg_info in "${packages[@]}"; do
+                IFS=':' read -r package description <<< "$pkg_info"
+                current=$((current + 1))
+                percent=$((current * 100 / total))
+                
+                echo "$percent"
+                echo "XXX"
+                echo "Installiere $description ($current/$total)..."
+                echo "XXX"
+                
+                if ! dpkg -l 2>/dev/null | grep -q "^ii  $package "; then
+                    apt-get install -y -qq "$package" >/dev/null 2>&1 || true
+                fi
+                sleep 0.5
+            done
+            echo "100"
+        } | whiptail --title "disk2iso Installation - Seite 2/8" \
+            --gauge "Installiere Basis-Pakete..." 8 70 0
+    else
+        print_header "INSTALLATION BASIS-PAKETE"
+        for pkg_info in "${packages[@]}"; do
+            IFS=':' read -r package description <<< "$pkg_info"
+            install_package "$package" "$description" || true
+        done
+    fi
+}
+
+# Seite 3: Modulauswahl
+wizard_page_module_selection() {
+    if use_whiptail; then
+        local choices
+        choices=$(whiptail --title "disk2iso Installation - Seite 3/8" \
+            --checklist "Welche Module möchten Sie installieren?\n\nNavigieren: ↑/↓  Auswählen: Leertaste  Weiter: Enter" \
+            18 70 3 \
+            "AUDIO_CD" "Audio-CD Ripping (cdparanoia, lame, MusicBrainz)" OFF \
+            "VIDEO_DVD" "Video-DVD Support (dvdbackup, libdvdcss2)" OFF \
+            "VIDEO_BD" "Video-Blu-ray Support (nur ddrescue)" ON \
+            3>&1 1>&2 2>&3)
+        
+        if [[ $? -ne 0 ]]; then
+            return 1  # Abbruch
+        fi
+        
+        # Auswertung
+        INSTALL_AUDIO_CD=false
+        INSTALL_VIDEO_DVD=false
+        INSTALL_VIDEO_BD=false
+        
+        if echo "$choices" | grep -q "AUDIO_CD"; then
+            INSTALL_AUDIO_CD=true
+        fi
+        if echo "$choices" | grep -q "VIDEO_DVD"; then
+            INSTALL_VIDEO_DVD=true
+        fi
+        if echo "$choices" | grep -q "VIDEO_BD"; then
+            INSTALL_VIDEO_BD=true
+        fi
+    else
+        print_header "MODULAUSWAHL"
+        ask_yes_no "Audio-CD Modul installieren?" "n" && INSTALL_AUDIO_CD=true
+        ask_yes_no "Video-DVD Modul installieren?" "n" && INSTALL_VIDEO_DVD=true
+        ask_yes_no "Video-Blu-ray Modul installieren?" "y" && INSTALL_VIDEO_BD=true
+    fi
+    
+    return 0
+}
+
+# Seite 4: Audio-CD Modul
+wizard_page_install_audio_cd() {
+    if ! $INSTALL_AUDIO_CD; then
+        return 0
+    fi
+    
+    local packages=(
+        "cdparanoia:CD-Ripper mit Fehlerkorrektur"
+        "lame:MP3-Encoder"
+        "cd-discid:MusicBrainz Disc-ID"
+        "curl:HTTP-Client"
+        "jq:JSON-Parser"
+        "eyed3:ID3-Tag Editor"
+    )
+    
+    local total=${#packages[@]}
+    local current=0
+    
+    if use_whiptail; then
+        {
+            for pkg_info in "${packages[@]}"; do
+                IFS=':' read -r package description <<< "$pkg_info"
+                current=$((current + 1))
+                percent=$((current * 100 / total))
+                
+                echo "$percent"
+                echo "XXX"
+                echo "Installiere $description ($current/$total)..."
+                echo "XXX"
+                
+                if ! dpkg -l 2>/dev/null | grep -q "^ii  $package "; then
+                    apt-get install -y -qq "$package" >/dev/null 2>&1 || true
+                fi
+                sleep 0.3
+            done
+            echo "100"
+        } | whiptail --title "disk2iso Installation - Seite 4/8" \
+            --gauge "Installiere Audio-CD Modul..." 8 70 0
+    else
+        print_header "AUDIO-CD MODUL"
+        for pkg_info in "${packages[@]}"; do
+            IFS=':' read -r package description <<< "$pkg_info"
+            install_package "$package" "$description" || true
+        done
+    fi
+}
+
+# Seite 5: Video-DVD Modul
+wizard_page_install_video_dvd() {
+    if ! $INSTALL_VIDEO_DVD; then
+        return 0
+    fi
+    
+    local packages=(
+        "dvdbackup:DVD-Backup-Tool"
+    )
+    
+    if use_whiptail; then
+        {
+            echo "50"
+            echo "XXX"
+            echo "Installiere dvdbackup..."
+            echo "XXX"
+            
+            if ! dpkg -l 2>/dev/null | grep -q "^ii  dvdbackup "; then
+                apt-get install -y -qq dvdbackup >/dev/null 2>&1 || true
+            fi
+            
+            sleep 0.5
+            echo "100"
+        } | whiptail --title "disk2iso Installation - Seite 5/8" \
+            --gauge "Installiere Video-DVD Modul..." 8 70 0
+        
+        # libdvdcss2 Setup
+        local info="Video-DVD Modul installiert.
+
+Für die Entschlüsselung kommerzieller DVDs wird libdvdcss2 benötigt.
+
+Option 1: libdvd-pkg verwenden (empfohlen)
+→ Offizielles Debian contrib-Paket
+→ Kompiliert libdvdcss2 automatisch
+→ Benötigt 'contrib' Repository
+
+Option 2: Nur ddrescue verwenden
+→ Kopiert verschlüsselte ISOs (langsamer)
+→ Keine zusätzlichen Repositories
+
+Möchten Sie libdvd-pkg jetzt installieren?"
+
+        if whiptail --title "libdvdcss2 Setup" --yesno "$info" 20 70 --yes-button "Ja, installieren" --no-button "Nein, überspringen"; then
+            wizard_install_libdvdcss2
+        fi
+    else
+        print_header "VIDEO-DVD MODUL"
+        install_package "dvdbackup" "DVD-Backup-Tool" || true
+        
+        if ask_yes_no "libdvd-pkg für DVD-Entschlüsselung installieren?" "y"; then
+            wizard_install_libdvdcss2
+        fi
+    fi
+}
+
+# libdvdcss2 Installation (Helper)
+wizard_install_libdvdcss2() {
+    # Aktiviere contrib
+    if ! grep -qE '^\s*deb\s+.*debian.*\bcontrib\b' /etc/apt/sources.list; then
+        sed -i 's/\(deb.*debian.*main\)\(\s\|$\)/\1 contrib\2/' /etc/apt/sources.list
+        apt-get update -qq
+    fi
+    
+    # Installiere libdvd-pkg
+    if use_whiptail; then
+        {
+            echo "50"
+            echo "XXX"
+            echo "Installiere libdvd-pkg..."
+            echo "XXX"
+            apt-get install -y -qq libdvd-pkg >/dev/null 2>&1 || true
+            
+            echo "80"
+            echo "XXX"
+            echo "Konfiguriere libdvdcss2..."
+            echo "XXX"
+            DEBIAN_FRONTEND=noninteractive dpkg-reconfigure libdvd-pkg >/dev/null 2>&1 || true
+            
+            sleep 0.5
+            echo "100"
+        } | whiptail --title "libdvdcss2 Installation" \
+            --gauge "Installiere und konfiguriere libdvdcss2..." 8 70 0
+    else
+        apt-get install -y -qq libdvd-pkg >/dev/null 2>&1 || true
+        DEBIAN_FRONTEND=noninteractive dpkg-reconfigure libdvd-pkg >/dev/null 2>&1 || true
+    fi
+}
+
+# Seite 6: Video-Blu-ray Modul
+wizard_page_install_video_bd() {
+    if ! $INSTALL_VIDEO_BD; then
+        return 0
+    fi
+    
+    # Blu-ray nutzt bereits installiertes ddrescue und genisoimage
+    if use_whiptail; then
+        {
+            echo "50"
+            echo "XXX"
+            echo "Prüfe Blu-ray Dependencies..."
+            echo "XXX"
+            sleep 0.5
+            
+            echo "100"
+            echo "XXX"
+            echo "Blu-ray Modul konfiguriert (nutzt ddrescue)"
+            echo "XXX"
+            sleep 0.5
+        } | whiptail --title "disk2iso Installation - Seite 6/8" \
+            --gauge "Konfiguriere Video-Blu-ray Modul..." 8 70 0
+    else
+        print_header "VIDEO-BLU-RAY MODUL"
+        print_info "Blu-ray Support verwendet ddrescue (bereits installiert)"
+    fi
+}
+
+# Seite 7: Service-Installation
+wizard_page_service_setup() {
+    if use_whiptail; then
+        local info="Möchten Sie disk2iso als systemd-Service installieren?
+
+Als Service:
+• Startet automatisch beim Booten
+• Überwacht Laufwerk kontinuierlich
+• Erstellt automatisch ISOs bei eingelegten Discs
+• Konfiguration über systemd
+
+Ohne Service:
+• Manuelle Ausführung über Kommandozeile
+• disk2iso -o <ausgabe-verzeichnis>
+• Mehr Kontrolle über Zeitpunkt der Ausführung"
+
+        if whiptail --title "disk2iso Installation - Seite 7/8" \
+            --yesno "$info" 20 70 \
+            --yes-button "Installieren" \
+            --no-button "Überspringen" \
+            --defaultno; then
+            INSTALL_SERVICE=true
+        else
+            INSTALL_SERVICE=false
+        fi
+    else
+        INSTALL_SERVICE=false
+        ask_yes_no "disk2iso als systemd Service installieren?" "n" && INSTALL_SERVICE=true
+    fi
+}
+
+# Seite 8: Abschluss
+wizard_page_complete() {
+    local manual_usage="disk2iso -o /pfad/zum/ausgabe/verzeichnis"
+    local service_usage="systemctl status disk2iso"
+    
+    if $INSTALL_SERVICE; then
+        local info="Installation erfolgreich abgeschlossen!
+
+disk2iso wurde als systemd-Service installiert.
+
+Service-Befehle:
+• Status prüfen: systemctl status disk2iso
+• Logs ansehen: journalctl -u disk2iso -f
+• Neustarten: systemctl restart disk2iso
+• Stoppen: systemctl stop disk2iso
+
+Der Service überwacht automatisch das Laufwerk und erstellt ISOs.
+
+Möchten Sie den Service jetzt starten?"
+
+        if use_whiptail; then
+            if whiptail --title "disk2iso Installation - Seite 8/8" \
+                --yesno "$info" 20 70 \
+                --yes-button "Starten" \
+                --no-button "Beenden"; then
+                systemctl start disk2iso.service
+                whiptail --title "Service gestartet" --msgbox "disk2iso Service wurde gestartet.\n\nStatus: systemctl status disk2iso" 10 60
+            fi
+        else
+            echo "$info"
+            if ask_yes_no "Service jetzt starten?" "y"; then
+                systemctl start disk2iso.service
+                print_success "Service gestartet"
+            fi
+        fi
+    else
+        local info="Installation erfolgreich abgeschlossen!
+
+disk2iso wurde installiert und kann manuell ausgeführt werden.
+
+Verwendung:
+disk2iso -o /pfad/zum/ausgabe/verzeichnis
+
+Beispiel:
+disk2iso -o /srv/iso
+
+Dokumentation:
+• README.md im Projektverzeichnis
+• Hilfe: disk2iso --help"
+
+        if use_whiptail; then
+            whiptail --title "disk2iso Installation - Seite 8/8" \
+                --msgbox "$info" 18 70
+        else
+            echo "$info"
+        fi
     fi
 }
 
@@ -309,8 +520,6 @@ install_libdvd_pkg() {
 # ============================================================================
 
 install_disk2iso_files() {
-    print_header "DISK2ISO INSTALLATION"
-    
     # Prüfe ob Quell-Dateien existieren
     if [[ ! -f "$SCRIPT_DIR/disk2iso.sh" ]]; then
         print_error "disk2iso.sh nicht gefunden in $SCRIPT_DIR"
@@ -323,46 +532,38 @@ install_disk2iso_files() {
     fi
     
     # Erstelle Installationsverzeichnis
-    print_info "Erstelle Verzeichnis $INSTALL_DIR..."
     mkdir -p "$INSTALL_DIR"
     
     # Kopiere Haupt-Script
-    print_info "Kopiere disk2iso Script..."
     cp -f "$SCRIPT_DIR/disk2iso.sh" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/disk2iso.sh"
     
     # Kopiere Library
-    print_info "Kopiere disk2iso Bibliothek..."
     cp -rf "$SCRIPT_DIR/disk2iso-lib" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR"/disk2iso-lib/*.sh
     
     # Erstelle Symlink
-    print_info "Erstelle Symlink in /usr/local/bin..."
     ln -sf "$INSTALL_DIR/disk2iso.sh" "$BIN_LINK"
-    
-    print_success "disk2iso Dateien installiert nach $INSTALL_DIR"
 }
 
 configure_service() {
-    print_header "SYSTEMD SERVICE KONFIGURATION"
-    
-    if ! ask_yes_no "disk2iso als systemd Service installieren?"; then
-        print_info "Service-Installation übersprungen"
-        print_info "Sie können disk2iso manuell ausführen: disk2iso -o <output-dir>"
+    if ! $INSTALL_SERVICE; then
         return 0
     fi
     
-    # Ausgabe-Verzeichnis abfragen
-    local output_dir
-    read -p "Ausgabe-Verzeichnis für ISOs [/srv/iso]: " output_dir
-    output_dir=${output_dir:-/srv/iso}
+    # Ausgabe-Verzeichnis
+    local output_dir="/srv/iso"
+    
+    if ! use_whiptail; then
+        read -p "Ausgabe-Verzeichnis für ISOs [$output_dir]: " input_dir
+        output_dir=${input_dir:-$output_dir}
+    fi
     
     # Erstelle Ausgabe-Verzeichnis
     mkdir -p "$output_dir"
     chmod 755 "$output_dir"
     
     # Erstelle Service-Datei
-    print_info "Erstelle Service-Datei..."
     cat > "$SERVICE_FILE" <<EOF
 [Unit]
 Description=disk2iso - Automatische ISO Erstellung von optischen Medien
@@ -371,7 +572,7 @@ Wants=systemd-udevd.service
 After=systemd-udevd.service
 
 [Service]
-Type=notify
+Type=simple
 ExecStart=$INSTALL_DIR/disk2iso.sh -o $output_dir
 Restart=always
 RestartSec=5
@@ -394,62 +595,56 @@ ReadWritePaths=$output_dir
 WantedBy=multi-user.target
 EOF
     
-    print_success "Service-Datei erstellt: $SERVICE_FILE"
-    
     # Service aktivieren
-    if ask_yes_no "Service jetzt aktivieren und starten?" "y"; then
-        systemctl daemon-reload
-        systemctl enable disk2iso.service
-        systemctl start disk2iso.service
-        
-        print_success "Service aktiviert und gestartet"
-        print_info "Status prüfen: systemctl status disk2iso"
-        print_info "Logs ansehen: journalctl -u disk2iso -f"
-    else
-        systemctl daemon-reload
-        print_info "Service erstellt aber nicht gestartet"
-        print_info "Manuell starten: systemctl start disk2iso"
-    fi
+    systemctl daemon-reload
+    systemctl enable disk2iso.service >/dev/null 2>&1
 }
 
 # ============================================================================
-# MAIN
+# MAIN - WIZARD MODE
 # ============================================================================
 
 main() {
-    print_header "DISK2ISO INSTALLATION"
-    
-    echo "Willkommen zur disk2iso Installation!"
-    echo "Dieses Script installiert disk2iso und alle benötigten Pakete."
-    echo ""
-    
     # System-Checks
     check_root
     check_debian
     
-    # Paket-Installation
-    update_package_cache
-    install_critical_packages
-    install_optional_packages
+    # Aktualisiere Paket-Cache
+    apt-get update -qq
     
-    # disk2iso Installation
-    install_disk2iso_files
-    configure_service
-    
-    # Abschluss
-    print_header "INSTALLATION ABGESCHLOSSEN"
-    print_success "disk2iso wurde erfolgreich installiert!"
-    echo ""
-    print_info "Manuelle Verwendung: disk2iso -o /pfad/zum/ausgabe/verzeichnis"
-    
-    if [[ -f "$SERVICE_FILE" ]]; then
-        print_info "Service-Verwendung: systemctl status disk2iso"
+    # Wizard Seite 1: Willkommen
+    if ! wizard_page_welcome; then
+        echo "Installation abgebrochen."
+        exit 0
     fi
     
-    echo ""
-    print_info "Dokumentation: README.md"
-    print_info "Video-DVD Hinweise: INSTALL_VIDEO_DVD.md"
-    echo ""
+    # Wizard Seite 2: Basis-Pakete
+    wizard_page_base_packages
+    
+    # Wizard Seite 3: Modulauswahl
+    if ! wizard_page_module_selection; then
+        echo "Installation abgebrochen."
+        exit 0
+    fi
+    
+    # Wizard Seite 4: Audio-CD Modul
+    wizard_page_install_audio_cd
+    
+    # Wizard Seite 5: Video-DVD Modul
+    wizard_page_install_video_dvd
+    
+    # Wizard Seite 6: Video-Blu-ray Modul
+    wizard_page_install_video_bd
+    
+    # disk2iso Dateien installieren
+    install_disk2iso_files
+    
+    # Wizard Seite 7: Service Setup
+    wizard_page_service_setup
+    configure_service
+    
+    # Wizard Seite 8: Abschluss
+    wizard_page_complete
 }
 
 # Script ausführen
