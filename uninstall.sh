@@ -107,12 +107,15 @@ check_root() {
 wizard_page_warning() {
     local service_status=""
     if [[ -f "$SERVICE_FILE" ]]; then
-        service_status="\n• Systemd-Service wird gestoppt und entfernt"
+        service_status="
+• Systemd-Service wird gestoppt und entfernt"
     fi
     
     local output_info=""
     if [[ -n "$OUTPUT_DIR" ]] && [[ -d "$OUTPUT_DIR" ]]; then
-        output_info="\n\nHinweis: Das Ausgabeverzeichnis ($OUTPUT_DIR) wird im nächsten Schritt abgefragt."
+        output_info="
+
+Hinweis: Das Ausgabeverzeichnis ($OUTPUT_DIR) wird im nächsten Schritt abgefragt."
     fi
     
     local info="WARNUNG: Diese Aktion entfernt disk2iso komplett vom System!
@@ -250,7 +253,9 @@ wizard_page_output_directory() {
     local size_info=""
     if [[ $iso_count -gt 0 ]]; then
         local total_size=$(du -sh "$OUTPUT_DIR" 2>/dev/null | cut -f1)
-        size_info="\n\nDas Verzeichnis enthält $iso_count ISO/BIN-Datei(en) ($total_size)."
+        size_info="
+
+Das Verzeichnis enthält $iso_count ISO/BIN-Datei(en) ($total_size)."
     fi
     
     local info="Ausgabeverzeichnis gefunden:
@@ -303,10 +308,13 @@ Entfernte Komponenten:
 • Symlink in /usr/local/bin"
 
     if [[ -n "$OUTPUT_DIR" ]] && [[ ! -d "$OUTPUT_DIR" ]]; then
-        info="${info}\n• Ausgabeverzeichnis"
+        info="${info}
+• Ausgabeverzeichnis"
     fi
     
-    info="${info}\n\nHinweis: Installierte Pakete (genisoimage, gddrescue, etc.) wurden NICHT entfernt.
+    info="${info}
+
+Hinweis: Installierte Pakete (genisoimage, gddrescue, etc.) wurden NICHT entfernt.
 Diese könnten von anderen Programmen verwendet werden.
 
 Bei Bedarf können Sie diese manuell entfernen mit:
