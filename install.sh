@@ -582,9 +582,17 @@ configure_service() {
         output_dir=${input_dir:-$output_dir}
     fi
     
-    # Erstelle Ausgabe-Verzeichnis
-    mkdir -p "$output_dir"
-    chmod 755 "$output_dir"
+    # Erstelle Ausgabe-Verzeichnis mit vollständiger Struktur
+    print_success "Erstelle Verzeichnisstruktur in $output_dir..."
+    mkdir -p "$output_dir"/{.log,.temp,audio,dvd,bd,data}
+    
+    # Setze Berechtigungen (777 für NFS-Kompatibilität)
+    chmod -R 777 "$output_dir" 2>/dev/null || {
+        print_warning "Konnte Berechtigungen nicht setzen (evtl. NFS-Mount)"
+    }
+    
+    # Aktualisiere config.sh mit gewähltem Ausgabeverzeichnis
+    sed -i "s|DEFAULT_OUTPUT_DIR=.*|DEFAULT_OUTPUT_DIR=\"$output_dir\"|" "$INSTALL_DIR/disk2iso-lib/config.sh"
     
     # Erstelle Service-Datei
     cat > "$SERVICE_FILE" <<EOF
@@ -596,23 +604,16 @@ After=systemd-udevd.service
 
 [Service]
 Type=simple
-ExecStart=$INSTALL_DIR/disk2iso.sh -o $output_dir
+User=root
+Group=root
+ExecStart=$INSTALL_DIR/disk2iso.sh
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
 
-# Benötigt Zugriff auf optische Laufwerke
-DevicePolicy=closed
-DeviceAllow=/dev/sr0 rw
-DeviceAllow=/dev/cdrom rw
-
-# Sicherheits-Einschränkungen
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=$output_dir
+# Nutzt DEFAULT_OUTPUT_DIR aus config.sh
+# Ausgabeverzeichnis wurde bei Installation konfiguriert
 
 [Install]
 WantedBy=multi-user.target

@@ -8,24 +8,14 @@ After=systemd-udevd.service
 Type=simple
 User=root
 Group=root
-ExecStart=/usr/local/bin/disk2iso -o /srv/iso
+ExecStart=/opt/disk2iso/disk2iso.sh
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
 
-# Benötigt Zugriff auf optische Laufwerke
-DevicePolicy=closed
-DeviceAllow=/dev/sr0 rw
-DeviceAllow=/dev/cdrom rw
-DeviceAllow=block-* r
-
-# Sicherheits-Einschränkungen (gelockert für Hardware-Zugriff)
-NoNewPrivileges=false
-PrivateTmp=false
-ProtectSystem=false
-ProtectHome=false
-ReadWritePaths=/srv/iso
+# Nutzt DEFAULT_OUTPUT_DIR aus config.sh
+# Ausgabeverzeichnis wurde bei Installation konfiguriert
 
 [Install]
 WantedBy=multi-user.target

@@ -1,0 +1,30 @@
+#!/bin/bash
+################################################################################
+# disk2iso - German Language File for lib-systeminfo.sh
+# Filepath: disk2iso-lib/lang/lib-systeminfo.de
+#
+# Version: 1.0.0
+# Datum: 02.01.2026
+################################################################################
+
+# Container-Erkennung
+MSG_CONTAINER_DETECTED="✓ Container-Umgebung erkannt:"
+MSG_NATIVE_ENVIRONMENT_DETECTED="✓ Native Hardware-Umgebung erkannt"
+
+# Speicherplatz
+MSG_DISK_SPACE_INFO="Speicherplatz:"
+MSG_DISK_SPACE_MB_AVAILABLE="MB verfügbar,"
+MSG_DISK_SPACE_MB_REQUIRED="MB benötigt"
+MSG_DISK_SPACE_MB_AVAILABLE_SHORT="MB verfügbar"
+MSG_WARNING_DISK_SPACE_CHECK_FAILED="⚠ Speicherplatz-Prüfung fehlgeschlagen (fahre fort)"
+MSG_ERROR_INSUFFICIENT_DISK_SPACE="✗ Unzureichender Speicherplatz! Benötigt:"
+
+# Medium-Wechsel
+MSG_CONTAINER_MANUAL_EJECT="⚠ Container-Umgebung: Bitte Medium manuell auswerfen und neues einlegen"
+MSG_WAITING_FOR_MEDIUM_CHANGE="Warte auf Medium-Wechsel..."
+MSG_WARNING_NO_MEDIUM_IDENTIFIER="⚠ Medium-Kennung konnte nicht ermittelt werden (warte auf beliebiges Medium)"
+MSG_NEW_MEDIUM_DETECTED="✓ Neues Medium erkannt"
+MSG_STILL_WAITING="Noch wartend:"
+MSG_SECONDS_OF="Sekunden von"
+MSG_SECONDS="Sekunden"
+MSG_TIMEOUT_WAITING_FOR_MEDIUM="✗ Timeout beim Warten auf Medium-Wechsel"

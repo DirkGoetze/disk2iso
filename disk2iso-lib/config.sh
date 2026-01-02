@@ -23,14 +23,20 @@ readonly LANGUAGE="de"
 # KONFIGURATION
 # ============================================================================
 
-# OUTPUT_DIR wird als Parameter beim Start übergeben (-o / --output)
-# Keine Standard-Konfiguration mehr
+# Standard-Ausgabeverzeichnis (wird bei Installation konfiguriert)
+# Kann per -o Parameter überschrieben werden
+DEFAULT_OUTPUT_DIR="/srv/iso"
+
+# Proxmox Host für eject in LXC (optional, nur für LXC-Umgebungen)
+# Beispiel: PROXMOX_HOST="root@192.168.1.100"
+# Leer lassen für native Hardware
+PROXMOX_HOST=""
 
 # ============================================================================
 # GLOBALE VARIABLEN
 # ============================================================================
 
-OUTPUT_DIR=""      # Ausgabeordner für ISO-Dateien (wird per Parameter gesetzt)
+OUTPUT_DIR=""      # Ausgabeordner für ISO-Dateien (wird per Parameter oder DEFAULT gesetzt)
 disc_label=""      # Normalisierter Label-Name der Disc
 iso_filename=""    # Vollständiger Pfad zur ISO-Datei
 md5_filename=""    # Vollständiger Pfad zur MD5-Datei

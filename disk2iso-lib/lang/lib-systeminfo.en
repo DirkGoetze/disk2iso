@@ -1,0 +1,30 @@
+#!/bin/bash
+################################################################################
+# disk2iso - English Language File for lib-systeminfo.sh
+# Filepath: disk2iso-lib/lang/lib-systeminfo.en
+#
+# Version: 1.0.0
+# Date: 02.01.2026
+################################################################################
+
+# Container Detection
+MSG_CONTAINER_DETECTED="✓ Container environment detected:"
+MSG_NATIVE_ENVIRONMENT_DETECTED="✓ Native hardware environment detected"
+
+# Disk Space
+MSG_DISK_SPACE_INFO="Disk space:"
+MSG_DISK_SPACE_MB_AVAILABLE="MB available,"
+MSG_DISK_SPACE_MB_REQUIRED="MB required"
+MSG_DISK_SPACE_MB_AVAILABLE_SHORT="MB available"
+MSG_WARNING_DISK_SPACE_CHECK_FAILED="⚠ Disk space check failed (continuing)"
+MSG_ERROR_INSUFFICIENT_DISK_SPACE="✗ Insufficient disk space! Required:"
+
+# Medium Change
+MSG_CONTAINER_MANUAL_EJECT="⚠ Container environment: Please eject medium manually and insert new one"
+MSG_WAITING_FOR_MEDIUM_CHANGE="Waiting for medium change..."
+MSG_WARNING_NO_MEDIUM_IDENTIFIER="⚠ Medium identifier could not be determined (waiting for any medium)"
+MSG_NEW_MEDIUM_DETECTED="✓ New medium detected"
+MSG_STILL_WAITING="Still waiting:"
+MSG_SECONDS_OF="seconds of"
+MSG_SECONDS="seconds"
+MSG_TIMEOUT_WAITING_FOR_MEDIUM="✗ Timeout waiting for medium change"

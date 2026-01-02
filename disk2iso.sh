@@ -66,6 +66,7 @@ source "${SCRIPT_DIR}/disk2iso-lib/lib-files.sh"
 source "${SCRIPT_DIR}/disk2iso-lib/lib-folders.sh"
 source "${SCRIPT_DIR}/disk2iso-lib/lib-diskinfos.sh"
 source "${SCRIPT_DIR}/disk2iso-lib/lib-drivestat.sh"
+source "${SCRIPT_DIR}/disk2iso-lib/lib-systeminfo.sh"
 source "${SCRIPT_DIR}/disk2iso-lib/lib-common.sh"
 
 # Prüfe Kern-Abhängigkeiten (kritisch - Abbruch bei Fehler)
@@ -74,7 +75,15 @@ if ! check_common_dependencies; then
     exit 1
 fi
 
+if ! check_systeminfo_dependencies; then
+    echo "ABBRUCH: System-Info Abhängigkeiten fehlen"
+    exit 1
+fi
+
 log_message "$MSG_CORE_MODULES_LOADED"
+
+# Erkenne Container-Umgebung (setzt IS_CONTAINER und CONTAINER_TYPE)
+detect_container_environment
 
 # ============================================================================
 # OPTIONALE MODULE MIT DEPENDENCY-CHECKS
@@ -352,23 +361,29 @@ main() {
                 ;;
             *)
                 echo "Unbekannter Parameter: $1"
-                echo "Verwendung: $0 -o|--output <Ausgabeverzeichnis>"
+                echo "Verwendung: $0 [-o|--output <Ausgabeverzeichnis>]"
                 exit 1
                 ;;
         esac
     done
     
-    # Prüfe ob OUTPUT_DIR gesetzt wurde
+    # Nutze DEFAULT_OUTPUT_DIR wenn kein Parameter angegeben
     if [[ -z "$OUTPUT_DIR" ]]; then
-        echo "FEHLER: Kein Ausgabeverzeichnis angegeben"
-        echo "Verwendung: $0 -o|--output <Ausgabeverzeichnis>"
-        echo "Beispiel: $0 -o /mnt/hdd/nas/images"
+        OUTPUT_DIR="$DEFAULT_OUTPUT_DIR"
+    fi
+    
+    # Prüfe ob OUTPUT_DIR existiert
+    if [[ ! -d "$OUTPUT_DIR" ]]; then
+        echo "FEHLER: Ausgabeverzeichnis existiert nicht: $OUTPUT_DIR"
+        echo "Führe 'sudo ./install.sh' aus, um das Verzeichnis anzulegen"
+        echo "Oder nutze: $0 -o <anderes-verzeichnis>"
         exit 1
     fi
     
-    # Stelle sicher dass OUTPUT_DIR existiert
-    if ! mkdir -p "$OUTPUT_DIR" 2>/dev/null; then
-        echo "FEHLER: Kann Ausgabeverzeichnis nicht erstellen: $OUTPUT_DIR"
+    # Prüfe Schreibrechte
+    if [[ ! -w "$OUTPUT_DIR" ]]; then
+        echo "FEHLER: Keine Schreibrechte für: $OUTPUT_DIR"
+        echo "Führe aus: sudo chmod -R 777 $OUTPUT_DIR"
         exit 1
     fi
     
@@ -413,6 +428,12 @@ main() {
 # Signal-Handler für sauberes Service-Beenden
 cleanup_service() {
     log_message "$MSG_SERVICE_STOPPING"
+    
+    # Töte alle laufenden Kopierprozesse (dvdbackup, ddrescue, etc.)
+    pkill -P $$ 2>/dev/null  # Töte alle Child-Prozesse
+    sleep 2  # Warte bis Prozesse beendet sind
+    
+    # Jetzt cleanup durchführen
     cleanup_disc_operation "interrupted"
     exit 0
 }

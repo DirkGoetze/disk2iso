@@ -27,7 +27,7 @@ load_module_language "folders"
 # ============================================================================
 
 # Funktion zum Erstellen des Temp-Verzeichnisses
-# Erstellt strukturiertes Temp-Verzeichnis im OUTPUT_DIR
+# Prüft temp_base (wurde bei Installation angelegt), erstellt nur Unterordner
 # Setzt globale Variable: temp_pathname
 # Nutzt Lazy Initialization für temp_base und TEMP_DIR Konstante
 get_temp_pathname() {
@@ -37,16 +37,22 @@ get_temp_pathname() {
     # Nutze Konstante aus lib-common.sh
     local temp_base="${OUTPUT_DIR}/${TEMP_DIR}"
     
-    # Lazy Initialization: temp_base nur einmal erstellen
+    # Lazy Initialization: temp_base nur einmal prüfen
     if [[ "$_TEMP_BASE_CREATED" == false ]]; then
-        mkdir -p "$temp_base"
+        if [[ ! -d "$temp_base" ]]; then
+            log_message "FEHLER: Temp-Verzeichnis existiert nicht: $temp_base"
+            return 1
+        fi
         _TEMP_BASE_CREATED=true
     fi
     
     # Generiere eindeutigen Unterordner basierend auf iso_basename
     local basename_without_ext="${iso_basename%.iso}"
     temp_pathname="${temp_base}/${basename_without_ext}_$$"
-    mkdir -p "$temp_pathname"
+    mkdir -p "$temp_pathname" 2>/dev/null || {
+        log_message "FEHLER: Kann Temp-Unterordner nicht erstellen: $temp_pathname"
+        return 1
+    }
     
     log_message "$MSG_TEMP_DIR_CREATED: $temp_pathname"
 }
@@ -86,35 +92,42 @@ get_tmp_mount() {
 # SPECIFIC FOLDER CREATION
 # ============================================================================
 
-# Funktion zum Erstellen des Log-Verzeichnisses
-# Erstellt Verzeichnis für Log-Datei
-# Nutzt Lazy Initialization - wird nur einmal pro Session erstellt
+# Funktion zum Prüfen des Log-Verzeichnisses
+# Prüft ob Log-Verzeichnis existiert (wurde bei Installation angelegt)
+# Nutzt Lazy Initialization - wird nur einmal pro Session geprüft
 get_log_folder() {
-    # Lazy Initialization: Log-Verzeichnis nur einmal erstellen
+    # Lazy Initialization: Log-Verzeichnis nur einmal prüfen
     if [[ "$_LOG_DIR_CREATED" == false ]]; then
         local log_dir="$(dirname "$log_filename")"
-        mkdir -p "$log_dir"
+        if [[ ! -d "$log_dir" ]]; then
+            log_message "FEHLER: Log-Verzeichnis existiert nicht: $log_dir"
+            return 1
+        fi
         log_message "$MSG_LOG_DIR_CREATED: $log_dir"
         _LOG_DIR_CREATED=true
     fi
 }
 
-# Funktion zum Erstellen des Ausgabe-Verzeichnisses
-# Erstellt OUTPUT_DIR falls nicht vorhanden
-# Nutzt Lazy Initialization - wird nur einmal pro Session erstellt
+# Funktion zum Prüfen des Ausgabe-Verzeichnisses
+# Prüft ob OUTPUT_DIR existiert (wurde bei Installation angelegt)
+# Nutzt Lazy Initialization - wird nur einmal pro Session geprüft
 get_out_folder() {
-    # Lazy Initialization: OUTPUT_DIR nur einmal erstellen
+    # Lazy Initialization: OUTPUT_DIR nur einmal prüfen
     if [[ "$_OUTPUT_DIR_CREATED" == false ]]; then
-        mkdir -p "$OUTPUT_DIR"
+        if [[ ! -d "$OUTPUT_DIR" ]]; then
+            log_message "FEHLER: Ausgabeverzeichnis existiert nicht: $OUTPUT_DIR"
+            return 1
+        fi
         log_message "$MSG_OUTPUT_DIR_CREATED: $OUTPUT_DIR"
         _OUTPUT_DIR_CREATED=true
     fi
 }
 
-# Funktion zum Erstellen von Typ-spezifischen Unterordnern
+# Funktion zum Prüfen von Typ-spezifischen Unterordnern
 # Parameter: $1 = disc_type (audio-cd, cd-rom, dvd-video, dvd-rom, bd-video, bd-rom)
 # Rückgabe: Unterordner-Pfad
 # Nutzt Getter-Methoden mit Fallback-Logik aus den jeweiligen Modulen
+# Unterordner wurden bei Installation angelegt
 get_type_subfolder() {
     local dtype="$1"
     local full_path=""
@@ -138,7 +151,13 @@ get_type_subfolder() {
             ;;
     esac
     
-    mkdir -p "$full_path"
+    # Prüfe ob Verzeichnis existiert
+    if [[ ! -d "$full_path" ]]; then
+        log_message "WARNUNG: Typ-Verzeichnis existiert nicht: $full_path"
+        # Versuche es anzulegen (Fallback)
+        mkdir -p "$full_path" 2>/dev/null || return 1
+    fi
+    
     echo "$full_path"
 }
 

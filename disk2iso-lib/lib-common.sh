@@ -72,29 +72,7 @@ check_common_dependencies() {
 # HELPER FUNCTIONS
 # ============================================================================
 
-# Funktion zur Prüfung des verfügbaren Speicherplatzes
-# Parameter: $1 = benötigte Größe in MB
-# Rückgabe: 0 = genug Platz, 1 = zu wenig Platz
-check_disk_space() {
-    local required_mb=$1
-    
-    # Ermittle verfügbaren Speicherplatz am Ausgabepfad
-    local available_mb=$(df -BM "$OUTPUT_DIR" 2>/dev/null | tail -1 | awk '{print $4}' | sed 's/M//')
-    
-    if [[ -z "$available_mb" ]] || [[ ! "$available_mb" =~ ^[0-9]+$ ]]; then
-        log_message "$MSG_WARNING_DISK_SPACE_CHECK_FAILED"
-        return 0  # Fahre fort, wenn Prüfung fehlschlägt
-    fi
-    
-    log_message "$MSG_DISK_SPACE_INFO ${available_mb} $MSG_DISK_SPACE_MB_AVAILABLE ${required_mb} $MSG_DISK_SPACE_MB_REQUIRED"
-    
-    if [[ $available_mb -lt $required_mb ]]; then
-        log_message "$MSG_ERROR_INSUFFICIENT_DISK_SPACE ${required_mb} $MSG_DISK_SPACE_MB_AVAILABLE_SHORT ${available_mb} MB"
-        return 1
-    fi
-    
-    return 0
-}
+# Hinweis: check_disk_space() wurde nach lib-systeminfo.sh verschoben
 
 # ============================================================================
 # DATA DISC COPY - DDRESCUE (für Daten-Discs)
@@ -313,7 +291,28 @@ cleanup_disc_operation() {
     
     # 1. Temp-Verzeichnis aufräumen (falls vorhanden)
     if [[ -n "$temp_pathname" ]] && [[ -d "$temp_pathname" ]]; then
-        rm -rf "$temp_pathname"
+        # Unmount alle eventuellen Mountpoints im Temp-Verzeichnis
+        if command -v findmnt >/dev/null 2>&1; then
+            # Finde und unmounte alle Mountpoints unterhalb von temp_pathname
+            findmnt -R -n -o TARGET "$temp_pathname" 2>/dev/null | sort -r | while read -r mountpoint; do
+                umount "$mountpoint" 2>/dev/null || umount -l "$mountpoint" 2>/dev/null
+            done
+        else
+            # Fallback: Versuche bekannte Mountpoints zu unmounten
+            find "$temp_pathname" -type d 2>/dev/null | while read -r dir; do
+                umount "$dir" 2>/dev/null || true
+            done
+        fi
+        
+        # Gib dem System kurz Zeit zum Unmounten
+        sleep 1
+        
+        # Lösche Temp-Verzeichnis (mit force)
+        rm -rf "$temp_pathname" 2>/dev/null || {
+            # Fallback: Versuche mit sudo falls Permission-Fehler
+            log_message "⚠ Temp-Verzeichnis konnte nicht gelöscht werden, versuche mit erhöhten Rechten"
+            sudo rm -rf "$temp_pathname" 2>/dev/null || true
+        }
     fi
     
     # 2. Unvollständige ISO-Datei löschen (nur bei Fehler)
@@ -324,6 +323,11 @@ cleanup_disc_operation() {
     # 3. Disc auswerfen (immer)
     if [[ -b "$CD_DEVICE" ]]; then
         eject "$CD_DEVICE" 2>/dev/null
+        
+        # In Container-Umgebungen: Warte auf manuellen Medium-Wechsel
+        if [[ "$status" == "success" ]]; then
+            wait_for_medium_change "$CD_DEVICE" 300  # 5 Minuten Timeout
+        fi
     fi
     
     # 4. Variablen zurücksetzen (immer)
