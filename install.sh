@@ -456,6 +456,110 @@ wizard_page_install_video_bd() {
     fi
 }
 
+# Seite 7: MQTT-Integration
+wizard_page_mqtt_setup() {
+    if use_whiptail; then
+        local info="Möchten Sie MQTT-Integration für Home Assistant aktivieren?
+
+MQTT ermöglicht:
+• Status-Updates an Home Assistant
+• Fortschrittsanzeige in Echtzeit
+• Push-Benachrichtigungen bei Abschluss
+• Integration in Automatisierungen
+
+Voraussetzungen:
+• Home Assistant mit MQTT Broker (Mosquitto)
+• Netzwerkverbindung zum MQTT Broker
+
+Hinweis: Kann später in /opt/disk2iso/disk2iso-lib/config.sh aktiviert werden."
+
+        if whiptail --title "disk2iso Installation - Seite 7/9" \
+            --yesno "$info" 20 70 \
+            --yes-button "Aktivieren" \
+            --no-button "Überspringen" \
+            --defaultno; then
+            INSTALL_MQTT=true
+            
+            # Broker IP-Adresse abfragen
+            MQTT_BROKER=$(whiptail --title "MQTT Konfiguration" \
+                --inputbox "Geben Sie die IP-Adresse des MQTT Brokers ein:\n(z.B. 192.168.20.10)" \
+                12 70 "" 3>&1 1>&2 2>&3)
+            
+            if [ -z "$MQTT_BROKER" ]; then
+                whiptail --title "Fehler" --msgbox "Keine Broker-Adresse angegeben. MQTT wird deaktiviert." 8 60
+                INSTALL_MQTT=false
+                return 0
+            fi
+            
+            # Optional: Authentifizierung
+            if whiptail --title "MQTT Authentifizierung" \
+                --yesno "Benötigt der MQTT Broker Authentifizierung?" \
+                10 60 \
+                --defaultno; then
+                
+                MQTT_USER=$(whiptail --title "MQTT Benutzer" \
+                    --inputbox "Benutzername:" \
+                    10 60 "disk2iso" 3>&1 1>&2 2>&3)
+                
+                MQTT_PASSWORD=$(whiptail --title "MQTT Passwort" \
+                    --passwordbox "Passwort:" \
+                    10 60 3>&1 1>&2 2>&3)
+            fi
+            
+            # mosquitto-clients installieren
+            {
+                echo "50"
+                echo "XXX"
+                echo "Installiere mosquitto-clients..."
+                echo "XXX"
+                apt-get install -y -qq mosquitto-clients >/dev/null 2>&1 || true
+                
+                echo "100"
+                echo "XXX"
+                echo "MQTT-Integration konfiguriert"
+                echo "XXX"
+                sleep 0.5
+            } | whiptail --title "MQTT Installation" \
+                --gauge "Installiere MQTT-Unterstützung..." 8 70 0
+            
+        else
+            INSTALL_MQTT=false
+        fi
+    else
+        # Text-basierter Dialog
+        print_header "MQTT-INTEGRATION"
+        echo "MQTT ermöglicht Status-Updates an Home Assistant:"
+        echo "  • Fortschrittsanzeige in Echtzeit"
+        echo "  • Push-Benachrichtigungen"
+        echo "  • Integration in Automatisierungen"
+        echo ""
+        
+        if ask_yes_no "MQTT-Integration aktivieren?" "n"; then
+            INSTALL_MQTT=true
+            
+            read -p "MQTT Broker IP-Adresse (z.B. 192.168.20.10): " MQTT_BROKER
+            
+            if [ -z "$MQTT_BROKER" ]; then
+                print_warning "Keine Broker-Adresse angegeben. MQTT wird deaktiviert."
+                INSTALL_MQTT=false
+                return 0
+            fi
+            
+            if ask_yes_no "Benötigt der Broker Authentifizierung?" "n"; then
+                read -p "Benutzername: " MQTT_USER
+                read -sp "Passwort: " MQTT_PASSWORD
+                echo ""
+            fi
+            
+            print_info "Installiere mosquitto-clients..."
+            apt-get install -y -qq mosquitto-clients >/dev/null 2>&1 || true
+            print_success "MQTT-Integration konfiguriert"
+        else
+            INSTALL_MQTT=false
+        fi
+    fi
+}
+
 # Seite 8: Service-Installation
 wizard_page_service_setup() {
     if use_whiptail; then
