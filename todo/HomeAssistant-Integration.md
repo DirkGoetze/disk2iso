@@ -35,12 +35,14 @@ Lovelace Dashboard
 #### disk2iso-Seite
 
 **Neue Datei: `disk2iso-lib/lib-mqtt.sh`**
+
 - Funktionen zum Senden von MQTT-Nachrichten
 - Status-Updates: idle, copying, waiting, completed, error
 - Fortschritts-Updates: Prozent, MB kopiert, ETA
 - Medium-Informationen: Label, Typ, Größe
 
 **Konfiguration in `disk2iso-lib/config.sh`**
+
 ```bash
 # MQTT Settings
 MQTT_ENABLED=false
@@ -53,12 +55,14 @@ MQTT_CLIENT_ID="disk2iso-${HOSTNAME}"
 ```
 
 **Abhängigkeiten**
+
 - `mosquitto-clients` (mosquitto_pub)
 - Optional: `paho-mqtt` (Python) für erweiterte Features
 
 #### Home Assistant-Seite
 
 **MQTT Sensor Konfiguration**
+
 ```yaml
 # configuration.yaml
 mqtt:
@@ -75,6 +79,7 @@ mqtt:
 ```
 
 **Automatisierungen**
+
 ```yaml
 automation:
   - alias: "Disk2ISO - Medium Ready"
@@ -101,6 +106,7 @@ automation:
 ### 1.3 MQTT-Payload-Struktur
 
 #### State Topic (`/state`)
+
 ```json
 {
   "status": "copying",           // idle|copying|waiting|completed|error
@@ -109,6 +115,7 @@ automation:
 ```
 
 #### Attributes Topic (`/attributes`)
+
 ```json
 {
   "disc_label": "Supernatural_S02D01",
@@ -126,13 +133,15 @@ automation:
 ```
 
 #### Progress Topic (`/progress`) - Nur Prozent
-```
+
+```txt
 45
 ```
 
 ### 1.4 Implementierung in lib-mqtt.sh
 
 **Funktionen:**
+
 ```bash
 # MQTT initialisieren (Verfügbarkeit prüfen)
 mqtt_init()
@@ -170,6 +179,7 @@ mqtt_publish_availability(online|offline)
 ### 2.1 Custom Card: `disk2iso-card`
 
 **Features:**
+
 - Aktueller Status (Icon + Text)
 - Fortschrittsbalken mit Prozent
 - Medium-Informationen (Label, Typ, Größe)
@@ -178,7 +188,8 @@ mqtt_publish_availability(online|offline)
 - Fehleranzeige
 
 **UI-Konzept:**
-```
+
+```txt
 ┌─────────────────────────────────────┐
 │ 💿 Disk2ISO                         │
 ├─────────────────────────────────────┤
@@ -199,6 +210,7 @@ mqtt_publish_availability(online|offline)
 ### 2.2 Implementierung
 
 **Option 1: Standard Lovelace (kein Custom Card)**
+
 ```yaml
 # Einfach mit Standard-Karten
 type: vertical-stack
@@ -228,11 +240,13 @@ cards:
 ```
 
 **Option 2: Custom Lovelace Card (YAML)**
+
 - Entwicklung eigener Card mit `card-tools`
 - Komplexere Logik und besseres Design
 - Aufwand: ~200-300 Zeilen JavaScript/YAML
 
 **Option 3: Custom Component (Python)**
+
 - Vollständige Integration als HA-Component
 - Mehr Features (Services, Events)
 - Aufwand: ~500-1000 Zeilen Python + Setup
@@ -240,11 +254,13 @@ cards:
 ### 2.3 Empfehlung
 
 **Start: Option 1** (Standard Lovelace)
+
 - Schnell umsetzbar
 - Keine zusätzlichen Komponenten
 - Ausreichend für MVP
 
 **Zukunft: Option 2** (Custom Card)
+
 - Besseres UX
 - Spezifische Features (Button für eject-retry etc.)
 - Moderate Komplexität
@@ -314,6 +330,7 @@ cards:
 ### 4.1 MQTT-Broker Setup
 
 **Mosquitto auf gleichem Host wie disk2iso:**
+
 ```bash
 # Installation
 apt-get install mosquitto mosquitto-clients
@@ -328,6 +345,7 @@ systemctl start mosquitto
 ```
 
 **Authentifizierung (empfohlen):**
+
 ```bash
 # Benutzer erstellen
 mosquitto_passwd -c /etc/mosquitto/passwd disk2iso
@@ -365,15 +383,18 @@ Vorteil: Keine manuelle Sensor-Konfiguration in Home Assistant nötig.
 ### 4.3 Performance-Überlegungen
 
 **Publish-Frequenz:**
+
 - State-Updates: Bei Zustandsänderung (idle→copying, copying→waiting, etc.)
 - Progress-Updates: Alle 30-60 Sekunden während Kopiervorgang
 - Attributes: Zusammen mit State (um Sync-Probleme zu vermeiden)
 
 **MQTT QoS:**
+
 - State/Progress: QoS 0 (Fire-and-forget, ausreichend)
 - Availability: QoS 1 (At-least-once, wichtig für offline-Erkennung)
 
 **Retained Messages:**
+
 - State: `retained=true` (letzter Status bleibt nach Neustart)
 - Availability: `retained=true` (HA erkennt offline sofort)
 - Progress: `retained=false` (nur während aktiver Kopie relevant)
@@ -385,6 +406,7 @@ Vorteil: Keine manuelle Sensor-Konfiguration in Home Assistant nötig.
 ### 5.1 MQTT Test ohne Home Assistant
 
 **Manuelles Publizieren:**
+
 ```bash
 mosquitto_pub -h 192.168.20.10 -p 1883 \
   -t "homeassistant/sensor/disk2iso/state" \
@@ -392,6 +414,7 @@ mosquitto_pub -h 192.168.20.10 -p 1883 \
 ```
 
 **Manuelles Subscriben:**
+
 ```bash
 mosquitto_sub -h 192.168.20.10 -p 1883 \
   -t "homeassistant/sensor/disk2iso/#" -v
@@ -400,6 +423,7 @@ mosquitto_sub -h 192.168.20.10 -p 1883 \
 ### 5.2 Logging
 
 **lib-mqtt.sh Debug-Modus:**
+
 ```bash
 # In mqtt_publish_* Funktionen
 if [[ "${MQTT_DEBUG:-0}" == "1" ]]; then
@@ -408,6 +432,7 @@ fi
 ```
 
 **Home Assistant MQTT Debug:**
+
 ```yaml
 # configuration.yaml
 logger:
@@ -432,13 +457,16 @@ Nach Implementierung:
 ## 7. Abhängigkeiten
 
 **Neue Pakete für disk2iso:**
+
 - `mosquitto-clients` (mosquitto_pub)
 
 **Home Assistant:**
+
 - MQTT Integration aktiviert
 - MQTT Broker (Mosquitto) verfügbar
 
 **Optional:**
+
 - `jq` für komplexere JSON-Payloads in Bash
 
 ---

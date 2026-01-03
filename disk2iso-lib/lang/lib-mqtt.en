@@ -1,0 +1,51 @@
+#!/bin/bash
+################################################################################
+# disk2iso - English Language File for lib-mqtt.sh
+# Filepath: disk2iso-lib/lang/lib-mqtt.en
+#
+# Description:
+#   Message texts for MQTT functions
+#
+################################################################################
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
+
+readonly MSG_MQTT_NOT_AVAILABLE="MQTT support not available (mosquitto_pub missing)"
+readonly MSG_INSTALL_MQTT_TOOLS="Installation: apt-get install mosquitto-clients"
+readonly MSG_MQTT_AVAILABLE="MQTT support available"
+
+# ============================================================================
+# INITIALIZATION
+# ============================================================================
+
+readonly MSG_MQTT_DISABLED="MQTT is disabled (MQTT_ENABLED=false)"
+readonly MSG_MQTT_ERROR_NO_BROKER="ERROR: MQTT_BROKER not configured"
+readonly MSG_MQTT_INITIALIZED="MQTT initialized:"
+readonly MSG_MQTT_ONLINE="MQTT: Status → online"
+readonly MSG_MQTT_OFFLINE="MQTT: Status → offline"
+
+# ============================================================================
+# PUBLISH
+# ============================================================================
+
+readonly MSG_MQTT_PUBLISH_FAILED="MQTT publish failed for topic"
+
+# ============================================================================
+# STATE UPDATES
+# ============================================================================
+
+readonly MSG_MQTT_STATE_IDLE="MQTT: Status → idle (ready)"
+readonly MSG_MQTT_STATE_COPYING="MQTT: Status → copying"
+readonly MSG_MQTT_STATE_WAITING="MQTT: Status → waiting (remove disc)"
+readonly MSG_MQTT_STATE_COMPLETED="MQTT: Status → completed"
+readonly MSG_MQTT_STATE_ERROR="MQTT: Status → error"
+
+# ============================================================================
+# PROGRESS
+# ============================================================================
+
+readonly MSG_MQTT_PROGRESS="MQTT: Progress →"
+readonly MSG_MQTT_COMPLETED="MQTT: Completed →"
+readonly MSG_MQTT_ERROR="MQTT: Error →"

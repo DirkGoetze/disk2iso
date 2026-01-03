@@ -33,6 +33,27 @@ DEFAULT_OUTPUT_DIR="/srv/iso"
 PROXMOX_HOST=""
 
 # ============================================================================
+# MQTT KONFIGURATION (Home Assistant Integration)
+# ============================================================================
+
+# MQTT aktivieren/deaktivieren
+MQTT_ENABLED=false
+
+# MQTT Broker-Einstellungen
+MQTT_BROKER=""              # z.B. "192.168.20.10" oder "homeassistant.local"
+MQTT_PORT=1883              # Standard MQTT Port
+MQTT_USER=""                # Optional: MQTT Username
+MQTT_PASSWORD=""            # Optional: MQTT Password
+
+# MQTT Topic-Konfiguration
+MQTT_TOPIC_PREFIX="homeassistant/sensor/disk2iso"
+MQTT_CLIENT_ID="disk2iso-${HOSTNAME}"
+
+# MQTT Publish-Einstellungen
+MQTT_QOS=0                  # Quality of Service (0, 1, 2)
+MQTT_RETAIN=true            # Retain-Flag (true/false)
+
+# ============================================================================
 # GLOBALE VARIABLEN
 # ============================================================================
 
