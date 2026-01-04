@@ -259,6 +259,10 @@ wait_for_medium_change_lxc_safe() {
     local poll_interval=5
     local elapsed=0
     
+    # Sichere ursprüngliche Werte der globalen Variablen
+    local original_disc_type="$disc_type"
+    local original_disc_label="$disc_label"
+    
     log_message "$MSG_CONTAINER_MANUAL_EJECT"
     log_message "$MSG_WAITING_FOR_MEDIUM_CHANGE"
     
@@ -276,15 +280,21 @@ wait_for_medium_change_lxc_safe() {
         fi
         
         # Disk erkannt → Ermittle Typ und Label
-        # WICHTIG: Temporäre Variablen verwenden, um globale nicht zu überschreiben
-        local temp_disc_type="$disc_type"
-        local temp_disc_label="$disc_label"
-        
         detect_disc_type
         get_disc_label
         
         # Prüfe ob ISO mit diesem Label bereits existiert
         local target_dir=$(get_type_subfolder "$disc_type")
+        
+        # Prüfe ob target_dir erfolgreich ermittelt wurde
+        if [[ -z "$target_dir" ]]; then
+            log_message "⚠ Fehler beim Ermitteln des Zielverzeichnisses für Typ: $disc_type"
+            # Stelle ursprüngliche Werte wieder her und fahre fort
+            disc_type="$original_disc_type"
+            disc_label="$original_disc_label"
+            continue
+        fi
+        
         local potential_iso="${target_dir}/${disc_label}.iso"
         
         # Prüfe Basis-Datei und erste Duplikate
@@ -299,20 +309,23 @@ wait_for_medium_change_lxc_safe() {
             log_message "$MSG_DISC_ALREADY_CONVERTED ${disc_label}.iso $MSG_WAITING_FOR_NEW_DISC"
             
             # Stelle ursprüngliche Werte wieder her
-            disc_type="$temp_disc_type"
-            disc_label="$temp_disc_label"
+            disc_type="$original_disc_type"
+            disc_label="$original_disc_label"
             
             if (( elapsed % 30 == 0 )); then
                 log_message "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
             fi
         else
             # Neue Disk gefunden! (ISO existiert noch nicht)
+            # Globale Variablen bleiben auf neue Werte gesetzt (disc_type und disc_label)
             log_message "$MSG_NEW_MEDIUM_DETECTED (${disc_type}: ${disc_label})"
             return 0
         fi
     done
     
-    # Timeout erreicht
+    # Timeout erreicht - stelle ursprüngliche Werte wieder her
+    disc_type="$original_disc_type"
+    disc_label="$original_disc_label"
     log_message "$MSG_TIMEOUT_WAITING_FOR_MEDIUM"
     return 1
 }
