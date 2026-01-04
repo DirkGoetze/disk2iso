@@ -331,7 +331,12 @@ cleanup_disc_operation() {
         
         # In Container-Umgebungen: Warte auf manuellen Medium-Wechsel
         if [[ "$status" == "success" ]]; then
-            wait_for_medium_change "$CD_DEVICE" 300  # 5 Minuten Timeout
+            # Nutze LXC-sichere Methode wenn in Container
+            if $IS_CONTAINER; then
+                wait_for_medium_change_lxc_safe "$CD_DEVICE" 300  # 5 Minuten Timeout
+            else
+                wait_for_medium_change "$CD_DEVICE" 300  # 5 Minuten Timeout
+            fi
         fi
     fi
     
