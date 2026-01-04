@@ -287,16 +287,17 @@ wait_for_medium_change_lxc_safe() {
         local target_dir=$(get_type_subfolder "$disc_type")
         local potential_iso="${target_dir}/${disc_label}.iso"
         
-        # Auch Duplikate mit _1, _2, etc. prüfen
+        # Prüfe Basis-Datei und Duplikate mit _1, _2, etc.
         local iso_exists=false
         if [[ -f "$potential_iso" ]]; then
             iso_exists=true
         else
             # Prüfe auf Duplikate mit Counter (_1, _2, ...)
+            # Breche ab sobald die erste Lücke gefunden wird
             local counter=1
             while [[ -f "${target_dir}/${disc_label}_${counter}.iso" ]]; do
                 iso_exists=true
-                break
+                counter=$((counter + 1))
             done
         fi
         
