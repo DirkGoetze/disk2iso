@@ -287,23 +287,16 @@ wait_for_medium_change_lxc_safe() {
         local target_dir=$(get_type_subfolder "$disc_type")
         local potential_iso="${target_dir}/${disc_label}.iso"
         
-        # Prüfe Basis-Datei und Duplikate mit _1, _2, etc.
+        # Prüfe Basis-Datei und erste Duplikate
+        # Wenn eine Disk bereits konvertiert wurde, existiert mindestens eine dieser Dateien
         local iso_exists=false
-        if [[ -f "$potential_iso" ]]; then
+        if [[ -f "$potential_iso" ]] || [[ -f "${target_dir}/${disc_label}_1.iso" ]]; then
             iso_exists=true
-        else
-            # Prüfe auf Duplikate mit Counter (_1, _2, ...)
-            # Breche ab sobald die erste Lücke gefunden wird
-            local counter=1
-            while [[ -f "${target_dir}/${disc_label}_${counter}.iso" ]]; do
-                iso_exists=true
-                counter=$((counter + 1))
-            done
         fi
         
         if $iso_exists; then
             # Disk wurde bereits konvertiert → weiter warten
-            log_message "$MSG_DISC_ALREADY_CONVERTED ${disc_label}.iso (warte auf neue Disk...)"
+            log_message "$MSG_DISC_ALREADY_CONVERTED ${disc_label}.iso $MSG_WAITING_FOR_NEW_DISC"
             
             # Stelle ursprüngliche Werte wieder her
             disc_type="$temp_disc_type"
