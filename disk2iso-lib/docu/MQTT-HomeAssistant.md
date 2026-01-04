@@ -366,112 +366,274 @@ mosquitto_pub -h 192.168.20.10 \
 
 ## Troubleshooting / Problemlösung
 
-### Problem: Sensoren erscheinen nicht in Home Assistant
+**💡 Systematischer Diagnosepfad:** Arbeite diese Schritte der Reihe nach durch, um Probleme schnell zu identifizieren.
 
-**Checkliste:**
+---
 
-1. ✅ **MQTT Broker läuft?**
-   - **Einstellungen** → **Add-ons** → **Mosquitto broker** → Status sollte "Gestartet" sein
-   
-2. ✅ **MQTT Integration hinzugefügt?**
-   - **Einstellungen** → **Geräte & Dienste** → Suche nach "MQTT"
-   - Sollte als **"konfiguriert"** erscheinen
-   
-3. ✅ **YAML korrekt eingefügt?**
-   - Öffne **Entwicklerwerkzeuge** → **YAML** → **YAML-Konfiguration prüfen**
-   - Bei Fehlern: Prüfe Einrückung (2 Leerzeichen, keine Tabs!)
-   - YAML ist sehr streng bei Formatierung
-   
-4. ✅ **YAML neu geladen?**
-   - **Entwicklerwerkzeuge** → **YAML** → **Alle YAML-Konfigurationen neu laden**
-   - Oder: **Einstellungen** → **System** → **Home Assistant neu starten**
+### Schritt 1: Grundlegende Konnektivität prüfen
 
-5. ✅ **Sensoren sichtbar?**
-   - **Einstellungen** → **Geräte & Dienste** → **Entitäten**
-   - Suche: `disk2iso`
-   - Falls nicht da: Warte 30 Sekunden und aktualisiere Seite (F5)
+**Ziel:** Sicherstellen, dass die MQTT-Infrastruktur funktioniert
 
-### Problem: MQTT-Nachrichten werden nicht gesendet (von disk2iso)
+**In Home Assistant:**
 
-**Auf dem Server mit disk2iso:**
+1. **MQTT Broker läuft?**
+   - **Einstellungen** → **Add-ons** → **Mosquitto broker**
+   - Status sollte **"Gestartet"** sein (grüner Punkt)
+   - Falls nicht: Klicke **"Start"**
+
+2. **MQTT Integration aktiv?**
+   - **Einstellungen** → **Geräte & Dienste**
+   - Suche nach **"MQTT"** → sollte **"Konfiguriert"** sein
+   - Falls nicht: **Integration hinzufügen** → **"MQTT"** → Standardeinstellungen übernehmen
+
+3. **Live MQTT-Traffic überwachen:**
+   - **Entwicklerwerkzeuge** → Tab **"YAML"**
+   - Unter Sektion **"MQTT"**: **"Auf ein Topic lauschen"**
+   - Gib ein: `homeassistant/sensor/disk2iso/#`
+   - Klicke **"Starten zu lauschen"**
+   - ✅ Du solltest `availability: online` sehen (wenn disk2iso Service läuft)
+
+**Auf dem disk2iso Server:**
 
 ```bash
-# 1. Ist mosquitto_pub installiert?
-which mosquitto_pub
-# Sollte zeigen: /usr/bin/mosquitto_pub
+# Broker-Verbindung testen
+mosquitto_pub -h 192.168.20.13 -u disk2iso -P "dein-passwort" -t "test" -m "hello"
 
-# Falls nicht:
-sudo apt install mosquitto-clients
-
-# 2. Ist MQTT in disk2iso aktiviert?
-grep MQTT_ENABLED /usr/local/bin/disk2iso-lib/config.sh
-# Sollte zeigen: MQTT_ENABLED=true
-
-# 3. Kann disk2iso den Broker erreichen?
-mosquitto_pub -h 192.168.20.10 -t "test" -m "hello"
-# Kein Fehler = Verbindung OK
-
-# 4. Prüfe Log-Dateien
-tail -f /srv/iso/.log/*.log | grep -i mqtt
-# Hier siehst du MQTT-Aktivität während dem Kopieren
+# ✅ Kein Fehler = Verbindung OK
+# ❌ "Connection Refused" = Authentifizierung fehlgeschlagen → Gehe zu Schritt 2
+# ❌ "Connection timeout" = Netzwerkproblem / falsche IP → Prüfe MQTT_BROKER in config.sh
 ```
 
-### Problem: Keine Push-Benachrichtigungen auf dem Handy
+---
 
-1. ✅ **Home Assistant Companion App installiert?**
-   - Installiere aus [App Store](https://apps.apple.com/app/home-assistant/id1099568401) (iOS)
-   - Oder [Play Store](https://play.google.com/store/apps/details?id=io.homeassistant.companion.android) (Android)
-   
-2. ✅ **App mit Home Assistant verbunden?**
-   - Öffne App → Einstellungen → sollte deine HA-Instanz zeigen
-   - Benachrichtigungen erlauben (iOS/Android Systemeinstellungen!)
+### Schritt 2: disk2iso MQTT-Konfiguration prüfen
 
-3. ✅ **Richtiger Service-Name in Automatisierungen?**
-   - **Entwicklerwerkzeuge** → **Dienste** → Suche "notify"
-   - Siehst du `notify.mobile_app_[dein_gerät]`?
-   - Ersetze in `automations.yaml`: `notify.mobile_app_smartphone` → dein echter Name
-   
-4. ✅ **Test-Benachrichtigung senden:**
-   - **Entwicklerwerkzeuge** → **Dienste**
-   - Dienst: `notify.mobile_app_[dein_gerät]`
-   - Dienst-Daten:
-     ```yaml
-     title: Test
-     message: Funktioniert!
-     ```
-   - Klicke **"Dienst aufrufen"**
-   - Bekommst du eine Push-Nachricht? → App funktioniert
-   - Keine Nachricht? → Prüfe App-Benachrichtigungseinstellungen
+**Ziel:** Sicherstellen, dass disk2iso korrekt konfiguriert ist
 
-### Problem: Fortschritt zeigt immer 0% oder aktualisiert nicht
+```bash
+# 1. Ist MQTT aktiviert?
+grep MQTT_ENABLED /opt/disk2iso/disk2iso-lib/config.sh
+# ✅ Sollte zeigen: MQTT_ENABLED=true
+# ❌ Falls false: Setze auf true und starte Service neu
 
-**Mögliche Ursachen:**
+# 2. Broker-Adresse korrekt?
+grep MQTT_BROKER /opt/disk2iso/disk2iso-lib/config.sh
+# ✅ Sollte zeigen: MQTT_BROKER="192.168.20.13" (deine HA IP)
 
-- Rate-Limiting greift (nur alle 10 Sekunden oder bei 1% Änderung)
-- Warte bis Kopierprozess mindestens 1% erreicht hat
-- Prüfe ob `sensor.disk2iso_progress` überhaupt Werte empfängt:
-  - **Entwicklerwerkzeuge** → **Zustände** → `sensor.disk2iso_progress`
-  - Unter **"Historie"** sollten Änderungen sichtbar sein
+# 3. Credentials gesetzt?
+grep MQTT_USER /opt/disk2iso/disk2iso-lib/config.sh
+grep MQTT_PASSWORD /opt/disk2iso/disk2iso-lib/config.sh
+# ✅ Sollten Werte enthalten wenn Broker Authentifizierung benötigt
+# ⚠️ Müssen mit Mosquitto Broker Logins übereinstimmen!
 
-### Problem: Status bleibt auf "unknown" oder "unavailable"
+# 4. mosquitto_pub installiert?
+which mosquitto_pub
+# ✅ Sollte zeigen: /usr/bin/mosquitto_pub
+# ❌ Falls nicht:
+sudo apt install mosquitto-clients
+```
 
-**Bedeutung:**
-- `unknown`: Home Assistant hat noch nie Daten empfangen
-- `unavailable`: Verfügbarkeits-Topic sagt "offline"
+**Häufigstes Problem: Authentifizierung**
+
+Symptom im Mosquitto Broker Log:
+```
+error: received null username or password for unpwd check
+Client disk2iso-prxFileSrv disconnected, not authorised.
+```
+
+**Lösung:**
+1. In Home Assistant: **Add-ons** → **Mosquitto broker** → **Konfiguration**
+2. Füge unter "Logins" hinzu:
+   ```yaml
+   logins:
+     - username: disk2iso
+       password: disk2iso123
+   ```
+3. **Speichern** und Mosquitto **neu starten**
+4. Auf dem Server: Aktualisiere `/opt/disk2iso/disk2iso-lib/config.sh`:
+   ```bash
+   MQTT_USER="disk2iso"
+   MQTT_PASSWORD="disk2iso123"
+   ```
+5. Service neu starten: `systemctl restart disk2iso`
+
+---
+
+### Schritt 3: Service-Status und Logs prüfen
+
+**Ziel:** Sicherstellen, dass disk2iso Service MQTT-Nachrichten sendet
+
+```bash
+# 1. Service läuft?
+systemctl status disk2iso
+# ✅ Active: active (running) since ...
+# ❌ Falls inactive: systemctl start disk2iso
+
+# 2. MQTT-Modul geladen?
+journalctl -u disk2iso -n 50 | grep -i mqtt
+# ✅ Du solltest sehen:
+#    "MQTT Support verfügbar"
+#    "MQTT: Status → online"
+#    "MQTT Support aktiviert"
+
+# ❌ Falls "Kommando nicht gefunden" in lib-mqtt.de:
+#    → Windows-Zeilenumbrüche Problem (siehe Schritt 4)
+
+# 3. Live-Monitoring während Disc-Kopie
+journalctl -u disk2iso -f | grep -E "MQTT|Fortschritt|copying"
+# ✅ Alle 60 Sekunden solltest du sehen:
+#    "Fortschritt:: XX MB / YY MB (ZZ%)"
+#    "MQTT: Fortschritt → ZZ% (XX/YY MB)"
+```
+
+---
+
+### Schritt 4: Sprachdateien-Problem (Windows-Zeilenumbrüche)
+
+**Symptom:**
+```
+/opt/disk2iso/disk2iso-lib/lang/lib-mqtt.de: Zeile 10: $'\r': Kommando nicht gefunden.
+```
+
+**Ursache:** Datei hat Windows-Zeilenumbrüche (CRLF) statt Unix (LF)
 
 **Lösung:**
 ```bash
-# Auf dem disk2iso Server: Starte Service neu
-sudo systemctl restart disk2iso
+# Konvertiere alle MQTT-Sprachdateien
+sed -i 's/\r$//' /opt/disk2iso/disk2iso-lib/lang/lib-mqtt.de
+sed -i 's/\r$//' /opt/disk2iso/disk2iso-lib/lang/lib-mqtt.en
 
-# Oder starte manuell (falls kein Service)
-cd /usr/local/bin
-sudo ./disk2iso.sh
+# Service neu starten
+systemctl restart disk2iso
 
-# Prüfe ob "online" gesendet wird:
-mosquitto_sub -h 192.168.20.10 -t "homeassistant/sensor/disk2iso/availability"
-# Sollte zeigen: online
+# Prüfe Log - Fehler sollten weg sein
+journalctl -u disk2iso -n 20 | grep mqtt
 ```
+
+---
+
+### Schritt 5: Home Assistant Sensoren prüfen
+
+**Ziel:** Sicherstellen, dass HA die Sensoren korrekt angelegt hat
+
+1. **Sensoren vorhanden?**
+   - **Einstellungen** → **Geräte & Dienste** → **Entitäten**
+   - Suche: `disk2iso`
+   - ✅ Du solltest sehen:
+     - `sensor.disk2iso_status`
+     - `sensor.disk2iso_fortschritt` (oder `disk2iso_progress`)
+     - `binary_sensor.disk2iso_active`
+
+2. **Falls Sensoren fehlen:**
+   - **Entwicklerwerkzeuge** → **YAML** → **YAML-Konfiguration prüfen**
+   - ❌ Bei Fehler: Prüfe `configuration.yaml` Einrückung (2 Leerzeichen, **keine Tabs!**)
+   - Nach Korrektur: **Alle YAML-Konfigurationen neu laden**
+   - Warte 30 Sekunden → Aktualisiere Seite (F5)
+
+3. **Sensor-Status prüfen:**
+   - **Entwicklerwerkzeuge** → **Zustände**
+   - Klicke auf `sensor.disk2iso_status`
+   - ✅ Status sollte sein: `idle`, `copying`, `completed`, `waiting` oder `error`
+   - ❌ `unknown`: HA hat noch nie Daten empfangen → Zurück zu Schritt 1
+   - ❌ `unavailable`: Service ist offline oder sendet nicht → Zurück zu Schritt 3
+
+---
+
+### Schritt 6: Fortschritts-Updates prüfen
+
+**Symptom:** Status funktioniert, aber Fortschritt bleibt bei 0%
+
+**Diagnose:**
+
+```bash
+# 1. Wird mqtt_publish_progress() aufgerufen?
+journalctl -u disk2iso -f | grep -i "mqtt.*fortschritt"
+
+# ✅ Alle 60 Sekunden sollte erscheinen:
+#    "MQTT: Fortschritt → XX% (YYY/ZZZ MB, ETA: HH:MM:SS)"
+
+# ❌ Falls nichts erscheint:
+#    Die Copy-Funktion ruft mqtt_publish_progress() nicht auf
+#    → lib-dvd.sh, lib-common.sh, lib-bluray.sh müssen aktualisiert werden
+```
+
+**In Home Assistant:**
+- **Entwicklerwerkzeuge** → **YAML** → **"MQTT"** → **"Auf ein Topic lauschen"**
+- Topic: `homeassistant/sensor/disk2iso/progress`
+- ✅ Du solltest alle 60 Sekunden Updates sehen: `15`, `16`, `17`, ...
+- Rate-Limiting: Updates nur bei Änderung ≥1% oder alle 10 Sekunden
+
+---
+
+### Schritt 7: Push-Benachrichtigungen testen
+
+**Ziel:** Automatisierungen lösen korrekt aus
+
+1. **Home Assistant Companion App installiert?**
+   - iOS: [App Store](https://apps.apple.com/app/home-assistant/id1099568401)
+   - Android: [Play Store](https://play.google.com/store/apps/details?id=io.homeassistant.companion.android)
+   - App öffnen → Mit HA verbinden → **Benachrichtigungen erlauben!**
+
+2. **Service-Namen finden:**
+   - **Entwicklerwerkzeuge** → **Dienste**
+   - Suche: `notify`
+   - ✅ Du siehst z.B.: `notify.mobile_app_iphone`, `notify.mobile_app_pixel_7`
+   - ⚠️ **Notiere dir diesen Namen!**
+
+3. **Test-Benachrichtigung senden:**
+   - **Entwicklerwerkzeuge** → **Dienste**
+   - Dienst: `notify.mobile_app_[dein_gerät]`
+   - Dienst-Daten (YAML):
+     ```yaml
+     title: "🧪 Test"
+     message: "Benachrichtigungen funktionieren!"
+     ```
+   - Klicke **"Dienst aufrufen"**
+   - ✅ Push-Nachricht auf Handy erhalten? → Alles OK!
+   - ❌ Keine Nachricht? → Prüfe Handy-Einstellungen (Benachrichtigungen für HA-App erlaubt?)
+
+4. **Automatisierungen aktualisieren:**
+   - Ersetze in `automations.yaml` **alle** `notify.mobile_app_smartphone` durch deinen echten Service-Namen
+   - **YAML-Konfiguration neu laden** → **Automatisierungen**
+
+---
+
+### Schritt 8: Status-Übergänge zu schnell (completed nicht sichtbar)
+
+**Symptom:** Automatisierung für "Kopie abgeschlossen" wird nicht ausgelöst
+
+**Ursache:** Übergang `copying` → `completed` → `waiting` passiert in <1 Sekunde
+
+**Lösung:** Bereits in disk2iso.sh eingebaut (seit Version 1.0.0):
+- Nach `completed` wird 3 Sekunden gewartet
+- Dann erst Wechsel zu `waiting`
+- HA hat genug Zeit den Status zu erfassen
+
+**Falls du eine ältere Version hast:**
+```bash
+# Prüfe Version
+grep "^# Version:" /opt/disk2iso/disk2iso.sh
+
+# Bei Version < 1.0.0: Update durchführen
+cd ~/disk2iso-1.0.2
+./install.sh  # Wähle gleiche Optionen wie bei Erstinstallation
+```
+
+---
+
+### Häufige Fehlerquellen - Checkliste
+
+| Problem | Symptom | Lösung |
+|---------|---------|--------|
+| ❌ **Authentifizierung** | `Connection Refused: not authorised` | Mosquitto Broker Logins anlegen + config.sh aktualisieren |
+| ❌ **Zeilenumbrüche** | `$'\r': Kommando nicht gefunden` | `sed -i 's/\r$//' lib-mqtt.de` |
+| ❌ **Kein Fortschritt** | `progress_percent: 0` bleibt | lib-dvd.sh muss `mqtt_publish_progress()` aufrufen |
+| ❌ **Falscher Service-Name** | Keine Push-Benachrichtigung | `notify.mobile_app_*` in automations.yaml korrigieren |
+| ❌ **MQTT nicht aktiviert** | Keine MQTT-Logs | `MQTT_ENABLED=true` in config.sh setzen |
+| ❌ **Speicherplatz voll** | `No space left on device` | `/srv/iso/.temp/` aufräumen oder `DEFAULT_OUTPUT_DIR` ändern |
+| ❌ **Falsche Broker IP** | `Connection timeout` | `MQTT_BROKER` in config.sh prüfen |
+
+---
 
 ### Erweiterte Diagnose (für Experten)
 
