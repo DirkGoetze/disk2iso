@@ -260,8 +260,8 @@ wait_for_medium_change_lxc_safe() {
     local elapsed=0
     
     # Sichere ursprüngliche Werte der globalen Variablen
-    local original_disc_type="$disc_type"
-    local original_disc_label="$disc_label"
+    local original_disc_type="${disc_type:-}"
+    local original_disc_label="${disc_label:-}"
     
     log_message "$MSG_CONTAINER_MANUAL_EJECT"
     log_message "$MSG_WAITING_FOR_MEDIUM_CHANGE"
@@ -288,20 +288,28 @@ wait_for_medium_change_lxc_safe() {
         
         # Prüfe ob target_dir erfolgreich ermittelt wurde
         if [[ -z "$target_dir" ]]; then
-            log_message "⚠ Fehler beim Ermitteln des Zielverzeichnisses für Typ: $disc_type"
+            log_message "$MSG_ERROR_TARGET_DIR $disc_type"
             # Stelle ursprüngliche Werte wieder her und fahre fort
             disc_type="$original_disc_type"
             disc_label="$original_disc_label"
             continue
         fi
         
+        # Prüfe ob eine Datei mit diesem Label bereits existiert
+        # Nutze gleiche Logik wie get_iso_filename() - prüfe bis erste Lücke gefunden wird
+        local iso_exists=false
         local potential_iso="${target_dir}/${disc_label}.iso"
         
-        # Prüfe Basis-Datei und erste Duplikate
-        # Wenn eine Disk bereits konvertiert wurde, existiert mindestens eine dieser Dateien
-        local iso_exists=false
-        if [[ -f "$potential_iso" ]] || [[ -f "${target_dir}/${disc_label}_1.iso" ]]; then
+        if [[ -f "$potential_iso" ]]; then
             iso_exists=true
+        else
+            # Prüfe auch auf nummerierte Duplikate (_1, _2, _3, ...)
+            # Wenn Lücken existieren (z.B. _1 fehlt aber _2 existiert), brechen wir ab
+            local counter=1
+            while [[ -f "${target_dir}/${disc_label}_${counter}.iso" ]]; do
+                iso_exists=true
+                counter=$((counter + 1))
+            done
         fi
         
         if $iso_exists; then
