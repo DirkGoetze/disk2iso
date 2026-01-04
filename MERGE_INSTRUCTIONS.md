@@ -1,64 +1,56 @@
-# Branch Merge Instructions
+# Branch Merge Completion
 
-## Current Situation
+## Overview
 
-The repository currently has 2 branches:
-1. `master` - The main branch (at commit f13a681)
-2. `copilot/fix-disk-change-detection` - Feature branch with completed PR #1 (closed)
+This document explains the branch consolidation that has been completed for the disk2iso repository.
 
-## Completed Pull Request
+## Previous Situation
 
-PR #1 "Fix: LXC container medium change detection with label-based duplicate checking" has been completed and closed. This PR contains important fixes for disk change detection in LXC containers.
+The repository had 2 feature branches:
+1. `copilot/fix-disk-change-detection` - Feature branch with completed PR #1 (closed)
+2. `copilot/merge-branches-into-master` - This PR branch for merging
 
-## Merge Process
+## What Was Done
 
-The changes from `copilot/fix-disk-change-detection` branch need to be merged into `master` to consolidate back to a single branch.
+### Changes Merged
+The changes from the completed PR #1 (`copilot/fix-disk-change-detection`) have been merged into this PR branch (`copilot/merge-branches-into-master`). This ensures that when this PR is merged to master, all work from both branches will be consolidated.
 
-### Files Changed in the Feature Branch
-
-The following files were modified in the feature branch:
+### Files Modified
+The following files were updated with changes from PR #1:
 - `disk2iso-lib/lang/lib-systeminfo.de` - Added German language strings
-- `disk2iso-lib/lang/lib-systeminfo.en` - Added English language strings
+- `disk2iso-lib/lang/lib-systeminfo.en` - Added English language strings  
 - `disk2iso-lib/lib-common.sh` - Integration of LXC-safe medium change detection
 - `disk2iso-lib/lib-systeminfo.sh` - New `wait_for_medium_change_lxc_safe()` function
 
-### How to Complete the Merge
+## Next Steps for Repository Owner
 
-Since direct push to master is restricted, the repository owner should:
+To complete the branch consolidation:
 
-1. **Option A: Merge via GitHub UI**
-   - Go to the closed PR #1: https://github.com/DirkGoetze/disk2iso/pull/1
-   - If it was closed without merging, reopen it and merge it
-   - Or create a new PR from `copilot/fix-disk-change-detection` to `master`
-   - Merge the PR using GitHub's merge button
+1. **Merge this PR (#2) into master**
+   - Review and approve this PR
+   - Merge using GitHub's merge button
+   - This will bring all changes from both feature branches into master
 
-2. **Option B: Local Merge and Force Push**
+2. **Clean Up Feature Branches**
+   After merging this PR, delete the feature branches:
    ```bash
-   git checkout master
-   git merge copilot/fix-disk-change-detection
-   git push origin master
-   ```
-
-3. **Clean Up After Merge**
-   ```bash
-   # Delete the feature branch locally and remotely
-   git branch -d copilot/fix-disk-change-detection
+   # Via GitHub UI: Delete branch button on PR page
+   # Or via command line:
    git push origin --delete copilot/fix-disk-change-detection
-   
-   # Delete this PR branch as well
    git push origin --delete copilot/merge-branches-into-master
    ```
 
-## Result
+## Final Result
 
-After the merge is complete:
-- All changes from PR #1 will be in the `master` branch
-- The repository will have only one active branch: `master`
-- Feature branches can be safely deleted
+After this PR is merged and feature branches are deleted:
+- ✅ All changes from PR #1 will be in `master`
+- ✅ All changes from this PR will be in `master`
+- ✅ Repository will have only one active branch: `master`
+- ✅ No orphaned feature branches
 
-## Summary of Changes Being Merged
+## Summary of Improvements
 
-The merge brings the following improvements to master:
+The consolidation brings these improvements to master:
 - **New Function**: `wait_for_medium_change_lxc_safe()` for LXC container environments
 - **Active Detection**: Direct disk reading instead of relying on cached values
 - **Duplicate Prevention**: Checks for existing ISO files to avoid re-converting the same disk
