@@ -1992,14 +1992,17 @@ install_web_server() {
 flask>=2.0.0
 EOF
     
-    print_success "Web-Server-Komponenten erfolgreich installiert!"
-}
+    # Installiere Web-Server Service (disk2iso-web)
+    if [[ -f "$INSTALL_DIR/service/disk2iso-web.service" ]]; then
+        cp "$INSTALL_DIR/service/disk2iso-web.service" /etc/systemd/system/
+        systemctl daemon-reload
+        systemctl enable disk2iso-web.service >/dev/null 2>&1
+        systemctl start disk2iso-web.service >/dev/null 2>&1
+        
+        print_success "Web-Server Service installiert und gestartet"
+        print_info "  Zugriff: http://$(hostname -I | awk '{print $1}'):8080"
+    fi
 
-# ============================================================================
-# MAIN - WIZARD MODE
-# ============================================================================
-
-main() {
     # System-Checks
     check_root
     check_debian

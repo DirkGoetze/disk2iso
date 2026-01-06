@@ -24,6 +24,7 @@ NC='\033[0m' # No Color
 # Installationspfade
 INSTALL_DIR="/opt/disk2iso"
 SERVICE_FILE="/etc/systemd/system/disk2iso.service"
+WEB_SERVICE_FILE="/etc/systemd/system/disk2iso-web.service"
 BIN_LINK="/usr/local/bin/disk2iso"
 
 # Ausgabeverzeichnis aus Service-Datei ermitteln
@@ -106,9 +107,9 @@ check_root() {
 # Seite 1: Warnhinweis
 wizard_page_warning() {
     local service_status=""
-    if [[ -f "$SERVICE_FILE" ]]; then
+    if [[ -f "$SERVICE_FILE" ]] || [[ -f "$WEB_SERVICE_FILE" ]]; then
         service_status="
-• Systemd-Service wird gestoppt und entfernt"
+• Systemd-Service(s) wird/werden gestoppt und entfernt"
     fi
     
     local output_info=""
@@ -155,6 +156,11 @@ wizard_page_uninstall() {
         step_count=$((step_count + 1))
     fi
     
+    if [[ -f "$WEB_SERVICE_FILE" ]]; then
+        steps+=("Web-Server-Service stoppen und deaktivieren")
+        step_count=$((step_count + 1))
+    fi
+    
     if [[ -L "$BIN_LINK" ]]; then
         steps+=("Symlink entfernen")
         step_count=$((step_count + 1))
@@ -182,6 +188,22 @@ wizard_page_uninstall() {
                 systemctl stop disk2iso.service 2>/dev/null || true
                 systemctl disable disk2iso.service 2>/dev/null || true
                 rm -f "$SERVICE_FILE"
+                systemctl daemon-reload
+                sleep 0.5
+            fi
+            
+            # Web-Server-Service stoppen
+            if [[ -f "$WEB_SERVICE_FILE" ]]; then
+                current=$((current + 1))
+                percent=$((current * 100 / total))
+                echo "$percent"
+                echo "XXX"
+                echo "Stoppe und deaktiviere Web-Server-Service ($current/$total)..."
+                echo "XXX"
+                
+                systemctl stop disk2iso-web.service 2>/dev/null || true
+                systemctl disable disk2iso-web.service 2>/dev/null || true
+                rm -f "$WEB_SERVICE_FILE"
                 systemctl daemon-reload
                 sleep 0.5
             fi
@@ -225,6 +247,15 @@ wizard_page_uninstall() {
             rm -f "$SERVICE_FILE"
             systemctl daemon-reload
             print_success "Service entfernt"
+        fi
+        
+        if [[ -f "$WEB_SERVICE_FILE" ]]; then
+            print_info "Stoppe Web-Server-Service..."
+            systemctl stop disk2iso-web.service 2>/dev/null || true
+            systemctl disable disk2iso-web.service 2>/dev/null || true
+            rm -f "$WEB_SERVICE_FILE"
+            systemctl daemon-reload
+            print_success "Web-Server-Service entfernt"
         fi
         
         if [[ -L "$BIN_LINK" ]]; then
@@ -304,7 +335,7 @@ disk2iso wurde vollständig vom System entfernt.
 
 Entfernte Komponenten:
 • disk2iso Script und Bibliotheken
-• Systemd-Service (falls vorhanden)
+• Systemd-Service(s) (falls vorhanden)
 • Symlink in /usr/local/bin"
 
     if [[ -n "$OUTPUT_DIR" ]] && [[ ! -d "$OUTPUT_DIR" ]]; then

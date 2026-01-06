@@ -1,0 +1,23 @@
+[Unit]
+Description=disk2iso Web Interface
+After=network.target
+Wants=disk2iso.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/disk2iso/www
+Environment="PATH=/opt/disk2iso/venv/bin"
+ExecStart=/opt/disk2iso/venv/bin/python3 /opt/disk2iso/www/app.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
