@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - MQTT Library
-# Filepath: disk2iso-lib/lib-mqtt.sh
+# Filepath: lib/lib-mqtt.sh
 #
 # Beschreibung:
 #   MQTT-Integration für Home Assistant und andere Systeme

@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - Logging Library
-# Filepath: disk2iso-lib/lib-logging.sh
+# Filepath: lib/lib-logging.sh
 #
 # Beschreibung:
 #   Zentrale Logging-Funktionen für alle Module:
@@ -39,7 +39,7 @@ get_path_log() {
 # Beispiel: load_module_language "cd" lädt lang/lib-cd.de
 load_module_language() {
     local module_name="$1"
-    local lang_file="${SCRIPT_DIR}/disk2iso-lib/lang/lib-${module_name}.${LANGUAGE}"
+    local lang_file="${SCRIPT_DIR}/../lang/lib-${module_name}.${LANGUAGE}"
     
     if [[ -f "$lang_file" ]]; then
         source "$lang_file"
@@ -49,7 +49,7 @@ load_module_language() {
         fi
     else
         # Fallback auf Englisch oder keine Meldung
-        local fallback_file="${SCRIPT_DIR}/disk2iso-lib/lang/lib-${module_name}.en"
+        local fallback_file="${SCRIPT_DIR}/../lang/lib-${module_name}.en"
         if [[ -f "$fallback_file" ]]; then
             source "$fallback_file"
             if declare -f log_message >/dev/null 2>&1; then
@@ -67,7 +67,7 @@ load_module_language() {
 # Lade Debug-Messages (immer Englisch - Entwicklersprache)
 # Diese werden nur benötigt wenn DEBUG=1 gesetzt ist
 if [[ "${DEBUG:-0}" == "1" ]] || [[ "${VERBOSE:-0}" == "1" ]]; then
-    DEBUG_LANG_FILE="${SCRIPT_DIR}/disk2iso-lib/lang/debugmsg.en"
+    DEBUG_LANG_FILE="${SCRIPT_DIR}/../lang/debugmsg.en"
     if [[ -f "$DEBUG_LANG_FILE" ]]; then
         source "$DEBUG_LANG_FILE"
     fi

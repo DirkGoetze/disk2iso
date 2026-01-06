@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - DVD Library
-# Filepath: disk2iso-lib/lib-dvd.sh
+# Filepath: lib/lib-dvd.sh
 #
 # Beschreibung:
 #   Funktionen für DVD-Ripping und -Konvertierung

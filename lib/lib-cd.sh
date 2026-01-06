@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - Audio CD Library
-# Filepath: disk2iso-lib/lib-cd.sh
+# Filepath: lib/lib-cd.sh
 #
 # Beschreibung:
 #   Funktionen für Audio-CD Ripping mit MusicBrainz-Metadaten

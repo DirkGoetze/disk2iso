@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - Blu-ray Library
-# Filepath: disk2iso-lib/lib-bluray.sh
+# Filepath: lib/lib-bluray.sh
 #
 # Beschreibung:
 #   Funktionen für Blu-ray-Ripping und -Konvertierung

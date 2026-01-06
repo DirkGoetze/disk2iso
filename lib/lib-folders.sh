@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - Folder Management Library
-# Filepath: disk2iso-lib/lib-folders.sh
+# Filepath: lib/lib-folders.sh
 #
 # Beschreibung:
 #   Verwaltung von Verzeichnissen:

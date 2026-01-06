@@ -624,6 +624,10 @@ Service-Befehle:
 • Neustarten: systemctl restart disk2iso
 • Stoppen: systemctl stop disk2iso
 
+Wartung:
+• Update: sudo /opt/disk2iso/install.sh
+• Deinstallation: sudo /opt/disk2iso/uninstall.sh
+
 Der Service überwacht automatisch das Laufwerk und erstellt ISOs.
 
 Möchten Sie den Service jetzt starten?"
@@ -654,6 +658,10 @@ disk2iso -o /pfad/zum/ausgabe/verzeichnis
 Beispiel:
 disk2iso -o /srv/iso
 
+Wartung:
+• Update: sudo /opt/disk2iso/install.sh
+• Deinstallation: sudo /opt/disk2iso/uninstall.sh
+
 Dokumentation:
 • README.md im Projektverzeichnis
 • Hilfe: disk2iso --help"
@@ -678,8 +686,8 @@ install_disk2iso_files() {
         exit 1
     fi
     
-    if [[ ! -d "$SCRIPT_DIR/disk2iso-lib" ]]; then
-        print_error "disk2iso-lib Verzeichnis nicht gefunden in $SCRIPT_DIR"
+    if [[ ! -d "$SCRIPT_DIR/lib" ]]; then
+        print_error "lib Verzeichnis nicht gefunden in $SCRIPT_DIR"
         exit 1
     fi
     
@@ -691,8 +699,42 @@ install_disk2iso_files() {
     chmod +x "$INSTALL_DIR/disk2iso.sh"
     
     # Kopiere Library
-    cp -rf "$SCRIPT_DIR/disk2iso-lib" "$INSTALL_DIR/"
-    chmod +x "$INSTALL_DIR"/disk2iso-lib/*.sh
+    cp -rf "$SCRIPT_DIR/lib" "$INSTALL_DIR/"
+    chmod +x "$INSTALL_DIR"/lib/*.sh
+    
+    # Kopiere Dokumentation (falls vorhanden)
+    if [[ -d "$SCRIPT_DIR/doc" ]]; then
+        cp -rf "$SCRIPT_DIR/doc" "$INSTALL_DIR/"
+    fi
+    
+    # Kopiere Sprachdateien (falls vorhanden)
+    if [[ -d "$SCRIPT_DIR/lang" ]]; then
+        cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/"
+    fi
+    
+    # Kopiere Service-Dateien (falls vorhanden)
+    if [[ -d "$SCRIPT_DIR/service" ]]; then
+        cp -rf "$SCRIPT_DIR/service" "$INSTALL_DIR/"
+    fi
+    
+    # Kopiere Installations- und Deinstallations-Skripte (für Updates und Deinstallation)
+    if [[ -f "$SCRIPT_DIR/install.sh" ]]; then
+        cp -f "$SCRIPT_DIR/install.sh" "$INSTALL_DIR/"
+        chmod +x "$INSTALL_DIR/install.sh"
+    fi
+    
+    if [[ -f "$SCRIPT_DIR/uninstall.sh" ]]; then
+        cp -f "$SCRIPT_DIR/uninstall.sh" "$INSTALL_DIR/"
+        chmod +x "$INSTALL_DIR/uninstall.sh"
+    fi
+    
+    # Kopiere README für installierte Version
+    if [[ -f "$SCRIPT_DIR/INSTALLED-README.md" ]]; then
+        cp -f "$SCRIPT_DIR/INSTALLED-README.md" "$INSTALL_DIR/README-INSTALLED.md"
+    fi
+    
+    # Erstelle www-Verzeichnis für Web-Server (vorbereitet für zukünftige Nutzung)
+    mkdir -p "$INSTALL_DIR/www"
     
     # Erstelle Symlink
     ln -sf "$INSTALL_DIR/disk2iso.sh" "$BIN_LINK"
@@ -716,7 +758,7 @@ configure_service() {
     }
     
     # Aktualisiere config.sh mit gewähltem Ausgabeverzeichnis
-    sed -i "s|DEFAULT_OUTPUT_DIR=.*|DEFAULT_OUTPUT_DIR=\"$output_dir\"|" "$INSTALL_DIR/disk2iso-lib/config.sh"
+    sed -i "s|DEFAULT_OUTPUT_DIR=.*|DEFAULT_OUTPUT_DIR=\"$output_dir\"|" "$INSTALL_DIR/lib/config.sh"
     
     # Konfiguriere MQTT falls aktiviert
     configure_mqtt
@@ -762,23 +804,23 @@ configure_mqtt() {
     local escaped_broker=$(echo "$MQTT_BROKER" | sed 's/[\/&]/\\&/g')
     
     # Aktualisiere config.sh
-    sed -i "s|^MQTT_ENABLED=.*|MQTT_ENABLED=true|" "$INSTALL_DIR/disk2iso-lib/config.sh"
-    sed -i "s|^MQTT_BROKER=.*|MQTT_BROKER=\"$escaped_broker\"|" "$INSTALL_DIR/disk2iso-lib/config.sh"
+    sed -i "s|^MQTT_ENABLED=.*|MQTT_ENABLED=true|" "$INSTALL_DIR/lib/config.sh"
+    sed -i "s|^MQTT_BROKER=.*|MQTT_BROKER=\"$escaped_broker\"|" "$INSTALL_DIR/lib/config.sh"
     
     # Nur Username/Passwort setzen wenn auch angegeben
     if [[ -n "${MQTT_USER:-}" ]] && [[ -n "${MQTT_PASSWORD:-}" ]]; then
         local escaped_user=$(echo "$MQTT_USER" | sed 's/[\/&]/\\&/g')
         local escaped_password=$(echo "$MQTT_PASSWORD" | sed 's/[\/&]/\\&/g')
-        sed -i "s|^MQTT_USER=.*|MQTT_USER=\"$escaped_user\"|" "$INSTALL_DIR/disk2iso-lib/config.sh"
-        sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=\"$escaped_password\"|" "$INSTALL_DIR/disk2iso-lib/config.sh"
+        sed -i "s|^MQTT_USER=.*|MQTT_USER=\"$escaped_user\"|" "$INSTALL_DIR/lib/config.sh"
+        sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=\"$escaped_password\"|" "$INSTALL_DIR/lib/config.sh"
     else
         # Explizit leer lassen für keine Authentifizierung
-        sed -i "s|^MQTT_USER=.*|MQTT_USER=\"\"|" "$INSTALL_DIR/disk2iso-lib/config.sh"
-        sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=\"\"|" "$INSTALL_DIR/disk2iso-lib/config.sh"
+        sed -i "s|^MQTT_USER=.*|MQTT_USER=\"\"|" "$INSTALL_DIR/lib/config.sh"
+        sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=\"\"|" "$INSTALL_DIR/lib/config.sh"
     fi
     
     # Kopiere Home Assistant Beispiel-Konfiguration
-    if [[ -f "$INSTALL_DIR/disk2iso-lib/docu/homeassistant-configuration.yaml" ]]; then
+    if [[ -f "$INSTALL_DIR/doc/homeassistant-configuration.yaml" ]]; then
         # Ermittle Zielverzeichnis (Service-Output oder /tmp)
         local config_dest
         if $INSTALL_SERVICE && [[ -n "${output_dir:-}" ]]; then
@@ -787,7 +829,7 @@ configure_mqtt() {
             config_dest="/tmp/homeassistant-configuration.yaml"
         fi
         
-        cp "$INSTALL_DIR/disk2iso-lib/docu/homeassistant-configuration.yaml" "$config_dest"
+        cp "$INSTALL_DIR/doc/homeassistant-configuration.yaml" "$config_dest"
         chmod 644 "$config_dest"
         
         print_success "Home Assistant Beispiel-Konfiguration erstellt:"

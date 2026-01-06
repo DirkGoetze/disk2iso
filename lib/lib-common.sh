@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - Common Functions Library
-# Filepath: disk2iso-lib/lib-common.sh
+# Filepath: lib/lib-common.sh
 #
 # Beschreibung:
 #   - copy_data_disc() - Daten-Disc kopieren mit dd

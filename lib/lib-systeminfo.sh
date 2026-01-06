@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - System Information Library
-# Filepath: disk2iso-lib/lib-systeminfo.sh
+# Filepath: lib/lib-systeminfo.sh
 #
 # Beschreibung:
 #   - Container-Erkennung (LXC, Docker, Podman)

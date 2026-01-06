@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - Tool Detection Library
-# Filepath: disk2iso-lib/lib-tools.sh
+# Filepath: lib/lib-tools.sh
 #
 # Beschreibung:
 #   Prüfung von Debian-Standard-Tools:
@@ -12,8 +12,7 @@
 ################################################################################
 
 # Lade Sprachdatei
-SCRIPT_DIR_TOOLS="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
-source "${SCRIPT_DIR_TOOLS}/lang/lib-tools.${LANGUAGE:-de}"
+SCRIPT_DIR_TOOLS="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.."
 
 # Prüfe ob dd verfügbar ist
 check_dd() {

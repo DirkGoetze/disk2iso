@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - File Management Library
-# Filepath: disk2iso-lib/lib-files.sh
+# Filepath: lib/lib-files.sh
 #
 # Beschreibung:
 #   Verwaltung von Dateinamen:

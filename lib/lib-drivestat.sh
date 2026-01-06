@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.1.0 - Drive Status Library
-# Filepath: disk2iso-lib/lib-drivestat.sh
+# Filepath: lib/lib-drivestat.sh
 #
 # Beschreibung:
 #   Überwacht den Status des optischen Laufwerks (Schublade, Medium).

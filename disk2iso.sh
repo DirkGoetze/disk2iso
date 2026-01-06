@@ -58,16 +58,16 @@ SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 # Lade Basis-Module
-source "${SCRIPT_DIR}/disk2iso-lib/config.sh"
+source "${SCRIPT_DIR}/lib/config.sh"
 
 # Lade Kern-Bibliotheken (IMMER erforderlich)
-source "${SCRIPT_DIR}/disk2iso-lib/lib-logging.sh"
-source "${SCRIPT_DIR}/disk2iso-lib/lib-files.sh"
-source "${SCRIPT_DIR}/disk2iso-lib/lib-folders.sh"
-source "${SCRIPT_DIR}/disk2iso-lib/lib-diskinfos.sh"
-source "${SCRIPT_DIR}/disk2iso-lib/lib-drivestat.sh"
-source "${SCRIPT_DIR}/disk2iso-lib/lib-systeminfo.sh"
-source "${SCRIPT_DIR}/disk2iso-lib/lib-common.sh"
+source "${SCRIPT_DIR}/lib/lib-logging.sh"
+source "${SCRIPT_DIR}/lib/lib-files.sh"
+source "${SCRIPT_DIR}/lib/lib-folders.sh"
+source "${SCRIPT_DIR}/lib/lib-diskinfos.sh"
+source "${SCRIPT_DIR}/lib/lib-drivestat.sh"
+source "${SCRIPT_DIR}/lib/lib-systeminfo.sh"
+source "${SCRIPT_DIR}/lib/lib-common.sh"
 
 # Prüfe Kern-Abhängigkeiten (kritisch - Abbruch bei Fehler)
 if ! check_common_dependencies; then
@@ -91,8 +91,8 @@ detect_container_environment
 
 # Audio-CD Support (optional)
 AUDIO_CD_SUPPORT=false
-if [[ -f "${SCRIPT_DIR}/disk2iso-lib/lib-cd.sh" ]]; then
-    source "${SCRIPT_DIR}/disk2iso-lib/lib-cd.sh"
+if [[ -f "${SCRIPT_DIR}/lib/lib-cd.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/lib-cd.sh"
     
     if check_audio_cd_dependencies; then
         AUDIO_CD_SUPPORT=true
@@ -106,8 +106,8 @@ fi
 
 # Video-DVD Support (optional)
 VIDEO_DVD_SUPPORT=false
-if [[ -f "${SCRIPT_DIR}/disk2iso-lib/lib-dvd.sh" ]]; then
-    source "${SCRIPT_DIR}/disk2iso-lib/lib-dvd.sh"
+if [[ -f "${SCRIPT_DIR}/lib/lib-dvd.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/lib-dvd.sh"
     
     if check_video_dvd_dependencies; then
         VIDEO_DVD_SUPPORT=true
@@ -121,8 +121,8 @@ fi
 
 # Blu-ray Support (optional)
 BLURAY_SUPPORT=false
-if [[ -f "${SCRIPT_DIR}/disk2iso-lib/lib-bluray.sh" ]]; then
-    source "${SCRIPT_DIR}/disk2iso-lib/lib-bluray.sh"
+if [[ -f "${SCRIPT_DIR}/lib/lib-bluray.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/lib-bluray.sh"
     
     if check_bluray_dependencies; then
         BLURAY_SUPPORT=true
@@ -136,8 +136,8 @@ fi
 
 # MQTT Support (optional)
 MQTT_SUPPORT=false
-if [[ -f "${SCRIPT_DIR}/disk2iso-lib/lib-mqtt.sh" ]]; then
-    source "${SCRIPT_DIR}/disk2iso-lib/lib-mqtt.sh"
+if [[ -f "${SCRIPT_DIR}/lib/lib-mqtt.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/lib-mqtt.sh"
     
     # mqtt_init prüft selbst ob MQTT_ENABLED=true
     if mqtt_init; then
