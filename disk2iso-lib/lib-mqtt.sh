@@ -227,6 +227,18 @@ mqtt_publish_state() {
         return 0
     fi
     
+    # Wenn neuer Kopiervorgang startet: Reset Tracking-Variablen
+    if [[ "$state" == "copying" ]] && [[ "$MQTT_LAST_STATE" != "copying" ]]; then
+        MQTT_LAST_PROGRESS=0
+        MQTT_LAST_UPDATE=0
+    fi
+    
+    # Wenn zu idle/waiting wechselt: Reset Progress auf 0
+    if [[ "$state" == "idle" ]] || [[ "$state" == "waiting" ]]; then
+        MQTT_LAST_PROGRESS=0
+        MQTT_LAST_UPDATE=0
+    fi
+    
     MQTT_LAST_STATE="$state"
     
     # Timestamp
@@ -276,6 +288,11 @@ EOF
 )
     
     mqtt_publish "attributes" "${attr_json}"
+    
+    # Progress-Topic auf 0 setzen bei idle/waiting
+    if [[ "$state" == "idle" ]] || [[ "$state" == "waiting" ]]; then
+        mqtt_publish "progress" "0"
+    fi
     
     # Log
     case "$state" in
@@ -332,8 +349,9 @@ mqtt_publish_progress() {
     fi
     
     # Delta-Check: Nur bei Änderung > 1% publishen
+    # Wenn percent < MQTT_LAST_PROGRESS: Neuer Kopiervorgang gestartet -> Sende Update
     local percent_diff=$((percent - MQTT_LAST_PROGRESS))
-    if [[ $percent_diff -lt 1 ]] && [[ $percent -ne 100 ]]; then
+    if [[ $percent_diff -lt 1 ]] && [[ $percent -ne 100 ]] && [[ $percent -ge $MQTT_LAST_PROGRESS ]]; then
         return 0
     fi
     
