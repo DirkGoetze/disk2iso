@@ -37,6 +37,7 @@ INSTALL_VIDEO_DVD=false
 INSTALL_VIDEO_BD=true  # Standard: aktiviert
 INSTALL_SERVICE=false
 INSTALL_MQTT=false
+INSTALL_WEB_SERVER=false
 
 # MQTT-Konfigurationsvariablen
 MQTT_BROKER=""
@@ -135,6 +136,171 @@ check_debian() {
     fi
 }
 
+# Prüfe auf bestehende Installation
+check_existing_installation() {
+    if [[ ! -d "$INSTALL_DIR" ]]; then
+        return 0  # Keine Installation vorhanden
+    fi
+    
+    # Bestehende Installation gefunden
+    local version=""
+    if [[ -f "$INSTALL_DIR/disk2iso.sh" ]]; then
+        version=$(grep -m1 "^# Version:" "$INSTALL_DIR/disk2iso.sh" | awk '{print $3}' || echo "unbekannt")
+    fi
+    
+    if use_whiptail; then
+        local info="Eine bestehende disk2iso Installation wurde gefunden!
+
+Installierter Pfad: $INSTALL_DIR
+Version: ${version:-unbekannt}
+
+Wie möchten Sie fortfahren?
+
+UPDATE (Empfohlen):
+• Aktualisiert Programmdateien auf neue Version
+• Behält ALLE Einstellungen bei (config.sh)
+• Behält Service-Konfiguration bei
+• MQTT/Web-Server Einstellungen bleiben erhalten
+
+NEUINSTALLATION:
+• Führt vollständige Deinstallation durch
+• Entfernt alte Programmdateien
+• Startet kompletten Installations-Wizard
+• Einstellungen werden NICHT übernommen"
+        
+        if whiptail --title "Bestehende Installation gefunden" \
+            --yesno "$info" 28 75 \
+            --yes-button "Update" \
+            --no-button "Neuinstallation"; then
+            # UPDATE gewählt
+            return 1
+        else
+            # NEUINSTALLATION gewählt
+            if whiptail --title "Neuinstallation bestätigen" \
+                --yesno "WARNUNG: Alle Einstellungen gehen verloren!\n\nSind Sie sicher, dass Sie eine komplette Neuinstallation durchführen möchten?\n\nDies kann NICHT rückgängig gemacht werden!" \
+                14 60 \
+                --defaultno; then
+                
+                print_info "Führe Deinstallation durch..."
+                if [[ -f "$INSTALL_DIR/uninstall.sh" ]]; then
+                    "$INSTALL_DIR/uninstall.sh" --silent
+                else
+                    # Fallback: Manuelle Deinstallation
+                    systemctl stop disk2iso 2>/dev/null || true
+                    systemctl disable disk2iso 2>/dev/null || true
+                    systemctl stop disk2iso-web 2>/dev/null || true
+                    systemctl disable disk2iso-web 2>/dev/null || true
+                    rm -rf "$INSTALL_DIR"
+                    rm -f "$SERVICE_FILE"
+                    rm -f "/etc/systemd/system/disk2iso-web.service"
+                    rm -f "$BIN_LINK"
+                    systemctl daemon-reload
+                fi
+                print_success "Deinstallation abgeschlossen"
+                return 0  # Fortfahren mit kompletter Installation
+            else
+                print_info "Installation abgebrochen"
+                exit 0
+            fi
+        fi
+    else
+        # Text-basierter Dialog
+        print_warning "Bestehende Installation gefunden: $INSTALL_DIR"
+        if [[ -n "$version" ]]; then
+            echo "  Version: $version"
+        fi
+        echo ""
+        echo "Optionen:"
+        echo "  1) Update (Einstellungen beibehalten)"
+        echo "  2) Neuinstallation (Einstellungen löschen)"
+        echo "  3) Abbrechen"
+        echo ""
+        read -p "Auswahl [1]: " choice
+        choice=${choice:-1}
+        
+        case $choice in
+            1)
+                return 1  # UPDATE
+                ;;
+            2)
+                read -p "WARNUNG: Alle Einstellungen gehen verloren! Fortfahren? [j/N]: " confirm
+                if [[ "$confirm" =~ ^[jJyY]$ ]]; then
+                    if [[ -f "$INSTALL_DIR/uninstall.sh" ]]; then
+                        "$INSTALL_DIR/uninstall.sh" --silent
+                    else
+                        rm -rf "$INSTALL_DIR"
+                        rm -f "$SERVICE_FILE"
+                        rm -f "/etc/systemd/system/disk2iso-web.service"
+                        rm -f "$BIN_LINK"
+                    fi
+                    return 0  # NEUINSTALLATION
+                else
+                    exit 0
+                fi
+                ;;
+            *)
+                exit 0
+                ;;
+        esac
+    fi
+}
+
+# Führe Update durch (behält config.sh)
+perform_update() {
+    print_header "UPDATE INSTALLATION"
+    
+    # Sichere aktuelle Konfiguration
+    local config_backup="/tmp/disk2iso-config-backup-$(date +%s).sh"
+    if [[ -f "$INSTALL_DIR/lib/config.sh" ]]; then
+        cp "$INSTALL_DIR/lib/config.sh" "$config_backup"
+        print_success "Konfiguration gesichert: $config_backup"
+    fi
+    
+    # Stoppe laufende Services
+    if systemctl is-active --quiet disk2iso; then
+        systemctl stop disk2iso
+        print_info "Service disk2iso gestoppt"
+    fi
+    if systemctl is-active --quiet disk2iso-web; then
+        systemctl stop disk2iso-web
+        print_info "Service disk2iso-web gestoppt"
+    fi
+    
+    # Installiere neue Dateien (überschreibt alte)
+    install_disk2iso_files
+    
+    # Stelle Konfiguration wieder her
+    if [[ -f "$config_backup" ]]; then
+        cp "$config_backup" "$INSTALL_DIR/lib/config.sh"
+        print_success "Konfiguration wiederhergestellt"
+        rm -f "$config_backup"
+    fi
+    
+    # Starte Services neu
+    if systemctl is-enabled --quiet disk2iso 2>/dev/null; then
+        systemctl start disk2iso
+        print_success "Service disk2iso neu gestartet"
+    fi
+    if systemctl is-enabled --quiet disk2iso-web 2>/dev/null; then
+        systemctl start disk2iso-web
+        print_success "Service disk2iso-web neu gestartet"
+    fi
+    
+    # Zeige Update-Zusammenfassung
+    if use_whiptail; then
+        whiptail --title "Update Abgeschlossen" --msgbox \
+            "disk2iso wurde erfolgreich aktualisiert!\n\nAlle Einstellungen wurden beibehalten.\nServices wurden neu gestartet (falls aktiviert).\n\nPfad: $INSTALL_DIR\n\nHinweis: Überprüfen Sie die Dokumentation für neue Features!" \
+            16 70
+    else
+        print_header "UPDATE ABGESCHLOSSEN"
+        print_success "disk2iso wurde aktualisiert"
+        print_info "Alle Einstellungen wurden beibehalten"
+        echo ""
+    fi
+    
+    exit 0
+}
+
 # ============================================================================
 # PACKAGE MANAGEMENT
 # ============================================================================
@@ -173,7 +339,7 @@ Der Wizard führt Sie durch die Installation in 9 einfachen Schritten.
 Möchten Sie fortfahren?"
 
     if use_whiptail; then
-        if whiptail --title "disk2iso Installation - Seite 1/9" \
+        if whiptail --title "disk2iso Installation - Seite 1/10" \
             --yesno "$info" 20 70 \
             --yes-button "Installation" \
             --no-button "Abbrechen"; then
@@ -219,7 +385,7 @@ wizard_page_base_packages() {
                 fi
                 sleep 0.5
             done
-        } | whiptail --title "disk2iso Installation - Seite 4/9" \
+        } | whiptail --title "disk2iso Installation - Seite 2/10" \
             --gauge "Installiere Audio-CD Modul..." 8 70 0
     else
         print_header "INSTALLATION BASIS-PAKETE"
@@ -234,7 +400,7 @@ wizard_page_base_packages() {
 wizard_page_module_selection() {
     if use_whiptail; then
         local choices
-        choices=$(whiptail --title "disk2iso Installation - Seite 3/9" \
+        choices=$(whiptail --title "disk2iso Installation - Seite 3/10" \
             --checklist "Welche Module möchten Sie installieren?\n\nNavigieren: ↑/↓  Auswählen: Leertaste  Weiter: Enter" \
             18 70 3 \
             "AUDIO_CD" "Audio-CD Ripping (cdparanoia, lame, MusicBrainz)" ON \
@@ -306,7 +472,7 @@ wizard_page_install_audio_cd() {
                 fi
                 sleep 0.3
             done
-        } | whiptail --title "disk2iso Installation - Seite 4/8" \
+        } | whiptail --title "disk2iso Installation - Seite 4/10" \
             --gauge "Installiere Audio-CD Modul..." 8 70 0
     else
         print_header "AUDIO-CD MODUL"
@@ -341,7 +507,7 @@ wizard_page_install_video_dvd() {
             
             sleep 0.5
             echo "100"
-        } | whiptail --title "disk2iso Installation - Seite 5/9" \
+        } | whiptail --title "disk2iso Installation - Seite 5/10" \
             --gauge "Installiere Video-DVD Modul..." 8 70 0
         
         # libdvdcss2 Setup
@@ -451,7 +617,7 @@ wizard_page_install_video_bd() {
             echo "XXX"
             echo "100"
             sleep 0.5
-        } | whiptail --title "disk2iso Installation - Seite 6/9" \
+        } | whiptail --title "disk2iso Installation - Seite 6/10" \
             --gauge "Konfiguriere Video-Blu-ray Modul..." 8 70 0
     else
         print_header "VIDEO-BLU-RAY MODUL"
@@ -459,7 +625,51 @@ wizard_page_install_video_bd() {
     fi
 }
 
-# Seite 7: MQTT-Integration
+# Seite 7: Service-Installation
+wizard_page_service_setup() {
+    if use_whiptail; then
+        local info="Möchten Sie disk2iso als systemd-Service installieren?
+
+Als Service:
+• Startet automatisch beim Booten
+• Überwacht Laufwerk kontinuierlich
+• Erstellt automatisch ISOs bei eingelegten Discs
+• Konfiguration über systemd
+
+Ohne Service:
+• Manuelle Ausführung über Kommandozeile
+• disk2iso -o <ausgabe-verzeichnis>
+• Mehr Kontrolle über Zeitpunkt der Ausführung"
+
+        if whiptail --title "disk2iso Installation - Seite 7/10" \
+            --yesno "$info" 20 70 \
+            --yes-button "Installieren" \
+            --no-button "Überspringen" \
+            --defaultno; then
+            INSTALL_SERVICE=true
+            
+            # Ausgabeverzeichnis abfragen
+            SERVICE_OUTPUT_DIR=$(whiptail --title "Ausgabeverzeichnis für ISOs" \
+                --inputbox "Geben Sie das Verzeichnis ein, in dem die ISOs gespeichert werden sollen:\n\nHinweis: Es werden automatisch Unterordner erstellt:\n  • audio/   (Audio-CDs)\n  • dvd/     (Video-DVDs)\n  • bd/      (Blu-rays)\n  • data/    (Daten-Discs)\n  • .log/    (Log-Dateien)\n  • .temp/   (Temporäre Dateien)" \
+                18 70 "/media/iso" 3>&1 1>&2 2>&3)
+            
+            if [ -z "$SERVICE_OUTPUT_DIR" ]; then
+                SERVICE_OUTPUT_DIR="/media/iso"
+            fi
+        else
+            INSTALL_SERVICE=false
+        fi
+    else
+        INSTALL_SERVICE=false
+        if ask_yes_no "disk2iso als systemd Service installieren?" "n"; then
+            INSTALL_SERVICE=true
+            read -p "Ausgabe-Verzeichnis für ISOs [/media/iso]: " input_dir
+            SERVICE_OUTPUT_DIR=${input_dir:-/media/iso}
+        fi
+    fi
+}
+
+# Seite 8: MQTT-Integration
 wizard_page_mqtt_setup() {
     if use_whiptail; then
         local info="Möchten Sie MQTT-Integration für Home Assistant aktivieren?
@@ -474,9 +684,9 @@ Voraussetzungen:
 • Home Assistant mit MQTT Broker (Mosquitto)
 • Netzwerkverbindung zum MQTT Broker
 
-Hinweis: Kann später in /opt/disk2iso/disk2iso-lib/config.sh aktiviert werden."
+Hinweis: Kann später in /opt/disk2iso/lib/config.sh aktiviert werden."
 
-        if whiptail --title "disk2iso Installation - Seite 7/9" \
+        if whiptail --title "disk2iso Installation - Seite 8/10" \
             --yesno "$info" 20 70 \
             --yes-button "Aktivieren" \
             --no-button "Überspringen" \
@@ -564,54 +774,67 @@ Hinweis: Kann später in /opt/disk2iso/disk2iso-lib/config.sh aktiviert werden."
     fi
 }
 
-# Seite 8: Service-Installation
-wizard_page_service_setup() {
+# Seite 9: Web-Server Installation
+wizard_page_web_server() {
     if use_whiptail; then
-        local info="Möchten Sie disk2iso als systemd-Service installieren?
+        local info="Möchten Sie den disk2iso Web-Server installieren?
 
-Als Service:
-• Startet automatisch beim Booten
-• Überwacht Laufwerk kontinuierlich
-• Erstellt automatisch ISOs bei eingelegten Discs
-• Konfiguration über systemd
+Der Web-Server bietet:
+• Status-Überwachung in Echtzeit (Browser)
+• Archiv-Verwaltung und Übersicht
+• Log-Viewer mit Live-Updates
+• Responsive Design für Mobile/Desktop
 
-Ohne Service:
-• Manuelle Ausführung über Kommandozeile
-• disk2iso -o <ausgabe-verzeichnis>
-• Mehr Kontrolle über Zeitpunkt der Ausführung"
+Technologie:
+• Flask (Python Web-Framework)
+• Eingebauter Flask-Server
+• Port: 8080 (Standard)
 
-        if whiptail --title "disk2iso Installation - Seite 8/9" \
-            --yesno "$info" 20 70 \
+Voraussetzungen:
+• Python 3.7+
+• Ca. 50 MB Speicherplatz
+
+Hinweis: Der Web-Server wird als separater systemd-Service installiert."
+
+        if whiptail --title "disk2iso Installation - Seite 9/10" \
+            --yesno "$info" 22 70 \
             --yes-button "Installieren" \
             --no-button "Überspringen" \
             --defaultno; then
-            INSTALL_SERVICE=true
-            
-            # Ausgabeverzeichnis abfragen
-            SERVICE_OUTPUT_DIR=$(whiptail --title "Ausgabeverzeichnis für ISOs" \
-                --inputbox "Geben Sie das Verzeichnis ein, in dem die ISOs gespeichert werden sollen:\n\nHinweis: Es werden automatisch Unterordner erstellt:\n  • audio/   (Audio-CDs)\n  • dvd/     (Video-DVDs)\n  • bd/      (Blu-rays)\n  • data/    (Daten-Discs)\n  • .log/    (Log-Dateien)\n  • .temp/   (Temporäre Dateien)" \
-                18 70 "/media/iso" 3>&1 1>&2 2>&3)
-            
-            if [ -z "$SERVICE_OUTPUT_DIR" ]; then
-                SERVICE_OUTPUT_DIR="/media/iso"
-            fi
+            INSTALL_WEB_SERVER=true
         else
-            INSTALL_SERVICE=false
+            INSTALL_WEB_SERVER=false
         fi
     else
-        INSTALL_SERVICE=false
-        if ask_yes_no "disk2iso als systemd Service installieren?" "n"; then
-            INSTALL_SERVICE=true
-            read -p "Ausgabe-Verzeichnis für ISOs [/media/iso]: " input_dir
-            SERVICE_OUTPUT_DIR=${input_dir:-/media/iso}
+        # Text-basierter Dialog
+        print_header "WEB-SERVER INSTALLATION"
+        echo "Der Web-Server bietet Status-Überwachung über den Browser:"
+        echo "  • Echtzeit-Status-Anzeige"
+        echo "  • Archiv-Verwaltung"
+        echo "  • Log-Viewer"
+        echo ""
+        
+        if ask_yes_no "Web-Server installieren?" "n"; then
+            INSTALL_WEB_SERVER=true
+        else
+            INSTALL_WEB_SERVER=false
         fi
     fi
 }
 
-# Seite 9: Abschluss
+# Seite 10: Abschluss
 wizard_page_complete() {
     local manual_usage="disk2iso -o /pfad/zum/ausgabe/verzeichnis"
     local service_usage="systemctl status disk2iso"
+    local web_info=""
+    
+    if $INSTALL_WEB_SERVER; then
+        web_info="
+
+Web-Server:
+• Zugriff: http://$(hostname -I | awk '{print $1}'):8080
+• Service: systemctl status disk2iso-web"
+    fi
     
     if $INSTALL_SERVICE; then
         local info="Installation erfolgreich abgeschlossen!
@@ -622,7 +845,7 @@ Service-Befehle:
 • Status prüfen: systemctl status disk2iso
 • Logs ansehen: journalctl -u disk2iso -f
 • Neustarten: systemctl restart disk2iso
-• Stoppen: systemctl stop disk2iso
+• Stoppen: systemctl stop disk2iso${web_info}
 
 Wartung:
 • Update: sudo /opt/disk2iso/install.sh
@@ -633,7 +856,7 @@ Der Service überwacht automatisch das Laufwerk und erstellt ISOs.
 Möchten Sie den Service jetzt starten?"
 
         if use_whiptail; then
-            if whiptail --title "disk2iso Installation - Seite 9/9" \
+            if whiptail --title "disk2iso Installation - Seite 10/10" \
                 --yesno "$info" 20 70 \
                 --yes-button "Starten" \
                 --no-button "Beenden"; then
@@ -660,15 +883,15 @@ disk2iso -o /srv/iso
 
 Wartung:
 • Update: sudo /opt/disk2iso/install.sh
-• Deinstallation: sudo /opt/disk2iso/uninstall.sh
+• Deinstallation: sudo /opt/disk2iso/uninstall.sh${web_info}
 
 Dokumentation:
 • README.md im Projektverzeichnis
 • Hilfe: disk2iso --help"
 
         if use_whiptail; then
-            whiptail --title "disk2iso Installation - Seite 9/9" \
-                --msgbox "$info" 18 70
+            whiptail --title "disk2iso Installation - Seite 10/10" \
+                --msgbox "$info" 20 70
         else
             echo "$info"
         fi
@@ -735,6 +958,11 @@ install_disk2iso_files() {
     
     # Erstelle www-Verzeichnis für Web-Server (vorbereitet für zukünftige Nutzung)
     mkdir -p "$INSTALL_DIR/www"
+    
+    # Kopiere www-Dateien falls vorhanden (für Web-Server)
+    if [[ -d "$SCRIPT_DIR/www" ]] && [[ -n "$(ls -A "$SCRIPT_DIR/www" 2>/dev/null)" ]]; then
+        cp -rf "$SCRIPT_DIR/www/"* "$INSTALL_DIR/www/" 2>/dev/null || true
+    fi
     
     # Erstelle Symlink
     ln -sf "$INSTALL_DIR/disk2iso.sh" "$BIN_LINK"
@@ -838,6 +1066,112 @@ configure_mqtt() {
     fi
 }
 
+# Installiere Web-Server Komponenten
+install_web_server() {
+    if ! $INSTALL_WEB_SERVER; then
+        return 0
+    fi
+    
+    print_success "Installiere Web-Server-Komponenten..."
+    
+    # Prüfe Python3 und pip
+    local python_installed=false
+    local pip_installed=false
+    
+    if command -v python3 >/dev/null 2>&1; then
+        python_installed=true
+        print_success "Python3 bereits installiert: $(python3 --version)"
+    fi
+    
+    if command -v pip3 >/dev/null 2>&1; then
+        pip_installed=true
+        print_success "pip3 bereits installiert"
+    fi
+    
+    # Installiere Python3 und pip falls nötig
+    if use_whiptail; then
+        {
+            echo "0"
+            
+            if ! $python_installed || ! $pip_installed; then
+                echo "XXX"
+                echo "Installiere Python3 und pip..."
+                echo "XXX"
+                echo "20"
+                
+                apt-get install -y -qq python3 python3-pip python3-venv >/dev/null 2>&1 || true
+            fi
+            
+            # Erstelle virtuelles Environment
+            echo "XXX"
+            echo "Erstelle Python Virtual Environment..."
+            echo "XXX"
+            echo "40"
+            
+            python3 -m venv "$INSTALL_DIR/venv" >/dev/null 2>&1
+            
+            # Installiere Flask und Gunicorn
+            echo "XXX"
+            echo "Installiere Flask..."
+            echo "XXX"
+            echo "60"
+            
+            "$INSTALL_DIR/venv/bin/pip" install --upgrade pip >/dev/null 2>&1
+            "$INSTALL_DIR/venv/bin/pip" install flask >/dev/null 2>&1
+            
+            # Erstelle Web-Verzeichnisstruktur
+            echo "XXX"
+            echo "Erstelle Verzeichnisstruktur..."
+            echo "XXX"
+            echo "80"
+            
+            mkdir -p "$INSTALL_DIR/www/templates"
+            mkdir -p "$INSTALL_DIR/www/static/css"
+            mkdir -p "$INSTALL_DIR/www/static/js"
+            mkdir -p "$INSTALL_DIR/www/logs"
+            
+            # Setze Berechtigungen
+            chmod -R 755 "$INSTALL_DIR/www"
+            chmod -R 755 "$INSTALL_DIR/venv"
+            
+            echo "100"
+        } | whiptail --title "Web-Server Installation" \
+            --gauge "Installiere Web-Server-Komponenten..." 8 70 0
+    else
+        # Text-basierter Modus
+        if ! $python_installed || ! $pip_installed; then
+            print_info "Installiere Python3 und pip..."
+            apt-get install -y -qq python3 python3-pip python3-venv >/dev/null 2>&1 || true
+        fi
+        
+        print_info "Erstelle Python Virtual Environment..."
+        python3 -m venv "$INSTALL_DIR/venv" >/dev/null 2>&1
+        
+        print_info "Installiere Flask..."
+        "$INSTALL_DIR/venv/bin/pip" install --upgrade pip >/dev/null 2>&1
+        "$INSTALL_DIR/venv/bin/pip" install flask >/dev/null 2>&1
+        
+        print_info "Erstelle Verzeichnisstruktur..."
+        mkdir -p "$INSTALL_DIR/www/templates"
+        mkdir -p "$INSTALL_DIR/www/static/css"
+        mkdir -p "$INSTALL_DIR/www/static/js"
+        mkdir -p "$INSTALL_DIR/www/logs"
+        
+        chmod -R 755 "$INSTALL_DIR/www"
+        chmod -R 755 "$INSTALL_DIR/venv"
+    fi
+    
+    # Erstelle requirements.txt für spätere Updates
+    cat > "$INSTALL_DIR/www/requirements.txt" <<EOF
+# disk2iso Web-Server Dependencies
+# Install: /opt/disk2iso/venv/bin/pip install -r requirements.txt
+
+flask>=2.0.0
+EOF
+    
+    print_success "Web-Server-Komponenten erfolgreich installiert!"
+}
+
 # ============================================================================
 # MAIN - WIZARD MODE
 # ============================================================================
@@ -846,6 +1180,17 @@ main() {
     # System-Checks
     check_root
     check_debian
+    
+    # Prüfe auf bestehende Installation
+    if check_existing_installation; then
+        # Keine Installation oder Neuinstallation → Wizard starten
+        IS_UPDATE=false
+    else
+        # UPDATE gewählt → Nur Dateien aktualisieren
+        IS_UPDATE=true
+        perform_update
+        # perform_update beendet das Script mit exit 0
+    fi
     
     # Aktualisiere Paket-Cache
     apt-get update -qq
@@ -877,14 +1222,18 @@ main() {
     # disk2iso Dateien installieren
     install_disk2iso_files
     
-    # Wizard Seite 7: MQTT-Integration
-    wizard_page_mqtt_setup
-    
-    # Wizard Seite 8: Service Setup
+    # Wizard Seite 7: Service Setup
     wizard_page_service_setup
     configure_service
     
-    # Wizard Seite 9: Abschluss
+    # Wizard Seite 8: MQTT-Integration
+    wizard_page_mqtt_setup
+    
+    # Wizard Seite 9: Web-Server
+    wizard_page_web_server
+    install_web_server
+    
+    # Wizard Seite 10: Abschluss
     wizard_page_complete
 }
 
