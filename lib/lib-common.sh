@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.1.0 - Common Functions Library
+# disk2iso v1.2.0 - Common Functions Library
 # Filepath: lib/lib-common.sh
 #
 # Beschreibung:
@@ -9,8 +9,8 @@
 #   - reset_disc_variables, cleanup_disc_operation
 #   - check_disk_space, monitor_copy_progress
 #
-# Version: 1.0.0
-# Datum: 01.01.2026
+# Version: 1.2.0
+# Datum: 06.01.2026
 ################################################################################
 
 # ============================================================================

@@ -108,6 +108,11 @@ disk2iso --help
 
 Sie können die installierte Version überprüfen:
 ```bash
+cat /opt/disk2iso/VERSION
+```
+
+Oder mit Details:
+```bash
 head -n 5 /opt/disk2iso/disk2iso.sh
 ```
 

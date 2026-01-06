@@ -212,7 +212,7 @@ Contributions sind willkommen! Bitte:
 
 ---
 
-**Version:** 1.1.0 | **Status:** Production Ready | **Platform:** Debian Linux
+**Version:** 1.2.0 | **Status:** Production Ready | **Platform:** Debian Linux
 
 ## ✨ Features
 
@@ -639,7 +639,7 @@ Bei Problemen oder Fragen:
 
 ---
 
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Autor:** Dirk  
 **Status:** Production Ready  
-**Letzte Aktualisierung:** 04.01.2026
+**Letzte Aktualisierung:** 06.01.2026

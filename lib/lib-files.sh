@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.1.0 - File Management Library
+# disk2iso v1.2.0 - File Management Library
 # Filepath: lib/lib-files.sh
 #
 # Beschreibung:
@@ -10,8 +10,8 @@
 #   - MD5/LOG-Dateinamen-Ableitung
 #   - Basename-Extraktion
 #
-# Version: 1.0.0
-# Datum: 01.01.2026
+# Version: 1.2.0
+# Datum: 06.01.2026
 ################################################################################
 
 # ============================================================================

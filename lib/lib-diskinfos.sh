@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.1.0 - Disk Information Library
+# disk2iso v1.2.0 - Disk Information Library
 # Filepath: lib/lib-diskinfos.sh
 #
 # Beschreibung:
@@ -8,8 +8,8 @@
 #   - Audio-CD, Video-DVD, Blu-ray, Daten-Discs
 #   - UDF, ISO9660, Audio-TOC Erkennung
 #
-# Version: 1.0.0
-# Datum: 01.01.2026
+# Version: 1.2.0
+# Datum: 06.01.2026
 ################################################################################
 
 # ============================================================================

@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.1.0 - Installation Script
+# disk2iso v1.2.0 - Installation Script
 # Filepath: install.sh
 #
 # Beschreibung:
@@ -10,8 +10,8 @@
 #   - MQTT-Integration für Home Assistant
 #   - Optionale systemd Service-Konfiguration
 #
-# Version: 1.0.0
-# Datum: 03.01.2026
+# Version: 1.2.0
+# Datum: 06.01.2026
 ################################################################################
 
 set -e
@@ -38,6 +38,12 @@ INSTALL_VIDEO_BD=true  # Standard: aktiviert
 INSTALL_SERVICE=false
 INSTALL_MQTT=false
 INSTALL_WEB_SERVER=false
+
+# Versions- und Update-Variablen
+NEW_VERSION="1.2.0"  # Wird aus VERSION-Datei gelesen
+INSTALLED_VERSION=""
+IS_REPAIR=false
+IS_UPDATE=false
 
 # MQTT-Konfigurationsvariablen
 MQTT_BROKER=""
@@ -143,36 +149,93 @@ check_existing_installation() {
     fi
     
     # Bestehende Installation gefunden
-    local version=""
-    if [[ -f "$INSTALL_DIR/disk2iso.sh" ]]; then
-        version=$(grep -m1 "^# Version:" "$INSTALL_DIR/disk2iso.sh" | awk '{print $3}' || echo "unbekannt")
+    local version="unbekannt"
+    if [[ -f "$INSTALL_DIR/VERSION" ]]; then
+        version=$(cat "$INSTALL_DIR/VERSION" 2>/dev/null || echo "unbekannt")
+    elif [[ -f "$INSTALL_DIR/disk2iso.sh" ]]; then
+        # Fallback für alte Installationen ohne VERSION-Datei
+        version=$(grep -m1 "^# Version:" "$INSTALL_DIR/disk2iso.sh" 2>/dev/null | awk '{print $3}' || echo "unbekannt")
+    fi
+    
+    INSTALLED_VERSION="$version"
+    
+    # Lese neue Version aus SOURCE
+    if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
+        NEW_VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "1.2.0")
+    fi
+    
+    # Bestimme Aktion basierend auf Version
+    local action_mode=""
+    if [[ "$version" == "$NEW_VERSION" ]]; then
+        action_mode="REPARATUR"
+    else
+        action_mode="UPDATE"
     fi
     
     if use_whiptail; then
-        local info="Eine bestehende disk2iso Installation wurde gefunden!
+        local info=""
+        local yes_button=""
+        
+        if [[ "$action_mode" == "REPARATUR" ]]; then
+            info="Eine bestehende disk2iso Installation wurde gefunden!
 
 Installierter Pfad: $INSTALL_DIR
-Version: ${version:-unbekannt}
+Installierte Version: ${version}
+Neue Version: ${NEW_VERSION}
+
+➜ GLEICHE VERSION ERKANNT
+
+Wie möchten Sie fortfahren?
+
+REPARATUR (Empfohlen):
+• Überschreibt Programmdateien (disk2iso.sh, lib/*.sh)
+• Behält ALLE Einstellungen bei (config.sh)
+• Behält Service-Status bei (aktiviert/deaktiviert)
+• Repariert beschädigte Installationen
+• Keine Änderung an MQTT/Web-Server Konfiguration
+
+NEUINSTALLATION:
+• Führt vollständige Deinstallation durch
+• Startet kompletten Installations-Wizard
+• Einstellungen werden NICHT übernommen"
+            yes_button="Reparatur"
+        else
+            info="Eine bestehende disk2iso Installation wurde gefunden!
+
+Installierter Pfad: $INSTALL_DIR
+Installierte Version: ${version}
+Neue Version: ${NEW_VERSION}
+
+➜ UPDATE VERFÜGBAR
 
 Wie möchten Sie fortfahren?
 
 UPDATE (Empfohlen):
-• Aktualisiert Programmdateien auf neue Version
+• Aktualisiert Programmdateien auf Version ${NEW_VERSION}
 • Behält ALLE Einstellungen bei (config.sh)
-• Behält Service-Konfiguration bei
+• Optionale Änderung der Service-Konfiguration
 • MQTT/Web-Server Einstellungen bleiben erhalten
+• Zeigt Installations-Fortschritt an
 
 NEUINSTALLATION:
 • Führt vollständige Deinstallation durch
-• Entfernt alte Programmdateien
 • Startet kompletten Installations-Wizard
 • Einstellungen werden NICHT übernommen"
+            yes_button="Update"
+        fi
         
         if whiptail --title "Bestehende Installation gefunden" \
-            --yesno "$info" 28 75 \
-            --yes-button "Update" \
+            --yesno "$info" 30 75 \
+            --yes-button "$yes_button" \
             --no-button "Neuinstallation"; then
-            # UPDATE gewählt
+            # UPDATE/REPARATUR gewählt
+            if [[ "$action_mode" == "REPARATUR" ]]; then
+                IS_REPAIR=true
+                IS_UPDATE=false
+            else
+                IS_REPAIR=false
+                IS_UPDATE=true
+            fi
             return 1
         else
             # NEUINSTALLATION gewählt
@@ -245,55 +308,261 @@ NEUINSTALLATION:
     fi
 }
 
-# Führe Update durch (behält config.sh)
-perform_update() {
-    print_header "UPDATE INSTALLATION"
+# Führe Reparatur durch (nur Programmdateien, keine config.sh-Änderung)
+perform_repair() {
+    print_header "REPARATUR INSTALLATION v$INSTALLED_VERSION"
     
     # Sichere aktuelle Konfiguration
     local config_backup="/tmp/disk2iso-config-backup-$(date +%s).sh"
     if [[ -f "$INSTALL_DIR/lib/config.sh" ]]; then
         cp "$INSTALL_DIR/lib/config.sh" "$config_backup"
-        print_success "Konfiguration gesichert: $config_backup"
+        print_info "Konfiguration gesichert: $config_backup"
     fi
     
     # Stoppe laufende Services
+    local service_was_active=false
+    local web_service_was_active=false
+    
     if systemctl is-active --quiet disk2iso; then
         systemctl stop disk2iso
+        service_was_active=true
         print_info "Service disk2iso gestoppt"
     fi
     if systemctl is-active --quiet disk2iso-web; then
         systemctl stop disk2iso-web
+        web_service_was_active=true
         print_info "Service disk2iso-web gestoppt"
     fi
     
-    # Installiere neue Dateien (überschreibt alte)
-    install_disk2iso_files
+    # Fortschrittsanzeige
+    (
+        echo "10" ; sleep 0.5
+        echo "# Kopiere Haupt-Script..."
+        cp -f "$SCRIPT_DIR/disk2iso.sh" "$INSTALL_DIR/"
+        chmod +x "$INSTALL_DIR/disk2iso.sh"
+        
+        echo "30" ; sleep 0.3
+        echo "# Kopiere VERSION-Datei..."
+        if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
+            cp -f "$SCRIPT_DIR/VERSION" "$INSTALL_DIR/"
+        fi
+        
+        echo "50" ; sleep 0.3
+        echo "# Kopiere Bibliotheken..."
+        cp -rf "$SCRIPT_DIR/lib" "$INSTALL_DIR/"
+        chmod +x "$INSTALL_DIR"/lib/*.sh
+        
+        echo "70" ; sleep 0.3
+        echo "# Stelle Konfiguration wieder her..."
+        if [[ -f "$config_backup" ]]; then
+            cp "$config_backup" "$INSTALL_DIR/lib/config.sh"
+            rm -f "$config_backup"
+        fi
+        
+        echo "85" ; sleep 0.3
+        echo "# Kopiere Dokumentation..."
+        if [[ -d "$SCRIPT_DIR/doc" ]]; then
+            cp -rf "$SCRIPT_DIR/doc" "$INSTALL_DIR/"
+        fi
+        if [[ -d "$SCRIPT_DIR/lang" ]]; then
+            cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/"
+        fi
+        
+        echo "95" ; sleep 0.3
+        echo "# Starte Services neu..."
+        if [[ "$service_was_active" == "true" ]]; then
+            systemctl start disk2iso
+        fi
+        if [[ "$web_service_was_active" == "true" ]]; then
+            systemctl start disk2iso-web
+        fi
+        
+        echo "100"
+        echo "# Reparatur abgeschlossen!"
+        sleep 0.5
+    ) | whiptail --title "Reparatur läuft" --gauge "Starte Reparatur..." 10 70 0
     
-    # Stelle Konfiguration wieder her
-    if [[ -f "$config_backup" ]]; then
-        cp "$config_backup" "$INSTALL_DIR/lib/config.sh"
-        print_success "Konfiguration wiederhergestellt"
-        rm -f "$config_backup"
+    # Zeige Reparatur-Zusammenfassung
+    if use_whiptail; then
+        whiptail --title "Reparatur Abgeschlossen" --msgbox \
+            "disk2iso wurde erfolgreich repariert!\n\nAlle Einstellungen wurden beibehalten.\nServices wurden neu gestartet (falls aktiviert).\n\nPfad: $INSTALL_DIR\nVersion: $NEW_VERSION" \
+            14 70
+    else
+        print_header "REPARATUR ABGESCHLOSSEN"
+        print_success "disk2iso wurde repariert"
+        print_info "Alle Einstellungen wurden beibehalten"
+        echo ""
     fi
     
-    # Starte Services neu
+    exit 0
+}
+
+# Führe Update durch (behält config.sh)
+perform_update() {
+    print_header "UPDATE INSTALLATION $INSTALLED_VERSION → $NEW_VERSION"
+    
+    # Sichere aktuelle Konfiguration
+    local config_backup="/tmp/disk2iso-config-backup-$(date +%s).sh"
+    if [[ -f "$INSTALL_DIR/lib/config.sh" ]]; then
+        cp "$INSTALL_DIR/lib/config.sh" "$config_backup"
+        print_info "Konfiguration gesichert: $config_backup"
+    fi
+    
+    # Prüfe aktuellen Status
+    local service_enabled=false
+    local service_active=false
+    local web_service_enabled=false
+    local web_service_active=false
+    
     if systemctl is-enabled --quiet disk2iso 2>/dev/null; then
-        systemctl start disk2iso
-        print_success "Service disk2iso neu gestartet"
+        service_enabled=true
+    fi
+    if systemctl is-active --quiet disk2iso 2>/dev/null; then
+        service_active=true
     fi
     if systemctl is-enabled --quiet disk2iso-web 2>/dev/null; then
-        systemctl start disk2iso-web
-        print_success "Service disk2iso-web neu gestartet"
+        web_service_enabled=true
+    fi
+    if systemctl is-active --quiet disk2iso-web 2>/dev/null; then
+        web_service_active=true
+    fi
+    
+    # Frage ob Benutzer Einstellungen ändern möchte
+    local reconfigure=false
+    if use_whiptail; then
+        if whiptail --title "Update-Optionen" \
+            --yesno "Möchten Sie die Einstellungen während des Updates überprüfen/ändern?\n\nAktueller Status:\n  - disk2iso Service: $([ "$service_enabled" == "true" ] && echo "aktiviert" || echo "deaktiviert")\n  - disk2iso-web Service: $([ "$web_service_enabled" == "true" ] && echo "aktiviert" || echo "deaktiviert")\n\nJA: Einstellungen während Update anpassen\nNEIN: Nur Dateien aktualisieren (empfohlen)" \
+            16 70 \
+            --defaultno; then
+            reconfigure=true
+        fi
+    fi
+    
+    # Stoppe laufende Services
+    if [[ "$service_active" == "true" ]]; then
+        systemctl stop disk2iso
+        print_info "Service disk2iso gestoppt"
+    fi
+    if [[ "$web_service_active" == "true" ]]; then
+        systemctl stop disk2iso-web
+        print_info "Service disk2iso-web gestoppt"
+    fi
+    
+    # Fortschrittsanzeige während Installation
+    (
+        echo "5" ; sleep 0.5
+        echo "# Kopiere Haupt-Script..."
+        cp -f "$SCRIPT_DIR/disk2iso.sh" "$INSTALL_DIR/"
+        chmod +x "$INSTALL_DIR/disk2iso.sh"
+        
+        echo "15" ; sleep 0.3
+        echo "# Kopiere VERSION-Datei..."
+        if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
+            cp -f "$SCRIPT_DIR/VERSION" "$INSTALL_DIR/"
+        fi
+        
+        echo "30" ; sleep 0.3
+        echo "# Aktualisiere Bibliotheken..."
+        cp -rf "$SCRIPT_DIR/lib" "$INSTALL_DIR/"
+        chmod +x "$INSTALL_DIR"/lib/*.sh
+        
+        echo "50" ; sleep 0.3
+        echo "# Stelle Konfiguration wieder her..."
+        if [[ -f "$config_backup" ]]; then
+            cp "$config_backup" "$INSTALL_DIR/lib/config.sh"
+        fi
+        
+        echo "65" ; sleep 0.3
+        echo "# Aktualisiere Dokumentation..."
+        if [[ -d "$SCRIPT_DIR/doc" ]]; then
+            cp -rf "$SCRIPT_DIR/doc" "$INSTALL_DIR/"
+        fi
+        
+        echo "75" ; sleep 0.3
+        echo "# Aktualisiere Sprachdateien..."
+        if [[ -d "$SCRIPT_DIR/lang" ]]; then
+            cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/"
+        fi
+        
+        echo "85" ; sleep 0.3
+        echo "# Aktualisiere Service-Dateien..."
+        if [[ -d "$SCRIPT_DIR/service" ]]; then
+            cp -rf "$SCRIPT_DIR/service" "$INSTALL_DIR/"
+        fi
+        
+        echo "90" ; sleep 0.3
+        echo "# Kopiere Update-Skripte..."
+        cp -f "$SCRIPT_DIR/install.sh" "$INSTALL_DIR/"
+        chmod +x "$INSTALL_DIR/install.sh"
+        if [[ -f "$SCRIPT_DIR/uninstall.sh" ]]; then
+            cp -f "$SCRIPT_DIR/uninstall.sh" "$INSTALL_DIR/"
+            chmod +x "$INSTALL_DIR/uninstall.sh"
+        fi
+        
+        echo "95"
+        echo "# Räume auf..."
+        rm -f "$config_backup"
+        
+        echo "100"
+        echo "# Update abgeschlossen!"
+        sleep 0.5
+    ) | whiptail --title "Update wird durchgeführt" --gauge "Starte Update von v$INSTALLED_VERSION auf v$NEW_VERSION..." 10 70 0
+    
+    # Optional: Einstellungen anpassen
+    if [[ "$reconfigure" == "true" ]]; then
+        if use_whiptail; then
+            # Service-Status ändern?
+            if whiptail --title "Service-Konfiguration" \
+                --yesno "disk2iso Service aktuell: $([ "$service_enabled" == "true" ] && echo "aktiviert" || echo "deaktiviert")\n\nMöchten Sie den Service-Status ändern?" \
+                10 70; then
+                
+                if whiptail --title "Service aktivieren" \
+                    --yesno "disk2iso Service aktivieren und starten?" \
+                    8 50; then
+                    systemctl enable disk2iso 2>/dev/null || true
+                    systemctl start disk2iso 2>/dev/null || true
+                    service_enabled=true
+                    service_active=true
+                    print_success "Service disk2iso aktiviert und gestartet"
+                else
+                    systemctl disable disk2iso 2>/dev/null || true
+                    service_enabled=false
+                    service_active=false
+                    print_info "Service disk2iso deaktiviert"
+                fi
+            fi
+        fi
+    else
+        # Starte Services mit altem Status neu
+        if [[ "$service_enabled" == "true" ]] && [[ "$service_active" == "true" ]]; then
+            systemctl start disk2iso
+            print_success "Service disk2iso neu gestartet"
+        fi
+        if [[ "$web_service_enabled" == "true" ]] && [[ "$web_service_active" == "true" ]]; then
+            systemctl start disk2iso-web
+            print_success "Service disk2iso-web neu gestartet"
+        fi
     fi
     
     # Zeige Update-Zusammenfassung
     if use_whiptail; then
-        whiptail --title "Update Abgeschlossen" --msgbox \
-            "disk2iso wurde erfolgreich aktualisiert!\n\nAlle Einstellungen wurden beibehalten.\nServices wurden neu gestartet (falls aktiviert).\n\nPfad: $INSTALL_DIR\n\nHinweis: Überprüfen Sie die Dokumentation für neue Features!" \
-            16 70
+        local summary="disk2iso wurde erfolgreich aktualisiert!
+
+Version: $INSTALLED_VERSION → $NEW_VERSION
+
+Alle Einstellungen wurden beibehalten.
+
+Service-Status:
+  - disk2iso: $([ "$service_enabled" == "true" ] && echo "aktiviert" || echo "deaktiviert") $([ "$service_active" == "true" ] && echo "(läuft)" || echo "(gestoppt)") 
+  - disk2iso-web: $([ "$web_service_enabled" == "true" ] && echo "aktiviert" || echo "deaktiviert") $([ "$web_service_active" == "true" ] && echo "(läuft)" || echo "(gestoppt)")
+
+Pfad: $INSTALL_DIR
+
+Hinweis: Überprüfen Sie die Dokumentation für neue Features!"
+        whiptail --title "Update Abgeschlossen" --msgbox "$summary" 20 70
     else
         print_header "UPDATE ABGESCHLOSSEN"
-        print_success "disk2iso wurde aktualisiert"
+        print_success "disk2iso wurde aktualisiert: $INSTALLED_VERSION → $NEW_VERSION"
         print_info "Alle Einstellungen wurden beibehalten"
         echo ""
     fi
@@ -921,6 +1190,11 @@ install_disk2iso_files() {
     cp -f "$SCRIPT_DIR/disk2iso.sh" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/disk2iso.sh"
     
+    # Kopiere VERSION-Datei
+    if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
+        cp -f "$SCRIPT_DIR/VERSION" "$INSTALL_DIR/"
+    fi
+    
     # Kopiere Library
     cp -rf "$SCRIPT_DIR/lib" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR"/lib/*.sh
@@ -1185,11 +1459,16 @@ main() {
     if check_existing_installation; then
         # Keine Installation oder Neuinstallation → Wizard starten
         IS_UPDATE=false
+        IS_REPAIR=false
     else
-        # UPDATE gewählt → Nur Dateien aktualisieren
-        IS_UPDATE=true
-        perform_update
-        # perform_update beendet das Script mit exit 0
+        # UPDATE oder REPARATUR gewählt
+        if [[ "$IS_REPAIR" == "true" ]]; then
+            perform_repair
+            # perform_repair beendet das Script mit exit 0
+        elif [[ "$IS_UPDATE" == "true" ]]; then
+            perform_update
+            # perform_update beendet das Script mit exit 0
+        fi
     fi
     
     # Aktualisiere Paket-Cache

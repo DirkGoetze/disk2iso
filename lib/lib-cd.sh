@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.1.0 - Audio CD Library
+# disk2iso v1.2.0 - Audio CD Library
 # Filepath: lib/lib-cd.sh
 #
 # Beschreibung:
@@ -10,8 +10,8 @@
 #   - MP3-Encoding mit lame (VBR V2)
 #   - ISO-Erstellung mit gerippten MP3s
 #
-# Version: 1.0.0
-# Datum: 01.01.2026
+# Version: 1.2.0
+# Datum: 06.01.2026
 ################################################################################
 
 # ============================================================================

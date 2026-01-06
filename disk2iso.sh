@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.1.0
+# disk2iso v1.2.0
 # Filepath: /usr/local/bin/disk2iso.sh
 #
 # Beschreibung:
@@ -19,8 +19,8 @@
 #   - Service-Modus für automatischen Betrieb
 #   - Modulare Struktur mit lazy-loading
 #
-# Version: 1.1.0
-# Datum: 04.01.2026
+# Version: 1.2.0
+# Datum: 06.01.2026
 #
 # Abhängigkeiten:
 #   Pflicht: dd, md5sum, lsblk, isoinfo

@@ -1,14 +1,14 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.1.0 - Configuration
+# disk2iso v1.2.0 - Configuration
 # Filepath: lib/config.sh
 #
 # Beschreibung:
 #   Zentrale Konfiguration und globale Variablen für disk2iso.
 #   Wird von disk2iso.sh beim Start geladen.
 #
-# Version: 1.0.0
-# Datum: 01.01.2026
+# Version: 1.2.0
+# Datum: 06.01.2026
 ################################################################################
 
 # ============================================================================

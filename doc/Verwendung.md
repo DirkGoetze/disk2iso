@@ -679,4 +679,4 @@ nano album.nfo
 
 ---
 
-**Version**: 1.1.0 | **Letzte Aktualisierung**: 04.01.2026
+**Version**: 1.2.0 | **Letzte Aktualisierung**: 06.01.2026
