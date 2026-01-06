@@ -1778,6 +1778,16 @@ install_disk2iso_files() {
         cp -rf "$SCRIPT_DIR/www/"* "$INSTALL_DIR/www/" 2>/dev/null || true
     fi
     
+    # Erstelle API-Verzeichnis für JSON-Daten (Live-Status)
+    mkdir -p "$INSTALL_DIR/api"
+    chmod 755 "$INSTALL_DIR/api"
+    
+    # Kopiere initiale JSON-Dateien falls vorhanden
+    if [[ -d "$SCRIPT_DIR/api" ]] && [[ -n "$(ls -A "$SCRIPT_DIR/api" 2>/dev/null)" ]]; then
+        cp -rf "$SCRIPT_DIR/api/"*.json "$INSTALL_DIR/api/" 2>/dev/null || true
+        chmod 644 "$INSTALL_DIR/api/"*.json 2>/dev/null || true
+    fi
+    
     # Erstelle Symlink
     ln -sf "$INSTALL_DIR/disk2iso.sh" "$BIN_LINK"
 }
@@ -2002,7 +2012,13 @@ EOF
         print_success "Web-Server Service installiert und gestartet"
         print_info "  Zugriff: http://$(hostname -I | awk '{print $1}'):8080"
     fi
+}
 
+# ============================================================================
+# MAIN - WIZARD MODE
+# ============================================================================
+
+main() {
     # System-Checks
     check_root
     check_debian

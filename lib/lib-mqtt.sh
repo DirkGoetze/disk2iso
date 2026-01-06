@@ -44,6 +44,9 @@ MQTT_LAST_STATE=""
 MQTT_LAST_PROGRESS=0
 MQTT_LAST_UPDATE=0
 
+# API-Verzeichnis für JSON-Dateien
+API_DIR="${INSTALL_DIR:-/opt/disk2iso}/api"
+
 # ============================================================================
 # DEPENDENCY CHECK
 # ============================================================================
@@ -111,6 +114,75 @@ mqtt_init() {
     
     # Sende Idle-State
     mqtt_publish_state "idle"
+    
+    return 0
+}
+
+# ============================================================================
+# API JSON FILE HELPER
+# ============================================================================
+
+# Funktion: Schreibe JSON in API-Datei
+# Parameter: $1 = Dateiname (z.B. "status.json"), $2 = JSON-Content
+api_write_json() {
+    local filename="$1"
+    local json_content="$2"
+    
+    # Erstelle API-Verzeichnis falls nicht vorhanden
+    if [[ ! -d "$API_DIR" ]]; then
+        mkdir -p "$API_DIR" 2>/dev/null || return 1
+        chmod 755 "$API_DIR" 2>/dev/null || true
+    fi
+    
+    # Schreibe JSON-Datei (atomar mit temp-file)
+    local temp_file="${API_DIR}/.${filename}.tmp"
+    echo "$json_content" > "$temp_file" 2>/dev/null || return 1
+    mv -f "$temp_file" "${API_DIR}/${filename}" 2>/dev/null || return 1
+    chmod 644 "${API_DIR}/${filename}" 2>/dev/null || true
+    
+    return 0
+}
+
+# Funktion: Füge History-Eintrag hinzu
+# Parameter: $1 = Status, $2 = Label, $3 = Typ, $4 = Ergebnis (success/error)
+api_add_history() {
+    local status="$1"
+    local label="$2"
+    local type="$3"
+    local result="$4"
+    
+    # Nur completed/error Events zur History hinzufügen
+    if [[ "$status" != "completed" ]] && [[ "$status" != "error" ]]; then
+        return 0
+    fi
+    
+    local timestamp=$(date '+%Y-%m-%dT%H:%M:%S')
+    local history_file="${API_DIR}/history.json"
+    
+    # Lese existierende History
+    local history="[]"
+    if [[ -f "$history_file" ]]; then
+        history=$(cat "$history_file" 2>/dev/null || echo "[]")
+    fi
+    
+    # Erstelle neuen Eintrag
+    local new_entry=$(cat <<EOF
+{
+  "timestamp": "${timestamp}",
+  "status": "${status}",
+  "label": "${label}",
+  "type": "${type}",
+  "result": "${result}",
+  "filename": "${iso_basename:-}"
+}
+EOF
+)
+    
+    # Füge Eintrag hinzu und behalte nur letzte 10
+    local updated_history=$(echo "$history" | jq --argjson entry "$new_entry" '. + [$entry] | .[-10:]' 2>/dev/null || echo "[]")
+    
+    # Schreibe History zurück
+    api_write_json "history.json" "$updated_history"
     
     return 0
 }
@@ -255,6 +327,9 @@ EOF
     
     mqtt_publish "state" "${state_json}"
     
+    # Schreibe status.json für API
+    api_write_json "status.json" "${state_json}"
+    
     # Attributes Topic (vollständige Informationen)
     local disc_size_mb=0
     if [[ -n "${disc_volume_size:-}" ]] && [[ -n "${disc_block_size:-}" ]]; then
@@ -288,6 +363,9 @@ EOF
 )
     
     mqtt_publish "attributes" "${attr_json}"
+    
+    # Schreibe attributes.json für API
+    api_write_json "attributes.json" "${attr_json}"
     
     # Progress-Topic auf 0 setzen bei idle/waiting
     if [[ "$state" == "idle" ]] || [[ "$state" == "waiting" ]]; then
@@ -361,6 +439,19 @@ mqtt_publish_progress() {
     # Progress Topic (nur Zahl)
     mqtt_publish "progress" "${percent}"
     
+    # Schreibe progress.json für API
+    local progress_json=$(cat <<EOF
+{
+  "percent": ${percent},
+  "copied_mb": ${copied_mb},
+  "total_mb": ${total_mb},
+  "eta": "${eta}",
+  "timestamp": "$(date '+%Y-%m-%dT%H:%M:%S')"
+}
+EOF
+)
+    api_write_json "progress.json" "${progress_json}"
+    
     # Attributes Topic (Update nur relevante Felder)
     local attr_json=$(cat <<EOF
 {
@@ -408,6 +499,9 @@ mqtt_publish_complete() {
     # Progress auf 100%
     mqtt_publish_progress 100 "${disc_volume_size:-0}" "${disc_volume_size:-0}" "00:00:00"
     
+    # Füge zur History hinzu
+    api_add_history "completed" "${disc_label:-}" "${disc_type:-}" "success"
+    
     log_message "$MSG_MQTT_COMPLETED ${filename} (${duration})"
     
     return 0
@@ -429,6 +523,9 @@ mqtt_publish_error() {
     
     # State auf error setzen
     mqtt_publish_state "error" "${disc_label:-}" "${disc_type:-}" "${error_message}"
+    
+    # Füge zur History hinzu
+    api_add_history "error" "${disc_label:-}" "${disc_type:-}" "error"
     
     log_message "$MSG_MQTT_ERROR ${error_message}"
     

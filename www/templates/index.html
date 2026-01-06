@@ -155,6 +155,41 @@
             color: #1e40af;
         }
         
+        .badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-indicator.copying {
+            background: #fbbf24;
+            box-shadow: 0 0 10px #fbbf24;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .live-status-card {
+            grid-column: 1 / -1;
+        }
+        
+        .history-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.9em;
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .history-timestamp {
+            color: #999;
+            font-size: 0.85em;
+        }
+        
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 1.8em;
@@ -174,6 +209,37 @@
         </div>
         
         <div class="status-grid">
+            <!-- Live Ripping Status -->
+            <div class="card live-status-card" id="live-status-card">
+                <h2>🎬 Live Status</h2>
+                <div class="info-row">
+                    <span class="info-label">Aktueller Status</span>
+                    <span class="info-value" id="live-status-text">
+                        <span class="status-indicator {% if live_status.status == 'copying' %}copying{% elif service_running %}stopped{% else %}stopped{% endif %}" id="live-status-indicator"></span>
+                        <span id="live-status-label">{{ status_text }}</span>
+                    </span>
+                </div>
+                <div class="info-row" id="disc-info-row" style="display: none;">
+                    <span class="info-label">Medium</span>
+                    <span class="info-value" id="disc-info">-</span>
+                </div>
+                <div id="progress-section" style="display: none;">
+                    <div class="info-row">
+                        <span class="info-label">Fortschritt</span>
+                        <span class="info-value"><span id="progress-percent">0</span>% (<span id="progress-mb">0</span> / <span id="total-mb">0</span> MB)</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-bar-fill" style="width: 0%">
+                            0%
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Verbleibende Zeit</span>
+                        <span class="info-value" id="eta-text">-</span>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Service Status -->
             <div class="card">
                 <h2>Service Status</h2>
@@ -252,8 +318,115 @@
     </div>
     
     <script>
-        // Auto-refresh alle 30 Sekunden
-        setTimeout(() => location.reload(), 30000);
+        // Live-Daten Aktualisierung via AJAX
+        let updateInterval = null;
+        
+        function updateLiveStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    // Service Status aktualisieren
+                    const serviceIndicator = document.querySelector('.status-indicator');
+                    const serviceText = serviceIndicator.nextSibling.nextSibling;
+                    if (data.service_running) {
+                        serviceIndicator.className = 'status-indicator running';
+                        serviceText.textContent = 'Running';
+                    } else {
+                        serviceIndicator.className = 'status-indicator stopped';
+                        serviceText.textContent = 'Stopped';
+                    }
+                    
+                    // ISO Count aktualisieren
+                    const isoCountElements = document.querySelectorAll('.info-value');
+                    isoCountElements.forEach(el => {
+                        if (el.previousElementSibling && el.previousElementSibling.textContent === 'Anzahl ISOs') {
+                            el.textContent = data.iso_count;
+                        }
+                    });
+                    
+                    // Live Status
+                    const live = data.live_status;
+                    const statusIndicator = document.getElementById('live-status-indicator');
+                    const statusLabel = document.getElementById('live-status-label');
+                    const discInfoRow = document.getElementById('disc-info-row');
+                    const discInfo = document.getElementById('disc-info');
+                    const progressSection = document.getElementById('progress-section');
+                    
+                    // Prüfe ob Service läuft
+                    const serviceRunning = data.service_running;
+                    
+                    // Intelligente Status-Erkennung
+                    let statusText = 'Unbekannt';
+                    let statusClass = 'stopped';
+                    
+                    if (!serviceRunning) {
+                        // Service läuft nicht
+                        statusText = 'Service gestoppt';
+                        statusClass = 'stopped';
+                    } else if (live.status === 'idle') {
+                        // Service läuft, aber idle
+                        // Prüfe ob jemals ein Laufwerk erkannt wurde (anhand von method oder disc_type)
+                        if (!live.method || live.method === 'unknown') {
+                            statusText = 'Kein Laufwerk erkannt';
+                            statusClass = 'stopped';
+                        } else {
+                            statusText = 'Wartet auf Medium';
+                            statusClass = 'stopped';
+                        }
+                    } else if (live.status === 'waiting') {
+                        statusText = 'Medium wird geprüft...';
+                        statusClass = 'stopped';
+                    } else if (live.status === 'copying') {
+                        statusText = 'Kopiert Medium';
+                        statusClass = 'copying';
+                    } else if (live.status === 'completed') {
+                        statusText = 'Abgeschlossen';
+                        statusClass = 'running';
+                    } else if (live.status === 'error') {
+                        statusText = 'Fehler aufgetreten';
+                        statusClass = 'stopped';
+                    }
+                    
+                    statusLabel.textContent = statusText;
+                    statusIndicator.className = 'status-indicator ' + statusClass;
+                    
+                    // Disc-Info anzeigen wenn verfügbar
+                    if (live.disc_label || live.disc_type) {
+                        discInfoRow.style.display = '';
+                        discInfo.textContent = `${live.disc_label || 'Unbekannt'} (${live.disc_type || '-'})`;
+                    } else {
+                        discInfoRow.style.display = 'none';
+                    }
+                    
+                    // Fortschritt anzeigen wenn kopiert wird
+                    if (live.status === 'copying' && live.progress_percent > 0) {
+                        progressSection.style.display = '';
+                        document.getElementById('progress-percent').textContent = live.progress_percent;
+                        document.getElementById('progress-mb').textContent = live.progress_mb;
+                        document.getElementById('total-mb').textContent = live.total_mb;
+                        document.getElementById('eta-text').textContent = live.eta || '-';
+                        
+                        const progressBar = document.getElementById('progress-bar-fill');
+                        progressBar.style.width = live.progress_percent + '%';
+                        progressBar.textContent = live.progress_percent + '%';
+                    } else {
+                        progressSection.style.display = 'none';
+                    }
+                    
+                    // Timestamp aktualisieren
+                    document.querySelector('.info-row:has(.info-label:contains("Aktualisiert")) .info-value').textContent = 
+                        new Date().toLocaleString('de-DE');
+                })
+                .catch(error => {
+                    console.error('Fehler beim Laden der Live-Daten:', error);
+                });
+        }
+        
+        // Initialer Aufruf
+        updateLiveStatus();
+        
+        // Alle 5 Sekunden aktualisieren
+        updateInterval = setInterval(updateLiveStatus, 5000);
     </script>
 </body>
 </html>

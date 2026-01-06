@@ -19,6 +19,7 @@ app = Flask(__name__)
 INSTALL_DIR = Path("/opt/disk2iso")
 CONFIG_FILE = INSTALL_DIR / "lib" / "config.sh"
 VERSION_FILE = INSTALL_DIR / "VERSION"
+API_DIR = INSTALL_DIR / "api"
 
 def get_version():
     """Liest Version aus VERSION-Datei"""
@@ -93,6 +94,86 @@ def count_iso_files(path):
     except:
         return 0
 
+def read_api_json(filename):
+    """Liest JSON-Datei aus API-Verzeichnis"""
+    try:
+        file_path = API_DIR / filename
+        if file_path.exists():
+            with open(file_path, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Fehler beim Lesen von {filename}: {e}", file=sys.stderr)
+    return None
+
+def get_live_status():
+    """Liest Live-Status aus API JSON-Dateien"""
+    status = read_api_json('status.json') or {'status': 'idle', 'timestamp': ''}
+    attributes = read_api_json('attributes.json') or {
+        'disc_label': '',
+        'disc_type': '',
+        'disc_size_mb': 0,
+        'progress_percent': 0,
+        'progress_mb': 0,
+        'total_mb': 0,
+        'eta': '',
+        'filename': '',
+        'method': 'unknown',
+        'container_type': 'none',
+        'error_message': None
+    }
+    progress = read_api_json('progress.json') or {
+        'percent': 0,
+        'copied_mb': 0,
+        'total_mb': 0,
+        'eta': '',
+        'timestamp': ''
+    }
+    
+    return {
+        'status': status.get('status', 'idle'),
+        'timestamp': status.get('timestamp', ''),
+        'disc_label': attributes.get('disc_label', ''),
+        'disc_type': attributes.get('disc_type', ''),
+        'disc_size_mb': attributes.get('disc_size_mb', 0),
+        'progress_percent': progress.get('percent', 0),
+        'progress_mb': progress.get('copied_mb', 0),
+        'total_mb': progress.get('total_mb', 0),
+        'eta': progress.get('eta', ''),
+        'filename': attributes.get('filename', ''),
+        'method': attributes.get('method', 'unknown'),
+        'error_message': attributes.get('error_message')
+    }
+
+def get_history():
+    """Liest Aktivitäts-History"""
+    history = read_api_json('history.json')
+    return history if history else []
+
+def get_status_text(live_status, service_running):
+    """Generiert lesbaren Status-Text basierend auf Live-Status und Service-Status"""
+    if not service_running:
+        return 'Service gestoppt'
+    
+    status = live_status.get('status', 'idle')
+    method = live_status.get('method', 'unknown')
+    
+    if status == 'idle':
+        # Prüfe ob jemals ein Laufwerk erkannt wurde
+        if not method or method == 'unknown':
+            return 'Kein Laufwerk erkannt'
+        else:
+            return 'Wartet auf Medium'
+    elif status == 'waiting':
+        return 'Medium wird geprüft...'
+    elif status == 'copying':
+        return 'Kopiert Medium'
+    elif status == 'completed':
+        return 'Abgeschlossen'
+    elif status == 'error':
+        return 'Fehler aufgetreten'
+    else:
+        return 'Unbekannt'
+
 # Routes
 @app.route('/')
 def index():
@@ -102,6 +183,8 @@ def index():
     service_running = get_service_status()
     disk_space = get_disk_space(config['output_dir'])
     iso_count = count_iso_files(config['output_dir'])
+    live_status = get_live_status()
+    status_text = get_status_text(live_status, service_running)
     
     return render_template('index.html',
         version=version,
@@ -109,13 +192,16 @@ def index():
         config=config,
         disk_space=disk_space,
         iso_count=iso_count,
+        live_status=live_status,
+        status_text=status_text,
         current_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     )
 
 @app.route('/api/status')
 def api_status():
-    """API-Endpoint für Status-Abfrage"""
+    """API-Endpoint für Status-Abfrage (AJAX)"""
     config = get_config()
+    live_status = get_live_status()
     
     return jsonify({
         'version': get_version(),
@@ -125,8 +211,14 @@ def api_status():
         'mqtt_broker': config['mqtt_broker'],
         'disk_space': get_disk_space(config['output_dir']),
         'iso_count': count_iso_files(config['output_dir']),
+        'live_status': live_status,
         'timestamp': datetime.now().isoformat()
     })
+
+@app.route('/api/history')
+def api_history():
+    """API-Endpoint für Aktivitäts-History"""
+    return jsonify(get_history())
 
 @app.route('/health')
 def health():

@@ -1,0 +1,10 @@
+# API Data Directory
+# Dieser Ordner enthält JSON-Dateien mit Live-Status-Informationen
+# von disk2iso, die sowohl für MQTT als auch für das Web-Interface
+# verwendet werden.
+#
+# Dateien:
+#   - status.json      : Aktueller Status (state, timestamp)
+#   - progress.json    : Fortschritt (percent, MB, ETA)
+#   - attributes.json  : Disc-Details (label, type, method)
+#   - history.json     : Letzte 10 Aktivitäten
