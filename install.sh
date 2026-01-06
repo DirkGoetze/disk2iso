@@ -368,19 +368,289 @@ perform_repair() {
             cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/"
         fi
         
-        echo "95" ; sleep 0.3
-        echo "# Starte Services neu..."
-        if [[ "$service_was_active" == "true" ]]; then
-            systemctl start disk2iso
-        fi
-        if [[ "$web_service_was_active" == "true" ]]; then
-            systemctl start disk2iso-web
-        fi
-        
         echo "100"
         echo "# Reparatur abgeschlossen!"
         sleep 0.5
     ) | whiptail --title "Reparatur läuft" --gauge "Starte Reparatur..." 10 70 0
+    
+    # Prüfe fehlende Komponenten und biete Installation an
+    local missing_components=false
+    local install_service_now=false
+    local install_mqtt_now=false
+    local install_web_now=false
+    
+    # Prüfe disk2iso.service
+    if [[ ! -f "$SERVICE_FILE" ]]; then
+        if use_whiptail; then
+            if whiptail --title "Fehlende Komponente erkannt" \
+                --yesno "Der disk2iso Service ist nicht installiert.\n\nMöchten Sie ihn jetzt einrichten?\n\nDies ermöglicht automatisches Starten beim Booten." \
+                12 70; then
+                install_service_now=true
+                missing_components=true
+            fi
+        fi
+    fi
+    
+    # Prüfe MQTT-Integration (mosquitto-clients)
+    if ! command -v mosquitto_pub >/dev/null 2>&1; then
+        if use_whiptail; then
+            if whiptail --title "Optionale Komponente" \
+                --yesno "MQTT-Integration ist nicht installiert.\n\nMQTT ermöglicht:\n• Status-Updates an Home Assistant\n• Fortschrittsanzeige in Echtzeit\n• Push-Benachrichtigungen\n\nMöchten Sie MQTT jetzt einrichten?" \
+                14 70; then
+                install_mqtt_now=true
+                missing_components=true
+            fi
+        else
+            print_info "MQTT-Integration ist nicht installiert"
+            if ask_yes_no "MQTT jetzt einrichten?" "n"; then
+                install_mqtt_now=true
+                missing_components=true
+            fi
+        fi
+    fi
+    
+    # Prüfe Web-Server (Python venv)
+    if [[ ! -d "$INSTALL_DIR/venv" ]] || [[ ! -f "$INSTALL_DIR/venv/bin/flask" ]]; then
+        if use_whiptail; then
+            if whiptail --title "Optionale Komponente" \
+                --yesno "Web-Server ist nicht installiert.\n\nWeb-Server bietet:\n• Status-Überwachung im Browser\n• Archiv-Verwaltung und Übersicht\n• Log-Viewer mit Live-Updates\n• Responsive Design\n\nMöchten Sie den Web-Server jetzt installieren?" \
+                14 70; then
+                install_web_now=true
+                missing_components=true
+            fi
+        else
+            print_info "Web-Server ist nicht installiert"
+            if ask_yes_no "Web-Server jetzt installieren?" "n"; then
+                install_web_now=true
+                missing_components=true
+            fi
+        fi
+    fi
+    
+    # Service jetzt installieren wenn gewünscht
+    if [[ "$install_service_now" == "true" ]]; then
+        # Frage Ausgabeverzeichnis
+        local output_dir="/media/iso"
+        if use_whiptail; then
+            output_dir=$(whiptail --title "Ausgabeverzeichnis" \
+                --inputbox "Ausgabeverzeichnis für ISOs:" \
+                10 60 "/media/iso" 3>&1 1>&2 2>&3) || output_dir="/media/iso"
+        fi
+        
+        # Erstelle Service-Datei
+        cat > "$SERVICE_FILE" <<EOF
+[Unit]
+Description=disk2iso - Automatische ISO Erstellung von optischen Medien
+After=multi-user.target
+Wants=systemd-udevd.service
+After=systemd-udevd.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=$INSTALL_DIR/disk2iso.sh -o $output_dir
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        
+        # Aktualisiere config.sh
+        if [[ -f "$INSTALL_DIR/lib/config.sh" ]]; then
+            sed -i "s|DEFAULT_OUTPUT_DIR=.*|DEFAULT_OUTPUT_DIR=\"$output_dir\"|" "$INSTALL_DIR/lib/config.sh"
+        fi
+        
+        # Erstelle Ausgabeverzeichnis mit Unterordnern
+        mkdir -p "$output_dir"/{.log,.temp,audio,dvd,bd,data}
+        chmod 755 "$output_dir"
+        print_success "Ausgabeverzeichnis erstellt: $output_dir"
+        
+        systemctl daemon-reload
+        systemctl enable disk2iso.service >/dev/null 2>&1
+        systemctl start disk2iso.service >/dev/null 2>&1
+        
+        print_success "Service disk2iso installiert und gestartet"
+    else
+        # Service existiert bereits → Stelle sicher dass Ausgabeverzeichnis existiert
+        if [[ -f "$SERVICE_FILE" ]]; then
+            # Lese Ausgabeverzeichnis aus Service-Datei
+            local output_dir=$(grep "ExecStart=" "$SERVICE_FILE" | sed -n 's/.*-o \([^ ]*\).*/\1/p')
+            if [[ -z "$output_dir" ]]; then
+                # Fallback: Lese aus config.sh
+                output_dir=$(grep "DEFAULT_OUTPUT_DIR=" "$INSTALL_DIR/lib/config.sh" 2>/dev/null | cut -d'"' -f2)
+            fi
+            
+            # Erstelle Verzeichnis falls es nicht existiert
+            if [[ -n "$output_dir" ]] && [[ ! -d "$output_dir" ]]; then
+                mkdir -p "$output_dir"/{.log,.temp,audio,dvd,bd,data}
+                chmod 755 "$output_dir"
+                print_success "Ausgabeverzeichnis erstellt: $output_dir"
+            fi
+        fi
+        
+        # Starte Services neu (falls vorher aktiv)
+        if [[ "$service_was_active" == "true" ]]; then
+            systemctl start disk2iso
+            print_success "Service disk2iso neu gestartet"
+        fi
+        if [[ "$web_service_was_active" == "true" ]]; then
+            systemctl start disk2iso-web
+            print_success "Service disk2iso-web neu gestartet"
+        fi
+    fi
+    
+    # MQTT jetzt installieren wenn gewünscht
+    if [[ "$install_mqtt_now" == "true" ]]; then
+        if use_whiptail; then
+            local mqtt_broker=$(whiptail --title "MQTT Konfiguration" \
+                --inputbox "Geben Sie die IP-Adresse des MQTT Brokers ein:\n(z.B. 192.168.20.10)" \
+                10 60 3>&1 1>&2 2>&3)
+            
+            if [[ -n "$mqtt_broker" ]]; then
+                # Optionale Authentifizierung
+                local mqtt_user=""
+                local mqtt_password=""
+                if whiptail --title "MQTT Authentifizierung" \
+                    --yesno "Benötigt der MQTT Broker Authentifizierung?" \
+                    8 60; then
+                    mqtt_user=$(whiptail --title "MQTT Benutzer" \
+                        --inputbox "Benutzername:" 8 60 3>&1 1>&2 2>&3)
+                    mqtt_password=$(whiptail --title "MQTT Passwort" \
+                        --passwordbox "Passwort:" 8 60 3>&1 1>&2 2>&3)
+                fi
+                
+                # Installiere mosquitto-clients
+                {
+                    echo "10"
+                    echo "XXX"
+                    echo "Installiere mosquitto-clients..."
+                    echo "XXX"
+                    apt-get update >/dev/null 2>&1
+                    echo "50"
+                    apt-get install -y mosquitto-clients >/dev/null 2>&1
+                    echo "90"
+                    
+                    # Aktualisiere config.sh
+                    local escaped_broker=$(echo "$mqtt_broker" | sed 's/[\/&]/\\&/g')
+                    sed -i "s|^MQTT_ENABLED=.*|MQTT_ENABLED=true|" "$INSTALL_DIR/lib/config.sh"
+                    sed -i "s|^MQTT_BROKER=.*|MQTT_BROKER=\"$escaped_broker\"|" "$INSTALL_DIR/lib/config.sh"
+                    
+                    if [[ -n "$mqtt_user" ]]; then
+                        local escaped_user=$(echo "$mqtt_user" | sed 's/[\/&]/\\&/g')
+                        local escaped_password=$(echo "$mqtt_password" | sed 's/[\/&]/\\&/g')
+                        sed -i "s|^MQTT_USER=.*|MQTT_USER=\"$escaped_user\"|" "$INSTALL_DIR/lib/config.sh"
+                        sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=\"$escaped_password\"|" "$INSTALL_DIR/lib/config.sh"
+                    fi
+                    
+                    echo "XXX"
+                    echo "MQTT-Integration konfiguriert"
+                    echo "XXX"
+                    echo "100"
+                    sleep 0.5
+                } | whiptail --title "MQTT Installation" \
+                    --gauge "Installiere MQTT-Unterstützung..." 8 70 0
+                
+                print_success "MQTT-Integration installiert: $mqtt_broker"
+            fi
+        else
+            # Text-Modus
+            read -p "MQTT Broker IP-Adresse: " mqtt_broker
+            if [[ -n "$mqtt_broker" ]]; then
+                local mqtt_user="" mqtt_password=""
+                if ask_yes_no "Benötigt Authentifizierung?" "n"; then
+                    read -p "Benutzername: " mqtt_user
+                    read -sp "Passwort: " mqtt_password; echo ""
+                fi
+                print_info "Installiere mosquitto-clients..."
+                apt-get update >/dev/null 2>&1
+                apt-get install -y mosquitto-clients >/dev/null 2>&1
+                sed -i "s|^MQTT_ENABLED=.*|MQTT_ENABLED=true|" "$INSTALL_DIR/lib/config.sh"
+                sed -i "s|^MQTT_BROKER=.*|MQTT_BROKER=\"$(echo "$mqtt_broker" | sed 's/[\/&]/\\&/g')\"|" "$INSTALL_DIR/lib/config.sh"
+                [[ -n "$mqtt_user" ]] && sed -i "s|^MQTT_USER=.*|MQTT_USER=\"$(echo "$mqtt_user" | sed 's/[\/&]/\\&/g')\"|" "$INSTALL_DIR/lib/config.sh"
+                [[ -n "$mqtt_password" ]] && sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=\"$(echo "$mqtt_password" | sed 's/[\/&]/\\&/g')\"|" "$INSTALL_DIR/lib/config.sh"
+                print_success "MQTT installiert: $mqtt_broker"
+            fi
+        fi
+    fi
+    
+    # Web-Server jetzt installieren wenn gewünscht
+    if [[ "$install_web_now" == "true" ]]; then
+        INSTALL_WEB_SERVER=true
+        
+        # Führe Web-Server Installation aus (direkt inline für Repair-Modus)
+        {
+            echo "0"
+            echo "XXX"
+            echo "Prüfe Python-Abhängigkeiten..."
+            echo "XXX"
+            
+            # Installiere Python3 falls nötig
+            if ! command -v python3 >/dev/null 2>&1; then
+                echo "20"
+                echo "XXX"
+                echo "Installiere Python3 und pip..."
+                echo "XXX"
+                apt-get update >/dev/null 2>&1
+                apt-get install -y python3 python3-pip python3-venv >/dev/null 2>&1
+            fi
+            
+            # Stelle sicher dass python3-venv installiert ist (Debian/Ubuntu brauchen separates Paket)
+            if ! dpkg -l | grep -q python3.*-venv; then
+                echo "25"
+                echo "XXX"
+                echo "Installiere python3-venv..."
+                echo "XXX"
+                apt-get install -y python3-venv >/dev/null 2>&1
+            fi
+            
+            # Erstelle Virtual Environment
+            echo "40"
+            echo "XXX"
+            echo "Erstelle Python Virtual Environment..."
+            echo "XXX"
+            python3 -m venv "$INSTALL_DIR/venv" >/dev/null 2>&1
+            
+            # Installiere Flask
+            echo "60"
+            echo "XXX"
+            echo "Installiere Flask..."
+            echo "XXX"
+            "$INSTALL_DIR/venv/bin/pip" install --quiet --upgrade pip >/dev/null 2>&1
+            "$INSTALL_DIR/venv/bin/pip" install --quiet flask >/dev/null 2>&1
+            
+            # Erstelle Verzeichnisstruktur
+            echo "80"
+            echo "XXX"
+            echo "Erstelle Verzeichnisstruktur..."
+            echo "XXX"
+            mkdir -p "$INSTALL_DIR/www/templates"
+            mkdir -p "$INSTALL_DIR/www/static/css"
+            mkdir -p "$INSTALL_DIR/www/static/js"
+            mkdir -p "$INSTALL_DIR/www/logs"
+            chmod -R 755 "$INSTALL_DIR/www" 2>/dev/null || true
+            chmod -R 755 "$INSTALL_DIR/venv" 2>/dev/null || true
+            
+            # Erstelle requirements.txt
+            cat > "$INSTALL_DIR/www/requirements.txt" <<'EOFREQ'
+# disk2iso Web-Server Dependencies
+flask>=2.0.0
+EOFREQ
+            
+            echo "100"
+            echo "XXX"
+            echo "Web-Server installiert!"
+            echo "XXX"
+            sleep 0.5
+        } | whiptail --title "Web-Server Installation" \
+            --gauge "Installiere Web-Server-Komponenten..." 8 70 0
+        
+        print_success "Web-Server installiert (Python/Flask)"
+        print_info "Hinweis: Flask app.py noch nicht vorhanden (Phase 2)"
+    fi
     
     # Zeige Reparatur-Zusammenfassung
     if use_whiptail; then
@@ -542,6 +812,276 @@ perform_update() {
             systemctl start disk2iso-web
             print_success "Service disk2iso-web neu gestartet"
         fi
+    fi
+    
+    # Prüfe fehlende Komponenten nach Update
+    local missing_components=false
+    local install_service_now=false
+    local install_mqtt_now=false
+    
+    # Prüfe disk2iso.service
+    if [[ ! -f "$SERVICE_FILE" ]]; then
+        if use_whiptail; then
+            if whiptail --title "Fehlende Komponente erkannt" \
+                --yesno "Der disk2iso Service ist nicht installiert.\n\nMöchten Sie ihn jetzt einrichten?\n\nDies ermöglicht automatisches Starten beim Booten." \
+                12 70; then
+                install_service_now=true
+                missing_components=true
+            fi
+        fi
+    fi
+    
+    # Prüfe MQTT-Integration (mosquitto-clients)
+    if ! command -v mosquitto_pub >/dev/null 2>&1; then
+        if use_whiptail; then
+            if whiptail --title "Optionale Komponente" \
+                --yesno "MQTT-Integration ist nicht installiert.\n\nMQTT ermöglicht:\n• Status-Updates an Home Assistant\n• Fortschrittsanzeige in Echtzeit\n• Push-Benachrichtigungen\n\nMöchten Sie MQTT jetzt einrichten?" \
+                14 70; then
+                install_mqtt_now=true
+                missing_components=true
+            fi
+        else
+            print_info "MQTT-Integration ist nicht installiert"
+            if ask_yes_no "MQTT jetzt einrichten?" "n"; then
+                install_mqtt_now=true
+                missing_components=true
+            fi
+        fi
+    fi
+    
+    # Prüfe Web-Server (Python venv)
+    if [[ ! -d "$INSTALL_DIR/venv" ]] || [[ ! -f "$INSTALL_DIR/venv/bin/flask" ]]; then
+        if use_whiptail; then
+            if whiptail --title "Optionale Komponente" \
+                --yesno "Web-Server ist nicht installiert.\n\nWeb-Server bietet:\n• Status-Überwachung im Browser\n• Archiv-Verwaltung und Übersicht\n• Log-Viewer mit Live-Updates\n• Responsive Design\n\nMöchten Sie den Web-Server jetzt installieren?" \
+                14 70; then
+                install_web_now=true
+                missing_components=true
+            fi
+        else
+            print_info "Web-Server ist nicht installiert"
+            if ask_yes_no "Web-Server jetzt installieren?" "n"; then
+                install_web_now=true
+                missing_components=true
+            fi
+        fi
+    fi
+    
+    # Service jetzt installieren wenn gewünscht
+    if [[ "$install_service_now" == "true" ]]; then
+        # Frage Ausgabeverzeichnis
+        local output_dir="/media/iso"
+        if use_whiptail; then
+            output_dir=$(whiptail --title "Ausgabeverzeichnis" \
+                --inputbox "Ausgabeverzeichnis für ISOs:" \
+                10 60 "/media/iso" 3>&1 1>&2 2>&3) || output_dir="/media/iso"
+        fi
+        
+        # Erstelle Service-Datei
+        cat > "$SERVICE_FILE" <<EOF
+[Unit]
+Description=disk2iso - Automatische ISO Erstellung von optischen Medien
+After=multi-user.target
+Wants=systemd-udevd.service
+After=systemd-udevd.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=$INSTALL_DIR/disk2iso.sh -o $output_dir
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        
+        # Aktualisiere config.sh
+        if [[ -f "$INSTALL_DIR/lib/config.sh" ]]; then
+            sed -i "s|DEFAULT_OUTPUT_DIR=.*|DEFAULT_OUTPUT_DIR=\"$output_dir\"|" "$INSTALL_DIR/lib/config.sh"
+        fi
+        
+        # Erstelle Ausgabeverzeichnis mit Unterordnern
+        mkdir -p "$output_dir"/{.log,.temp,audio,dvd,bd,data}
+        chmod 755 "$output_dir"
+        print_success "Ausgabeverzeichnis erstellt: $output_dir"
+        
+        systemctl daemon-reload
+        systemctl enable disk2iso.service >/dev/null 2>&1
+        systemctl start disk2iso.service >/dev/null 2>&1
+        
+        service_enabled=true
+        service_active=true
+        print_success "Service disk2iso installiert und gestartet"
+    else
+        # Service existiert bereits → Stelle sicher dass Ausgabeverzeichnis existiert
+        if [[ -f "$SERVICE_FILE" ]]; then
+            # Lese Ausgabeverzeichnis aus Service-Datei
+            local output_dir=$(grep "ExecStart=" "$SERVICE_FILE" | sed -n 's/.*-o \([^ ]*\).*/\1/p')
+            if [[ -z "$output_dir" ]]; then
+                # Fallback: Lese aus config.sh
+                output_dir=$(grep "DEFAULT_OUTPUT_DIR=" "$INSTALL_DIR/lib/config.sh" 2>/dev/null | cut -d'"' -f2)
+            fi
+            
+            # Erstelle Verzeichnis falls es nicht existiert
+            if [[ -n "$output_dir" ]] && [[ ! -d "$output_dir" ]]; then
+                mkdir -p "$output_dir"/{.log,.temp,audio,dvd,bd,data}
+                chmod 755 "$output_dir"
+                print_success "Ausgabeverzeichnis erstellt: $output_dir"
+            fi
+        fi
+    fi
+    
+    # MQTT jetzt installieren wenn gewünscht
+    if [[ "$install_mqtt_now" == "true" ]]; then
+        if use_whiptail; then
+            local mqtt_broker=$(whiptail --title "MQTT Konfiguration" \
+                --inputbox "Geben Sie die IP-Adresse des MQTT Brokers ein:\n(z.B. 192.168.20.10)" \
+                10 60 3>&1 1>&2 2>&3)
+            
+            if [[ -n "$mqtt_broker" ]]; then
+                # Optionale Authentifizierung
+                local mqtt_user=""
+                local mqtt_password=""
+                if whiptail --title "MQTT Authentifizierung" \
+                    --yesno "Benötigt der MQTT Broker Authentifizierung?" \
+                    8 60; then
+                    mqtt_user=$(whiptail --title "MQTT Benutzer" \
+                        --inputbox "Benutzername:" 8 60 3>&1 1>&2 2>&3)
+                    mqtt_password=$(whiptail --title "MQTT Passwort" \
+                        --passwordbox "Passwort:" 8 60 3>&1 1>&2 2>&3)
+                fi
+                
+                # Installiere mosquitto-clients
+                {
+                    echo "10"
+                    echo "XXX"
+                    echo "Installiere mosquitto-clients..."
+                    echo "XXX"
+                    apt-get update >/dev/null 2>&1
+                    echo "50"
+                    apt-get install -y mosquitto-clients >/dev/null 2>&1
+                    echo "90"
+                    
+                    # Aktualisiere config.sh
+                    local escaped_broker=$(echo "$mqtt_broker" | sed 's/[\/&]/\\&/g')
+                    sed -i "s|^MQTT_ENABLED=.*|MQTT_ENABLED=true|" "$INSTALL_DIR/lib/config.sh"
+                    sed -i "s|^MQTT_BROKER=.*|MQTT_BROKER=\"$escaped_broker\"|" "$INSTALL_DIR/lib/config.sh"
+                    
+                    if [[ -n "$mqtt_user" ]]; then
+                        local escaped_user=$(echo "$mqtt_user" | sed 's/[\/&]/\\&/g')
+                        local escaped_password=$(echo "$mqtt_password" | sed 's/[\/&]/\\&/g')
+                        sed -i "s|^MQTT_USER=.*|MQTT_USER=\"$escaped_user\"|" "$INSTALL_DIR/lib/config.sh"
+                        sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=\"$escaped_password\"|" "$INSTALL_DIR/lib/config.sh"
+                    fi
+                    
+                    echo "XXX"
+                    echo "MQTT-Integration konfiguriert"
+                    echo "XXX"
+                    echo "100"
+                    sleep 0.5
+                } | whiptail --title "MQTT Installation" \
+                    --gauge "Installiere MQTT-Unterstützung..." 8 70 0
+                
+                print_success "MQTT-Integration installiert: $mqtt_broker"
+            fi
+        else
+            # Text-Modus
+            read -p "MQTT Broker IP-Adresse: " mqtt_broker
+            if [[ -n "$mqtt_broker" ]]; then
+                local mqtt_user="" mqtt_password=""
+                if ask_yes_no "Benötigt Authentifizierung?" "n"; then
+                    read -p "Benutzername: " mqtt_user
+                    read -sp "Passwort: " mqtt_password; echo ""
+                fi
+                print_info "Installiere mosquitto-clients..."
+                apt-get update >/dev/null 2>&1
+                apt-get install -y mosquitto-clients >/dev/null 2>&1
+                sed -i "s|^MQTT_ENABLED=.*|MQTT_ENABLED=true|" "$INSTALL_DIR/lib/config.sh"
+                sed -i "s|^MQTT_BROKER=.*|MQTT_BROKER=\"$(echo "$mqtt_broker" | sed 's/[\/&]/\\&/g')\"|" "$INSTALL_DIR/lib/config.sh"
+                [[ -n "$mqtt_user" ]] && sed -i "s|^MQTT_USER=.*|MQTT_USER=\"$(echo "$mqtt_user" | sed 's/[\/&]/\\&/g')\"|" "$INSTALL_DIR/lib/config.sh"
+                [[ -n "$mqtt_password" ]] && sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=\"$(echo "$mqtt_password" | sed 's/[\/&]/\\&/g')\"|" "$INSTALL_DIR/lib/config.sh"
+                print_success "MQTT installiert: $mqtt_broker"
+            fi
+        fi
+    fi
+    
+    # Web-Server jetzt installieren wenn gewünscht
+    if [[ "$install_web_now" == "true" ]]; then
+        INSTALL_WEB_SERVER=true
+        
+        # Führe Web-Server Installation aus (direkt inline für Update-Modus)
+        {
+            echo "0"
+            echo "XXX"
+            echo "Prüfe Python-Abhängigkeiten..."
+            echo "XXX"
+            
+            # Installiere Python3 falls nötig
+            if ! command -v python3 >/dev/null 2>&1; then
+                echo "20"
+                echo "XXX"
+                echo "Installiere Python3 und pip..."
+                echo "XXX"
+                apt-get update >/dev/null 2>&1
+                apt-get install -y python3 python3-pip python3-venv >/dev/null 2>&1
+            fi
+            
+            # Stelle sicher dass python3-venv installiert ist (Debian/Ubuntu brauchen separates Paket)
+            if ! dpkg -l | grep -q python3.*-venv; then
+                echo "25"
+                echo "XXX"
+                echo "Installiere python3-venv..."
+                echo "XXX"
+                apt-get install -y python3-venv >/dev/null 2>&1
+            fi
+            
+            # Erstelle Virtual Environment
+            echo "40"
+            echo "XXX"
+            echo "Erstelle Python Virtual Environment..."
+            echo "XXX"
+            python3 -m venv "$INSTALL_DIR/venv" >/dev/null 2>&1
+            
+            # Installiere Flask
+            echo "60"
+            echo "XXX"
+            echo "Installiere Flask..."
+            echo "XXX"
+            "$INSTALL_DIR/venv/bin/pip" install --quiet --upgrade pip >/dev/null 2>&1
+            "$INSTALL_DIR/venv/bin/pip" install --quiet flask >/dev/null 2>&1
+            
+            # Erstelle Verzeichnisstruktur
+            echo "80"
+            echo "XXX"
+            echo "Erstelle Verzeichnisstruktur..."
+            echo "XXX"
+            mkdir -p "$INSTALL_DIR/www/templates"
+            mkdir -p "$INSTALL_DIR/www/static/css"
+            mkdir -p "$INSTALL_DIR/www/static/js"
+            mkdir -p "$INSTALL_DIR/www/logs"
+            chmod -R 755 "$INSTALL_DIR/www" 2>/dev/null || true
+            chmod -R 755 "$INSTALL_DIR/venv" 2>/dev/null || true
+            
+            # Erstelle requirements.txt
+            cat > "$INSTALL_DIR/www/requirements.txt" <<'EOFREQ'
+# disk2iso Web-Server Dependencies
+flask>=2.0.0
+EOFREQ
+            
+            echo "100"
+            echo "XXX"
+            echo "Web-Server installiert!"
+            echo "XXX"
+            sleep 0.5
+        } | whiptail --title "Web-Server Installation" \
+            --gauge "Installiere Web-Server-Komponenten..." 8 70 0
+        
+        print_success "Web-Server installiert (Python/Flask)"
+        print_info "Hinweis: Flask app.py noch nicht vorhanden (Phase 2)"
     fi
     
     # Zeige Update-Zusammenfassung
@@ -1376,6 +1916,15 @@ install_web_server() {
                 apt-get install -y -qq python3 python3-pip python3-venv >/dev/null 2>&1 || true
             fi
             
+            # Stelle sicher dass python3-venv installiert ist (Debian/Ubuntu)
+            if ! dpkg -l | grep -q python3.*-venv; then
+                echo "XXX"
+                echo "Installiere python3-venv..."
+                echo "XXX"
+                echo "30"
+                apt-get install -y -qq python3-venv >/dev/null 2>&1 || true
+            fi
+            
             # Erstelle virtuelles Environment
             echo "XXX"
             echo "Erstelle Python Virtual Environment..."
@@ -1386,11 +1935,11 @@ install_web_server() {
             
             # Installiere Flask und Gunicorn
             echo "XXX"
-            echo "Installiere Flask..."
+            echo "Installiere Flask (kann 1-2 Minuten dauern)..."
             echo "XXX"
             echo "60"
             
-            "$INSTALL_DIR/venv/bin/pip" install --upgrade pip >/dev/null 2>&1
+            "$INSTALL_DIR/venv/bin/pip" install --upgrade pip --quiet >/dev/null 2>&1
             "$INSTALL_DIR/venv/bin/pip" install flask >/dev/null 2>&1
             
             # Erstelle Web-Verzeichnisstruktur
