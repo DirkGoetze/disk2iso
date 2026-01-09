@@ -130,6 +130,57 @@ def count_iso_files(path):
     except:
         return 0
 
+def get_iso_files_by_type(path):
+    """Holt alle ISO-Dateien gruppiert nach Typ"""
+    result = {
+        'audio': [],
+        'dvd': [],
+        'bluray': [],
+        'data': []
+    }
+    
+    try:
+        if not os.path.exists(path):
+            return result
+        
+        for root, dirs, files in os.walk(path):
+            for filename in files:
+                if not filename.lower().endswith('.iso'):
+                    continue
+                
+                filepath = os.path.join(root, filename)
+                try:
+                    stat = os.stat(filepath)
+                    file_info = {
+                        'name': filename,
+                        'path': filepath,
+                        'size': stat.st_size,
+                        'created': datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
+                        'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                    }
+                    
+                    # Determine type based on filename patterns
+                    filename_lower = filename.lower()
+                    if '_audio-cd_' in filename_lower or '_audiocd_' in filename_lower:
+                        result['audio'].append(file_info)
+                    elif '_bluray_' in filename_lower or '_bd_' in filename_lower or '_blu-ray_' in filename_lower:
+                        result['bluray'].append(file_info)
+                    elif '_dvd_' in filename_lower or '_dvd-video_' in filename_lower:
+                        result['dvd'].append(file_info)
+                    else:
+                        result['data'].append(file_info)
+                except Exception as e:
+                    print(f"Fehler beim Lesen von {filename}: {e}", file=sys.stderr)
+        
+        # Sort each list by modified date (newest first)
+        for type_key in result:
+            result[type_key].sort(key=lambda x: x['modified'], reverse=True)
+    
+    except Exception as e:
+        print(f"Fehler beim Durchsuchen des Archivs: {e}", file=sys.stderr)
+    
+    return result
+
 def read_api_json(filename):
     """Liest JSON-Datei aus API-Verzeichnis"""
     try:
@@ -244,6 +295,15 @@ def config_page():
         config=config
     )
 
+@app.route('/archive')
+def archive_page():
+    """Archiv-Übersicht-Seite"""
+    version = get_version()
+    
+    return render_template('archive.html',
+        version=version
+    )
+
 @app.route('/api/status')
 def api_status():
     """API-Endpoint für Status-Abfrage (AJAX)"""
@@ -266,6 +326,20 @@ def api_status():
 def api_history():
     """API-Endpoint für Aktivitäts-History"""
     return jsonify(get_history())
+
+@app.route('/api/archive')
+def api_archive():
+    """API-Endpoint für Archiv-Daten gruppiert nach Typ"""
+    config = get_config()
+    archives = get_iso_files_by_type(config['output_dir'])
+    
+    total = sum(len(files) for files in archives.values())
+    
+    return jsonify({
+        'total': total,
+        'by_type': archives,
+        'timestamp': datetime.now().isoformat()
+    })
 
 @app.route('/api/config', methods=['GET', 'POST'])
 def api_config():

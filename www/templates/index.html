@@ -7,18 +7,53 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
+        <!-- Header -->
         <div class="header">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h1>🎛️ disk2iso Control Panel</h1>
-                    <p class="version">Version {{ version }}</p>
-                </div>
-                <a href="/config" class="btn btn-primary" style="padding: 10px 20px; text-decoration: none; border-radius: 4px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600;">
-                    ⚙️ Konfiguration
-                </a>
-            </div>
+            <h1>🎛️ disk2iso</h1>
         </div>
+
+        <div class="main-wrapper">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar">
+                <nav>
+                    <ul class="nav-menu">
+                        <li>
+                            <a href="/" class="active">
+                                <span class="nav-icon">🏠</span>
+                                <span>Home</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/archive">
+                                <span class="nav-icon">📚</span>
+                                <span>Archiv</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/config">
+                                <span class="nav-icon">⚙️</span>
+                                <span>Konfiguration</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <!-- Content Area -->
+            <main class="content">
+                <!-- Breadcrumb -->
+                <nav class="breadcrumb">
+                    <ul class="breadcrumb-list">
+                        <li>
+                            <a href="/">🏠 Home</a>
+                        </li>
+                        <li class="breadcrumb-separator">></li>
+                        <li class="current">Dashboard</li>
+                    </ul>
+                </nav>
+
+                <div class="container">
         
         <div class="status-grid">
             <!-- Live Ripping Status -->
@@ -123,9 +158,12 @@
             </div>
         </div>
         
-        <div class="footer">
-            <p>disk2iso - Automatische ISO Erstellung von optischen Medien</p>
-            <p style="margin-top: 5px; font-size: 0.9em;">© 2026 | Version {{ version }}</p>
+                <div class="footer">
+                    <p>disk2iso - Automatische ISO Erstellung von optischen Medien</p>
+                    <p style="margin-top: 5px; font-size: 0.9em;">© 2026 | Version {{ version }}</p>
+                </div>
+                </div>
+            </main>
         </div>
     </div>
     
