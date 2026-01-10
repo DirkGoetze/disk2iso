@@ -19,8 +19,12 @@ set -e
 # Ermittle Script-Verzeichnis (auch wenn via sudo ausgeführt)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Lade Installation Library (Shared Utilities)
-source "$SCRIPT_DIR/lib/lib-install.sh"
+# Farben für Output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
 # Standard-Installationspfade
 INSTALL_DIR="/opt/disk2iso"
@@ -31,7 +35,7 @@ BIN_LINK="/usr/local/bin/disk2iso"
 INSTALL_AUDIO_CD=false
 INSTALL_VIDEO_DVD=false
 INSTALL_VIDEO_BD=true  # Standard: aktiviert
-INSTALL_SERVICE=true   # IMMER aktiviert - Service ist essentiell
+INSTALL_SERVICE=false
 INSTALL_MQTT=false
 INSTALL_WEB_SERVER=false
 
@@ -47,8 +51,96 @@ MQTT_USER=""
 MQTT_PASSWORD=""
 
 # ============================================================================
-# SYSTEM CHECKS (Installation-spezifisch)
+# UTILITY FUNCTIONS
 # ============================================================================
+
+print_header() {
+    echo -e "\n${BLUE}========================================${NC}"
+    echo -e "${BLUE}$1${NC}"
+    echo -e "${BLUE}========================================${NC}\n"
+}
+
+print_success() {
+    echo -e "${GREEN}✓${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}✗${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠${NC} $1"
+}
+
+print_info() {
+    echo -e "${BLUE}ℹ${NC} $1"
+}
+
+# Whiptail-Wrapper für bessere UX
+use_whiptail() {
+    command -v whiptail >/dev/null 2>&1
+}
+
+ask_yes_no() {
+    local question="$1"
+    local default="${2:-n}"
+    
+    if use_whiptail; then
+        if [[ "$default" == "y" ]]; then
+            whiptail --title "disk2iso Installation" --yesno "$question" 10 60 --defaultno
+        else
+            whiptail --title "disk2iso Installation" --yesno "$question" 10 60
+        fi
+        return $?
+    else
+        # Fallback auf klassische Eingabe
+        local answer
+        if [[ "$default" == "y" ]]; then
+            read -p "$question [J/n]: " answer
+            answer=${answer:-j}
+        else
+            read -p "$question [j/N]: " answer
+            answer=${answer:-n}
+        fi
+        [[ "$answer" =~ ^[jJyY]$ ]]
+    fi
+}
+
+show_info() {
+    local title="$1"
+    local message="$2"
+    
+    if use_whiptail; then
+        whiptail --title "$title" --msgbox "$message" 20 70
+    else
+        echo -e "\n${BLUE}$title${NC}"
+        echo "$message"
+        read -p "Drücken Sie Enter zum Fortfahren..."
+    fi
+}
+
+# ============================================================================
+# SYSTEM CHECKS
+# ============================================================================
+
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        print_error "Dieses Script muss als root ausgeführt werden"
+        echo "Bitte verwenden Sie: sudo $0"
+        exit 1
+    fi
+}
+
+check_debian() {
+    if [[ ! -f /etc/debian_version ]]; then
+        print_warning "Dieses Script wurde für Debian entwickelt"
+        if ! ask_yes_no "Trotzdem fortfahren?"; then
+            exit 1
+        fi
+    else
+        print_success "Debian System erkannt: $(cat /etc/debian_version)"
+    fi
+}
 
 # Prüfe auf bestehende Installation
 check_existing_installation() {
@@ -228,341 +320,6 @@ perform_repair() {
     fi
     
     # Stoppe laufende Services
-    if systemctl is-active --quiet disk2iso; then
-        systemctl stop disk2iso
-        service_was_active=true
-        print_info "Service disk2iso gestoppt"
-    fi
-    
-    if systemctl is-active --quiet disk2iso-web; then
-        systemctl stop disk2iso-web
-        web_service_was_active=true
-        print_info "Service disk2iso-web gestoppt"
-    fi
-    
-    # Fortschrittsanzeige
-    (
-        echo "10" ; sleep 0.5
-        echo "# Kopiere Haupt-Script..."
-        cp -f "$SCRIPT_DIR/disk2iso.sh" "$INSTALL_DIR/"
-        chmod +x "$INSTALL_DIR/disk2iso.sh"
-        
-        echo "30" ; sleep 0.3
-        echo "# Kopiere VERSION-Datei..."
-        if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
-            cp -f "$SCRIPT_DIR/VERSION" "$INSTALL_DIR/"
-        fi
-        
-        echo "50" ; sleep 0.3
-        echo "# Kopiere Bibliotheken..."
-        cp -rf "$SCRIPT_DIR/lib" "$INSTALL_DIR/"
-        
-        echo "70" ; sleep 0.3
-        echo "# Kopiere Sprachdateien..."
-        mkdir -p "$INSTALL_DIR/lang"
-        cp -rf "$SCRIPT_DIR/lang"/* "$INSTALL_DIR/lang/"
-        
-        echo "85" ; sleep 0.3
-        echo "# Kopiere API-Templates..."
-        mkdir -p "$INSTALL_DIR/api"
-        cp -rf "$SCRIPT_DIR/api"/* "$INSTALL_DIR/api/"
-        
-        echo "95" ; sleep 0.2
-        echo "# Aktualisiere Web-Interface..."
-        if [[ -d "$SCRIPT_DIR/www" ]]; then
-            mkdir -p "$INSTALL_DIR/www"
-            cp -rf "$SCRIPT_DIR/www"/* "$INSTALL_DIR/www/"
-        fi
-        
-        echo "100"
-        echo "# Dateien kopiert"
-    ) | if use_whiptail; then
-        whiptail --gauge "Installation wird repariert..." 8 60 0
-    else
-        while read -r percent text; do
-            if [[ "$percent" =~ ^[0-9]+$ ]]; then
-                printf "\r[%-50s] %d%%" $(printf '#%.0s' $(seq 1 $((percent/2)))) "$percent"
-            fi
-        done
-        echo
-    fi
-    
-    # Stelle Konfiguration wieder her
-    if [[ -f "$config_backup" ]]; then
-        cp "$config_backup" "$INSTALL_DIR/lib/config.sh"
-        print_success "Konfiguration wiederhergestellt"
-    fi
-    
-    # Service bleibt unverändert, nur daemon-reload
-    if [[ -f "$SERVICE_FILE" ]]; then
-        systemctl daemon-reload
-        print_success "Systemd-Daemon neu geladen"
-    fi
-    
-    # Services wieder starten
-    if [[ "$service_was_active" == "true" ]]; then
-        systemctl start disk2iso
-        print_success "Service disk2iso gestartet"
-    fi
-    
-    if [[ "$web_service_was_active" == "true" ]]; then
-        systemctl start disk2iso-web
-        print_success "Service disk2iso-web gestartet"
-    fi
-    
-    print_success "Reparatur abgeschlossen"
-}
-
-# Führe Update durch (mit möglicher config.sh-Änderung)
-perform_update() {
-    print_header "UPDATE v$INSTALLED_VERSION → v$CURRENT_VERSION"
-    
-    # Sichere aktuelle Konfiguration
-    local config_backup="/tmp/disk2iso-config-backup-$(date +%s).sh"
-    if [[ -f "$INSTALL_DIR/lib/config.sh" ]]; then
-        cp "$INSTALL_DIR/lib/config.sh" "$config_backup"
-        print_info "Konfiguration gesichert: $config_backup"
-    fi
-    
-    # Stoppe laufende Services
-    if systemctl is-active --quiet disk2iso; then
-        systemctl stop disk2iso
-        service_was_active=true
-        print_info "Service disk2iso gestoppt"
-    fi
-    
-    if systemctl is-active --quiet disk2iso-web; then
-        systemctl stop disk2iso-web
-        web_service_was_active=true
-        print_info "Service disk2iso-web gestoppt"
-    fi
-    
-    # Fortschrittsanzeige (gleich wie bei Reparatur)
-    (
-        echo "10" ; sleep 0.5
-        echo "# Kopiere Haupt-Script..."
-        cp -f "$SCRIPT_DIR/disk2iso.sh" "$INSTALL_DIR/"
-        chmod +x "$INSTALL_DIR/disk2iso.sh"
-        
-        echo "30" ; sleep 0.3
-        echo "# Kopiere VERSION-Datei..."
-        if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
-            cp -f "$SCRIPT_DIR/VERSION" "$INSTALL_DIR/"
-        fi
-        
-        echo "50" ; sleep 0.3
-        echo "# Kopiere Bibliotheken..."
-        cp -rf "$SCRIPT_DIR/lib" "$INSTALL_DIR/"
-        
-        echo "70" ; sleep 0.3
-        echo "# Kopiere Sprachdateien..."
-        mkdir -p "$INSTALL_DIR/lang"
-        cp -rf "$SCRIPT_DIR/lang"/* "$INSTALL_DIR/lang/"
-        
-        echo "85" ; sleep 0.3
-        echo "# Kopiere API-Templates..."
-        mkdir -p "$INSTALL_DIR/api"
-        cp -rf "$SCRIPT_DIR/api"/* "$INSTALL_DIR/api/"
-        
-        echo "95" ; sleep 0.2
-        echo "# Aktualisiere Web-Interface..."
-        if [[ -d "$SCRIPT_DIR/www" ]]; then
-            mkdir -p "$INSTALL_DIR/www"
-            cp -rf "$SCRIPT_DIR/www"/* "$INSTALL_DIR/www/"
-        fi
-        
-        echo "100"
-        echo "# Dateien kopiert"
-    ) | if use_whiptail; then
-        whiptail --gauge "Update wird durchgeführt..." 8 60 0
-    else
-        while read -r percent text; do
-            if [[ "$percent" =~ ^[0-9]+$ ]]; then
-                printf "\r[%-50s] %d%%" $(printf '#%.0s' $(seq 1 $((percent/2)))) "$percent"
-            fi
-        done
-        echo
-    fi
-    
-    # Prüfe auf config.sh-Änderungen
-    if diff -q "$SCRIPT_DIR/lib/config.sh" "$config_backup" >/dev/null 2>&1; then
-        # Keine Änderungen -> einfach wiederherstellen
-        cp "$config_backup" "$INSTALL_DIR/lib/config.sh"
-        print_success "Konfiguration unverändert"
-    else
-        # Änderungen erkannt -> Merge-Strategie
-        print_warning "config.sh hat sich geändert"
-        
-        if use_whiptail; then
-            whiptail --title "Konfigurations-Update" \
-                --msgbox "Die Konfigurationsdatei config.sh hat neue Parameter.\n\nIhre bestehende Konfiguration wird beibehalten und neue Parameter werden hinzugefügt." \
-                10 70
-        else
-            print_info "Neue Parameter werden hinzugefügt, bestehende Werte bleiben erhalten"
-        fi
-        
-        # Lese aktuelle DEFAULT_OUTPUT_DIR
-        local output_dir
-        if [[ -f "$config_backup" ]]; then
-            output_dir=$(grep "^DEFAULT_OUTPUT_DIR=" "$config_backup" | cut -d'=' -f2 | tr -d '"')
-        fi
-        output_dir="${output_dir:-/media/iso}"
-        
-        # Kopiere neue config.sh
-        cp "$SCRIPT_DIR/lib/config.sh" "$INSTALL_DIR/lib/config.sh"
-        
-        # Setze gespeicherte Werte
-        sed -i "s|DEFAULT_OUTPUT_DIR=.*|DEFAULT_OUTPUT_DIR=\"$output_dir\"|" "$INSTALL_DIR/lib/config.sh"
-        
-        print_success "Konfiguration aktualisiert mit bestehenden Werten"
-    fi
-    
-    # Service-Datei aktualisieren (neue Service-Vorlage verwenden, ohne -o Parameter)
-    if [[ -f "$SERVICE_FILE" ]]; then
-        # Lese aktuelles Ausgabeverzeichnis aus config.sh
-        local output_dir="/media/iso"
-        if [[ -f "$INSTALL_DIR/lib/config.sh" ]]; then
-            output_dir=$(grep "^DEFAULT_OUTPUT_DIR=" "$INSTALL_DIR/lib/config.sh" | cut -d'=' -f2 | tr -d '"')
-        fi
-        
-        # Erstelle Service-Datei
-        cat > "$SERVICE_FILE" <<EOF
-[Unit]
-Description=disk2iso - Automatische ISO Erstellung von optischen Medien
-After=multi-user.target
-Wants=systemd-udevd.service
-After=systemd-udevd.service
-
-[Service]
-Type=simple
-User=root
-Group=root
-ExecStart=$INSTALL_DIR/disk2iso.sh
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-
-# Ausgabeverzeichnis wird aus config.sh gelesen (DEFAULT_OUTPUT_DIR)
-
-[Install]
-WantedBy=multi-user.target
-EOF
-        
-        systemctl daemon-reload
-        print_success "Service-Datei aktualisiert"
-    fi
-    
-    # Services wieder starten
-    if [[ "$service_was_active" == "true" ]]; then
-        systemctl start disk2iso
-        print_success "Service disk2iso gestartet"
-    fi
-    
-    if [[ "$web_service_was_active" == "true" ]]; then
-        systemctl start disk2iso-web
-        print_success "Service disk2iso-web gestartet"
-    fi
-    
-    print_success "Update abgeschlossen: v$INSTALLED_VERSION → v$CURRENT_VERSION"
-}
-
-# Hauptlogik - detect_installation_state() wird nur einmal aufgerufen
-detect_installation_state() {
-    print_header "INSTALLATIONSSTATUS-PRÜFUNG"
-    
-    local install_service_now=false
-    local install_mqtt_now=false
-    local install_web_now=false
-    local missing_components=false
-    
-    # Prüfe Service-Installation
-    if ! systemctl list-unit-files | grep -q "^disk2iso.service"; then
-        if use_whiptail; then
-            if whiptail --title "Service nicht installiert" \
-                --yesno "disk2iso-Service ist nicht installiert.\n\nDer Service ist erforderlich für:\n• Automatische ISO-Erstellung\n• Überwachung optischer Laufwerke\n• Systemd-Integration\n\nMöchten Sie den Service jetzt installieren?" \
-                14 70; then
-                install_service_now=true
-                missing_components=true
-            fi
-        else
-            print_info "Service ist nicht installiert"
-            if ask_yes_no "Service jetzt installieren?" "j"; then
-                install_service_now=true
-                missing_components=true
-            fi
-        fi
-    fi
-    
-    # Prüfe MQTT-Integration (mosquitto-clients)
-    if ! command -v mosquitto_pub >/dev/null 2>&1; then
-        if use_whiptail; then
-            if whiptail --title "Optionale Komponente" \
-                --yesno "MQTT-Integration ist nicht installiert.\n\nMQTT ermöglicht:\n• Status-Updates an Home Assistant\n• Fortschrittsanzeige in Echtzeit\n• Push-Benachrichtigungen\n\nMöchten Sie MQTT jetzt einrichten?" \
-                14 70; then
-                install_mqtt_now=true
-                missing_components=true
-            fi
-        else
-            print_info "MQTT-Integration ist nicht installiert"
-            if ask_yes_no "MQTT jetzt einrichten?" "n"; then
-                install_mqtt_now=true
-                missing_components=true
-            fi
-        fi
-    fi
-    
-    # Prüfe Web-Server (Python venv)
-    if [[ ! -d "$INSTALL_DIR/venv" ]] || [[ ! -f "$INSTALL_DIR/venv/bin/flask" ]]; then
-        if use_whiptail; then
-            if whiptail --title "Optionale Komponente" \
-                --yesno "Web-Server ist nicht installiert.\n\nWeb-Server bietet:\n• Status-Überwachung im Browser\n• Archiv-Verwaltung und Übersicht\n• Log-Viewer mit Live-Updates\n• Responsive Design\n\nMöchten Sie den Web-Server jetzt installieren?" \
-                14 70; then
-                install_web_now=true
-                missing_components=true
-            fi
-        else
-            print_info "Web-Server ist nicht installiert"
-            if ask_yes_no "Web-Server jetzt installieren?" "n"; then
-                install_web_now=true
-                missing_components=true
-            fi
-        fi
-    fi
-    
-    # Service jetzt installieren wenn gewünscht
-    if [[ "$install_service_now" == "true" ]]; then
-        # Frage Ausgabeverzeichnis
-        local output_dir="/media/iso"
-        if use_whiptail; then
-            output_dir=$(whiptail --title "Ausgabeverzeichnis" \
-                --inputbox "Ausgabeverzeichnis für ISOs:" \
-                10 60 "/media/iso" 3>&1 1>&2 2>&3) || output_dir="/media/iso"
-        fi
-        
-        # Erstelle Service-Datei (PERFORM_REPAIR Version)
-        cat > "$SERVICE_FILE" <<EOF
-[Unit]
-Description=disk2iso - Automatische ISO Erstellung von optischen Medien
-After=multi-user.target
-Wants=systemd-udevd.service
-After=systemd-udevd.service
-
-[Service]
-Type=simple
-User=root
-Group=root
-ExecStart=$INSTALL_DIR/disk2iso.sh
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-
-# Ausgabeverzeichnis wird aus config.sh gelesen (DEFAULT_OUTPUT_DIR)
-
-[Install]
-WantedBy=multi-user.target
-EOF
     local service_was_active=false
     local web_service_was_active=false
     
@@ -692,13 +449,11 @@ After=systemd-udevd.service
 Type=simple
 User=root
 Group=root
-ExecStart=$INSTALL_DIR/disk2iso.sh
+ExecStart=$INSTALL_DIR/disk2iso.sh -o $output_dir
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-
-# Ausgabeverzeichnis wird aus config.sh gelesen (DEFAULT_OUTPUT_DIR)
 
 [Install]
 WantedBy=multi-user.target
@@ -722,8 +477,12 @@ EOF
     else
         # Service existiert bereits → Stelle sicher dass Ausgabeverzeichnis existiert
         if [[ -f "$SERVICE_FILE" ]]; then
-            # Lese Ausgabeverzeichnis aus config.sh
-            local output_dir=$(grep "DEFAULT_OUTPUT_DIR=" "$INSTALL_DIR/lib/config.sh" 2>/dev/null | cut -d'"' -f2)
+            # Lese Ausgabeverzeichnis aus Service-Datei
+            local output_dir=$(grep "ExecStart=" "$SERVICE_FILE" | sed -n 's/.*-o \([^ ]*\).*/\1/p')
+            if [[ -z "$output_dir" ]]; then
+                # Fallback: Lese aus config.sh
+                output_dir=$(grep "DEFAULT_OUTPUT_DIR=" "$INSTALL_DIR/lib/config.sh" 2>/dev/null | cut -d'"' -f2)
+            fi
             
             # Erstelle Verzeichnis falls es nicht existiert
             if [[ -n "$output_dir" ]] && [[ ! -d "$output_dir" ]]; then
@@ -876,10 +635,10 @@ EOF
             chmod -R 755 "$INSTALL_DIR/venv" 2>/dev/null || true
             
             # Erstelle requirements.txt
-            cat > "$INSTALL_DIR/www/requirements.txt" <<-'EOFREQ'
-	# disk2iso Web-Server Dependencies
-	flask>=2.0.0
-	EOFREQ
+            cat > "$INSTALL_DIR/www/requirements.txt" <<'EOFREQ'
+# disk2iso Web-Server Dependencies
+flask>=2.0.0
+EOFREQ
             
             echo "100"
             echo "XXX"
@@ -1130,13 +889,11 @@ After=systemd-udevd.service
 Type=simple
 User=root
 Group=root
-ExecStart=$INSTALL_DIR/disk2iso.sh
+ExecStart=$INSTALL_DIR/disk2iso.sh -o $output_dir
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-
-# Ausgabeverzeichnis wird aus config.sh gelesen (DEFAULT_OUTPUT_DIR)
 
 [Install]
 WantedBy=multi-user.target
@@ -1162,8 +919,12 @@ EOF
     else
         # Service existiert bereits → Stelle sicher dass Ausgabeverzeichnis existiert
         if [[ -f "$SERVICE_FILE" ]]; then
-            # Lese Ausgabeverzeichnis aus config.sh
-            local output_dir=$(grep "DEFAULT_OUTPUT_DIR=" "$INSTALL_DIR/lib/config.sh" 2>/dev/null | cut -d'"' -f2)
+            # Lese Ausgabeverzeichnis aus Service-Datei
+            local output_dir=$(grep "ExecStart=" "$SERVICE_FILE" | sed -n 's/.*-o \([^ ]*\).*/\1/p')
+            if [[ -z "$output_dir" ]]; then
+                # Fallback: Lese aus config.sh
+                output_dir=$(grep "DEFAULT_OUTPUT_DIR=" "$INSTALL_DIR/lib/config.sh" 2>/dev/null | cut -d'"' -f2)
+            fi
             
             # Erstelle Verzeichnis falls es nicht existiert
             if [[ -n "$output_dir" ]] && [[ ! -d "$output_dir" ]]; then
@@ -1306,10 +1067,10 @@ EOF
             chmod -R 755 "$INSTALL_DIR/venv" 2>/dev/null || true
             
             # Erstelle requirements.txt
-            cat > "$INSTALL_DIR/www/requirements.txt" <<-'EOFREQ'
-	# disk2iso Web-Server Dependencies
-	flask>=2.0.0
-	EOFREQ
+            cat > "$INSTALL_DIR/www/requirements.txt" <<'EOFREQ'
+# disk2iso Web-Server Dependencies
+flask>=2.0.0
+EOFREQ
             
             echo "100"
             echo "XXX"
@@ -1350,6 +1111,22 @@ Hinweis: Überprüfen Sie die Dokumentation für neue Features!"
 }
 
 # ============================================================================
+# PACKAGE MANAGEMENT
+# ============================================================================
+
+install_package() {
+    local package="$1"
+    local description="$2"
+    
+    if dpkg -l 2>/dev/null | grep -q "^ii  $package "; then
+        return 0
+    fi
+    
+    apt-get install -y -qq "$package" >/dev/null 2>&1
+    return $?
+}
+
+# ============================================================================
 # WIZARD FUNCTIONS
 # ============================================================================
 
@@ -1364,10 +1141,9 @@ Funktionen:
 • Unterstützung für Audio-CDs, Video-DVDs und Blu-rays
 • MusicBrainz-Integration für Audio-CD Metadaten
 • MQTT-Integration für Home Assistant
-• Web-Interface für Status-Überwachung
-• Läuft als systemd-Service (obligatorisch)
+• Optional als systemd-Service für Autostart
 
-Der Wizard führt Sie durch die Installation in 10 einfachen Schritten.
+Der Wizard führt Sie durch die Installation in 9 einfachen Schritten.
 
 Möchten Sie fortfahren?"
 
@@ -1660,37 +1436,45 @@ wizard_page_install_video_bd() {
 
 # Seite 7: Service-Installation
 wizard_page_service_setup() {
-    # Service wird IMMER installiert - kein optionaler Schritt mehr
-    INSTALL_SERVICE=true
-    
     if use_whiptail; then
-        local info="disk2iso wird als systemd-Service installiert.
+        local info="Möchten Sie disk2iso als systemd-Service installieren?
 
-Der Service:
+Als Service:
 • Startet automatisch beim Booten
 • Überwacht Laufwerk kontinuierlich
 • Erstellt automatisch ISOs bei eingelegten Discs
-• Schreibt Logs ins systemd Journal
-• Stellt API-Daten für Web-Interface bereit
+• Konfiguration über systemd
 
-Bitte geben Sie das Ausgabeverzeichnis für die ISO-Dateien an."
+Ohne Service:
+• Manuelle Ausführung über Kommandozeile
+• disk2iso -o <ausgabe-verzeichnis>
+• Mehr Kontrolle über Zeitpunkt der Ausführung"
 
-        whiptail --title "disk2iso Installation - Seite 7/10" \
-            --msgbox "$info" 18 70
-        
-        # Ausgabeverzeichnis abfragen
-        SERVICE_OUTPUT_DIR=$(whiptail --title "Ausgabeverzeichnis für ISOs" \
-            --inputbox "Geben Sie das Verzeichnis ein, in dem die ISOs gespeichert werden sollen:\n\nHinweis: Es werden automatisch Unterordner erstellt:\n  • audio/   (Audio-CDs)\n  • dvd/     (Video-DVDs)\n  • bd/      (Blu-rays)\n  • data/    (Daten-Discs)\n  • .log/    (Log-Dateien)\n  • .temp/   (Temporäre Dateien)" \
-            18 70 "/media/iso" 3>&1 1>&2 2>&3)
-        
-        if [ -z "$SERVICE_OUTPUT_DIR" ]; then
-            SERVICE_OUTPUT_DIR="/media/iso"
+        if whiptail --title "disk2iso Installation - Seite 7/10" \
+            --yesno "$info" 20 70 \
+            --yes-button "Installieren" \
+            --no-button "Überspringen" \
+            --defaultno; then
+            INSTALL_SERVICE=true
+            
+            # Ausgabeverzeichnis abfragen
+            SERVICE_OUTPUT_DIR=$(whiptail --title "Ausgabeverzeichnis für ISOs" \
+                --inputbox "Geben Sie das Verzeichnis ein, in dem die ISOs gespeichert werden sollen:\n\nHinweis: Es werden automatisch Unterordner erstellt:\n  • audio/   (Audio-CDs)\n  • dvd/     (Video-DVDs)\n  • bd/      (Blu-rays)\n  • data/    (Daten-Discs)\n  • .log/    (Log-Dateien)\n  • .temp/   (Temporäre Dateien)" \
+                18 70 "/media/iso" 3>&1 1>&2 2>&3)
+            
+            if [ -z "$SERVICE_OUTPUT_DIR" ]; then
+                SERVICE_OUTPUT_DIR="/media/iso"
+            fi
+        else
+            INSTALL_SERVICE=false
         fi
     else
-        INSTALL_SERVICE=true
-        print_info "Service wird als systemd-Service installiert (obligatorisch)"
-        read -p "Ausgabe-Verzeichnis für ISOs [/media/iso]: " input_dir
-        SERVICE_OUTPUT_DIR=${input_dir:-/media/iso}
+        INSTALL_SERVICE=false
+        if ask_yes_no "disk2iso als systemd Service installieren?" "n"; then
+            INSTALL_SERVICE=true
+            read -p "Ausgabe-Verzeichnis für ISOs [/media/iso]: " input_dir
+            SERVICE_OUTPUT_DIR=${input_dir:-/media/iso}
+        fi
     fi
 }
 
@@ -1849,18 +1633,20 @@ Hinweis: Der Web-Server wird als separater systemd-Service installiert."
 
 # Seite 10: Abschluss
 wizard_page_complete() {
+    local manual_usage="disk2iso -o /pfad/zum/ausgabe/verzeichnis"
+    local service_usage="systemctl status disk2iso"
     local web_info=""
     
     if $INSTALL_WEB_SERVER; then
         web_info="
 
 Web-Server:
-• Zugriff: http://$(hostname -I | awk '{print $1}'):5000
+• Zugriff: http://$(hostname -I | awk '{print $1}'):8080
 • Service: systemctl status disk2iso-web"
     fi
     
-    # Service ist IMMER installiert
-    local info="Installation erfolgreich abgeschlossen!
+    if $INSTALL_SERVICE; then
+        local info="Installation erfolgreich abgeschlossen!
 
 disk2iso wurde als systemd-Service installiert.
 
@@ -1878,25 +1664,45 @@ Der Service überwacht automatisch das Laufwerk und erstellt ISOs.
 
 Möchten Sie den Service jetzt starten?"
 
-    if use_whiptail; then
-        if whiptail --title "disk2iso Installation - Seite 10/10" \
-            --yesno "$info" 22 70 \
-            --yes-button "Starten" \
-            --no-button "Beenden"; then
-            systemctl start disk2iso.service
-            if $INSTALL_WEB_SERVER; then
-                systemctl start disk2iso-web.service
+        if use_whiptail; then
+            if whiptail --title "disk2iso Installation - Seite 10/10" \
+                --yesno "$info" 20 70 \
+                --yes-button "Starten" \
+                --no-button "Beenden"; then
+                systemctl start disk2iso.service
+                whiptail --title "Service gestartet" --msgbox "disk2iso Service wurde gestartet.\n\nStatus: systemctl status disk2iso" 10 60
             fi
-            whiptail --title "Service gestartet" --msgbox "disk2iso Service wurde gestartet.\n\nStatus: systemctl status disk2iso" 10 60
+        else
+            echo "$info"
+            if ask_yes_no "Service jetzt starten?" "y"; then
+                systemctl start disk2iso.service
+                print_success "Service gestartet"
+            fi
         fi
     else
-        echo "$info"
-        if ask_yes_no "Service jetzt starten?" "y"; then
-            systemctl start disk2iso.service
-            if $INSTALL_WEB_SERVER; then
-                systemctl start disk2iso-web.service
-            fi
-            print_success "Service gestartet"
+        local info="Installation erfolgreich abgeschlossen!
+
+disk2iso wurde installiert und kann manuell ausgeführt werden.
+
+Verwendung:
+disk2iso -o /pfad/zum/ausgabe/verzeichnis
+
+Beispiel:
+disk2iso -o /srv/iso
+
+Wartung:
+• Update: sudo /opt/disk2iso/install.sh
+• Deinstallation: sudo /opt/disk2iso/uninstall.sh${web_info}
+
+Dokumentation:
+• README.md im Projektverzeichnis
+• Hilfe: disk2iso --help"
+
+        if use_whiptail; then
+            whiptail --title "disk2iso Installation - Seite 10/10" \
+                --msgbox "$info" 20 70
+        else
+            echo "$info"
         fi
     fi
 }
@@ -1987,7 +1793,10 @@ install_disk2iso_files() {
 }
 
 configure_service() {
-    # Service wird IMMER konfiguriert - kein Check mehr
+    if ! $INSTALL_SERVICE; then
+        return 0
+    fi
+    
     # Verwende das in wizard_page_service_setup() abgefragte Verzeichnis
     local output_dir="${SERVICE_OUTPUT_DIR:-/media/iso}"
     
