@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - Common Functions Library
+# disk2iso v1.3.0 - Common Functions Library
 # Filepath: lib/lib-common.sh
 #
 # Beschreibung:
@@ -9,7 +9,7 @@
 #   - reset_disc_variables, cleanup_disc_operation
 #   - check_disk_space, monitor_copy_progress
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 ################################################################################
 
@@ -113,7 +113,12 @@ calculate_and_log_progress() {
         # Log-Nachricht mit Präfix
         log_message "${log_prefix} $MSG_PROGRESS: ${current_mb} $MSG_PROGRESS_MB $MSG_PROGRESS_OF ${total_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
         
-        # MQTT: Fortschritt senden
+        # API: Fortschritt senden (IMMER)
+        if declare -f api_update_progress >/dev/null 2>&1; then
+            api_update_progress "$percent" "$current_mb" "$total_mb" "$eta"
+        fi
+        
+        # MQTT: Fortschritt senden (optional)
         if [[ "$MQTT_SUPPORT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
             mqtt_publish_progress "$percent" "$current_mb" "$total_mb" "$eta"
         fi

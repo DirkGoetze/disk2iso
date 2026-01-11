@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - Folder Management Library
+# disk2iso v1.3.0 - Folder Management Library
 # Filepath: lib/lib-folders.sh
 #
 # Beschreibung:
@@ -9,7 +9,7 @@
 #   - Temp-Verzeichnis-Bereinigung
 #   - Lazy Initialization für Output-Ordner
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 ################################################################################
 
@@ -47,9 +47,9 @@ ensure_subfolder() {
     # Prüfe/Erstelle Ordner (idempotent)
     if [[ ! -d "$full_path" ]]; then
         if mkdir -p "$full_path" 2>/dev/null; then
-            log_message "$MSG_SUBFOLDER_CREATED $full_path"
+            log_message "$MSG_SUBFOLDER_CREATED $full_path" >&2
         else
-            log_message "$MSG_ERROR_CREATE_SUBFOLDER $full_path"
+            log_message "$MSG_ERROR_CREATE_SUBFOLDER $full_path" >&2
             return 1
         fi
     fi
@@ -138,10 +138,10 @@ get_out_folder() {
     # Lazy Initialization: OUTPUT_DIR nur einmal prüfen
     if [[ "$_OUTPUT_DIR_CREATED" == false ]]; then
         if [[ ! -d "$OUTPUT_DIR" ]]; then
-            log_message "$MSG_ERROR_OUTPUT_DIR_NOT_EXIST $OUTPUT_DIR"
+            log_message "$MSG_ERROR_OUTPUT_DIR_NOT_EXIST $OUTPUT_DIR" >&2
             return 1
         fi
-        log_message "$MSG_OUTPUT_DIR_CREATED: $OUTPUT_DIR"
+        log_message "$MSG_OUTPUT_DIR_CREATED: $OUTPUT_DIR" >&2
         _OUTPUT_DIR_CREATED=true
     fi
 }

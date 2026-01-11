@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - System Information Library
+# disk2iso v1.3.0 - System Information Library
 # Filepath: lib/lib-systeminfo.sh
 #
 # Beschreibung:
@@ -9,7 +9,7 @@
 #   - Medium-Wechsel-Erkennung (für Container-Umgebungen)
 #   - System-Informationen und Monitoring
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 ################################################################################
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - Installation Script
+# disk2iso v1.3.0 - Installation Script
 # Filepath: install.sh
 #
 # Beschreibung:
@@ -10,7 +10,7 @@
 #   - MQTT-Integration für Home Assistant
 #   - Optionale systemd Service-Konfiguration
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 ################################################################################
 
@@ -40,7 +40,7 @@ INSTALL_MQTT=false
 INSTALL_WEB_SERVER=false
 
 # Versions- und Update-Variablen
-NEW_VERSION="1.2.0"  # Wird aus VERSION-Datei gelesen
+NEW_VERSION="1.3.0"  # Wird aus VERSION-Datei gelesen
 INSTALLED_VERSION=""
 IS_REPAIR=false
 IS_UPDATE=false
@@ -161,7 +161,7 @@ check_existing_installation() {
     
     # Lese neue Version aus SOURCE
     if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
-        NEW_VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "1.2.0")
+        NEW_VERSION=$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo "1.3.0")
     fi
     
     # Bestimme Aktion basierend auf Version

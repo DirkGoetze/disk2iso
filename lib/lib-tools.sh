@@ -1,13 +1,13 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - Tool Detection Library
+# disk2iso v1.3.0 - Tool Detection Library
 # Filepath: lib/lib-tools.sh
 #
 # Beschreibung:
 #   Prüfung von Debian-Standard-Tools:
 #   - dd, md5sum, lsblk, eject
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 ################################################################################
 

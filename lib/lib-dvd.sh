@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - DVD Library
+# disk2iso v1.3.0 - DVD Library
 # Filepath: lib/lib-dvd.sh
 #
 # Beschreibung:
@@ -8,7 +8,7 @@
 #   - copy_video_dvd() - Video-DVD mit dvdbackup + genisoimage (entschlüsselt)
 #   - copy_video_dvd_ddrescue() - Video-DVD/BD mit ddrescue (verschlüsselt)
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 ################################################################################
 
@@ -34,15 +34,19 @@ get_dvd_identifier() {
 # Rückgabe: Anzahl der bisherigen Fehlversuche (0-2)
 get_dvd_failure_count() {
     local identifier="$1"
-    local failed_file="${IMAGE_PATH}/${FAILED_DISCS_FILE}"
+    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
     
     if [[ ! -f "$failed_file" ]]; then
         echo 0
         return
     fi
     
-    local count=$(grep -c "^${identifier}|" "$failed_file" 2>/dev/null || echo 0)
-    echo "$count"
+    local count=$(grep -c "^${identifier}|" "$failed_file" 2>/dev/null || true)
+    if [[ -z "$count" || "$count" == "0" ]]; then
+        echo 0
+    else
+        echo "$count"
+    fi
 }
 
 # Funktion: Registriere DVD-Fehlschlag
@@ -51,7 +55,7 @@ get_dvd_failure_count() {
 register_dvd_failure() {
     local identifier="$1"
     local method="$2"
-    local failed_file="${IMAGE_PATH}/${FAILED_DISCS_FILE}"
+    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     
     # Format: identifier|timestamp|method
@@ -62,7 +66,7 @@ register_dvd_failure() {
 # Parameter: $1 = DVD-Identifier
 clear_dvd_failures() {
     local identifier="$1"
-    local failed_file="${IMAGE_PATH}/${FAILED_DISCS_FILE}"
+    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
     
     if [[ -f "$failed_file" ]]; then
         sed -i "/^${identifier}|/d" "$failed_file"
@@ -159,11 +163,8 @@ copy_video_dvd() {
     log_message "$MSG_METHOD_DVDBACKUP"
     
     # Erstelle temporäres Verzeichnis für DVD-Struktur (unter temp_pathname)
-    local temp_dvd="${temp_pathname}/dvd_rip"
-    mkdir -p "$temp_dvd" || {
-        log_message "$MSG_ERROR_CREATE_DVD_TEMP $temp_dvd"
-        return 1
-    }
+    # dvdbackup erstellt automatisch Unterordner, daher nutzen wir temp_pathname direkt
+    local temp_dvd="$temp_pathname"
     
     # Ermittle DVD-Größe für Fortschrittsanzeige
     local dvd_size_mb=0
@@ -177,14 +178,14 @@ copy_video_dvd() {
     if [[ $dvd_size_mb -gt 0 ]]; then
         local required_mb=$((dvd_size_mb + dvd_size_mb * 5 / 100))
         if ! check_disk_space "$required_mb"; then
-            rm -rf "$temp_dvd"
             return 1
         fi
     fi
     
     # Starte dvdbackup im Hintergrund mit Fortschrittsanzeige
+    # -M = Mirror (komplette DVD), -n = Name override (direkt VIDEO_TS)
     log_message "$MSG_EXTRACT_DVD_STRUCTURE"
-    dvdbackup -M -i "$CD_DEVICE" -o "$temp_dvd" >>"$log_filename" 2>&1 &
+    dvdbackup -M -n "dvd" -i "$CD_DEVICE" -o "$temp_dvd" >>"$log_filename" 2>&1 &
     local dvdbackup_pid=$!
     
     # Überwache Fortschritt (alle 60 Sekunden)
@@ -202,11 +203,19 @@ copy_video_dvd() {
             local copied_mb=0
             if [[ -d "$temp_dvd" ]]; then
                 copied_mb=$(du -sm "$temp_dvd" 2>/dev/null | awk '{print $1}')
+                # Fallback wenn du fehlschlägt oder leer
+                copied_mb=${copied_mb:-0}
             fi
             
-            # Konvertiere MB zu Bytes für zentrale Funktion
-            local current_bytes=$((copied_mb * 1024 * 1024))
-            local total_bytes=$((dvd_size_mb * 1024 * 1024))
+            # Konvertiere MB zu Bytes für zentrale Funktion (mit Validierung)
+            local current_bytes=0
+            local total_bytes=0
+            if [[ "$copied_mb" =~ ^[0-9]+$ ]]; then
+                current_bytes=$((copied_mb * 1024 * 1024))
+            fi
+            if [[ "$dvd_size_mb" =~ ^[0-9]+$ ]] && [[ $dvd_size_mb -gt 0 ]]; then
+                total_bytes=$((dvd_size_mb * 1024 * 1024))
+            fi
             
             # Nutze zentrale Fortschrittsberechnung
             calculate_and_log_progress "$current_bytes" "$total_bytes" "$start_time" "DVD"
@@ -234,13 +243,11 @@ copy_video_dvd() {
     
     log_message "$MSG_DVD_STRUCTURE_EXTRACTED"
     
-    # Finde VIDEO_TS Ordner (dvdbackup erstellt Unterordner mit Titel)
-    local video_ts_dir
-    video_ts_dir=$(find "$temp_dvd" -type d -name "VIDEO_TS" | head -1)
+    # VIDEO_TS ist jetzt direkt unter temp_dvd/dvd/VIDEO_TS
+    local video_ts_dir="${temp_dvd}/dvd/VIDEO_TS"
     
-    if [[ -z "$video_ts_dir" ]]; then
+    if [[ ! -d "$video_ts_dir" ]]; then
         log_message "$MSG_ERROR_NO_VIDEO_TS"
-        rm -rf "$temp_dvd"
         return 1
     fi
     

@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0
+# disk2iso v1.3.0
 # Filepath: /usr/local/bin/disk2iso.sh
 #
 # Beschreibung:
@@ -18,8 +18,32 @@
 #   - Fortschrittsanzeige mit pv (optional)
 #   - Service-Modus für automatischen Betrieb
 #   - Modulare Struktur mit lazy-loading
+
+# ============================================================================
+# STATE MACHINE CONSTANTS
+# ============================================================================
+
+readonly STATE_INITIALIZING="initializing"
+readonly STATE_WAITING_FOR_DRIVE="waiting_for_drive"
+readonly STATE_DRIVE_DETECTED="drive_detected"
+readonly STATE_WAITING_FOR_MEDIA="waiting_for_media"
+readonly STATE_MEDIA_DETECTED="media_detected"
+readonly STATE_ANALYZING="analyzing"
+readonly STATE_COPYING="copying"
+readonly STATE_COMPLETED="completed"
+readonly STATE_ERROR="error"
+readonly STATE_WAITING_FOR_REMOVAL="waiting_for_removal"
+readonly STATE_IDLE="idle"
+
+# Polling-Intervalle (Sekunden)
+readonly POLL_DRIVE_INTERVAL=20
+readonly POLL_MEDIA_INTERVAL=2
+readonly POLL_REMOVAL_INTERVAL=5
+
+# Globale State-Variable
+CURRENT_STATE="$STATE_INITIALIZING"
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 #
 # Abhängigkeiten:
@@ -62,6 +86,7 @@ source "${SCRIPT_DIR}/lib/config.sh"
 
 # Lade Kern-Bibliotheken (IMMER erforderlich)
 source "${SCRIPT_DIR}/lib/lib-logging.sh"
+source "${SCRIPT_DIR}/lib/lib-api.sh"
 source "${SCRIPT_DIR}/lib/lib-files.sh"
 source "${SCRIPT_DIR}/lib/lib-folders.sh"
 source "${SCRIPT_DIR}/lib/lib-diskinfos.sh"
@@ -153,6 +178,9 @@ else
     log_message "$MSG_MQTT_MODULE_NOT_INSTALLED"
 fi
 
+# Initialisiere API (IMMER, unabhängig von MQTT)
+api_init
+
 # ============================================================================
 # HAUPTLOGIK - VEREINFACHT (nur Daten-Discs)
 # ============================================================================
@@ -240,7 +268,10 @@ copy_disc_to_iso() {
     
     log_message "$MSG_START_COPY_PROCESS $disc_label -> $iso_filename"
     
-    # MQTT: Kopiervorgang gestartet
+    # API: Status-Update (IMMER)
+    api_update_status "copying" "$disc_label" "$disc_type"
+    
+    # MQTT: Kopiervorgang gestartet (optional)
     if [[ "$MQTT_SUPPORT" == "true" ]]; then
         mqtt_publish_state "copying" "$disc_label" "$disc_type"
     fi
@@ -335,65 +366,193 @@ copy_disc_to_iso() {
 
 # Funktion zum Überwachen des CD/DVD-Laufwerks
 # Erkennt Disc-Typ und kopiert entsprechend
-monitor_cdrom() {
-    log_message "$MSG_DRIVE_MONITORING_STARTED"
+# State transition handler
+transition_to_state() {
+    local new_state="$1"
+    local msg="${2:-}"
     
-    while true; do
-        if is_disc_inserted; then
-            log_message "$MSG_MEDIUM_DETECTED"
-            
-            # Warte bis Medium bereit ist (Spin-Up)
-            if ! wait_for_disc_ready 3; then
-                continue
-            fi
-            
-            # Erkenne Disc-Typ
-            detect_disc_type
-            log_message "$MSG_DISC_TYPE_DETECTED $disc_type"
-            
-            # Generiere Label (für Audio-CDs wird Label in copy_audio_cd() gesetzt)
-            if [[ "$disc_type" != "audio-cd" ]]; then
-                get_disc_label
-                log_message "$MSG_VOLUME_LABEL $disc_label"
-            fi
-            
-            # Unmounte Disc falls sie auto-gemountet wurde (z.B. von udisks2)
-            # Dies ist wichtig für ddrescue/dd die direkten Block-Device-Zugriff brauchen
-            if mount | grep -q "$CD_DEVICE"; then
-                log_message "$MSG_UNMOUNTING_DISC"
-                umount "$CD_DEVICE" 2>/dev/null || sudo umount "$CD_DEVICE" 2>/dev/null
-                sleep 1
-            fi
-            
-            # Kopiere Disc als ISO
-            copy_disc_to_iso
-            
-            # Kurze Pause damit "completed" Status in HA sichtbar wird
-            sleep 3
-            
-            # MQTT: Warte auf Medium-Entfernung
-            if [[ "$MQTT_SUPPORT" == "true" ]]; then
-                mqtt_publish_state "waiting"
-            fi
-            
-            # Warte bis Medium entfernt wurde (OHNE ständig zu prüfen während Kopiervorgang läuft)
-            log_message "$MSG_WAITING_FOR_REMOVAL"
-            sleep 5  # Kurze Pause vor erster Prüfung
-            while is_disc_inserted; do
-                sleep 5  # Längere Pause zwischen Prüfungen (statt 2 Sekunden)
-            done
-            
-            # MQTT: Zurück zu idle
-            if [[ "$MQTT_SUPPORT" == "true" ]]; then
+    CURRENT_STATE="$new_state"
+    
+    # Log state change
+    if [[ -n "$msg" ]]; then
+        log_message "$msg"
+    fi
+    
+    # Update API status for state
+    case "$new_state" in
+        "$STATE_WAITING_FOR_DRIVE")
+            api_update_status "waiting" "No Drive" "unknown"
+            ;;
+        "$STATE_DRIVE_DETECTED")
+            api_update_status "idle" "Drive Ready" "unknown"
+            ;;
+        "$STATE_WAITING_FOR_MEDIA")
+            api_update_status "idle" "Waiting for Media" "unknown"
+            ;;
+        "$STATE_ANALYZING")
+            api_update_status "analyzing" "$disc_label" "$disc_type"
+            ;;
+        "$STATE_COPYING")
+            api_update_status "copying" "$disc_label" "$disc_type"
+            ;;
+        "$STATE_COMPLETED")
+            api_update_status "completed" "$disc_label" "$disc_type"
+            ;;
+        "$STATE_ERROR")
+            api_update_status "error" "${disc_label:-Unknown}" "${disc_type:-unknown}" "${msg:-Unknown error}"
+            ;;
+        "$STATE_WAITING_FOR_REMOVAL")
+            api_update_status "waiting" "$disc_label" "$disc_type"
+            ;;
+        "$STATE_IDLE")
+            api_update_status "idle"
+            ;;
+    esac
+    
+    # MQTT (optional)
+    if [[ "$MQTT_SUPPORT" == "true" ]]; then
+        case "$new_state" in
+            "$STATE_WAITING_FOR_DRIVE"|"$STATE_DRIVE_DETECTED"|"$STATE_WAITING_FOR_MEDIA"|"$STATE_IDLE")
                 mqtt_publish_state "idle"
-            fi
-        else
-            # Warte bis Medium eingelegt wird
-            log_message "$MSG_WAITING_FOR_MEDIUM"
-            while ! is_disc_inserted; do
-                sleep 2
-            done
-        fi
+                ;;
+            "$STATE_ANALYZING")
+                mqtt_publish_state "analyzing" "$disc_label" "$disc_type"
+                ;;
+            "$STATE_COPYING")
+                mqtt_publish_state "copying" "$disc_label" "$disc_type"
+                ;;
+            "$STATE_COMPLETED")
+                mqtt_publish_state "completed" "$disc_label" "$disc_type"
+                ;;
+            "$STATE_ERROR")
+                mqtt_publish_state "error" "${disc_label:-Unknown}" "${disc_type:-unknown}"
+                ;;
+            "$STATE_WAITING_FOR_REMOVAL")
+                mqtt_publish_state "waiting"
+                ;;
+        esac
+    fi
+}
+
+# State Machine Main Loop
+run_state_machine() {
+    log_message "State Machine gestartet"
+    
+    transition_to_state "$STATE_INITIALIZING" "Initialisiere Service..."
+    
+    # Hauptschleife - läuft endlos
+    while true; do
+        case "$CURRENT_STATE" in
+            "$STATE_INITIALIZING")
+                # Initialisierung abgeschlossen, suche nach Laufwerk
+                transition_to_state "$STATE_WAITING_FOR_DRIVE" "Suche nach optischem Laufwerk..."
+                ;;
+                
+            "$STATE_WAITING_FOR_DRIVE")
+                # Prüfe ob Laufwerk verfügbar ist
+                if detect_device; then
+                    transition_to_state "$STATE_DRIVE_DETECTED" "$MSG_DRIVE_DETECTED $CD_DEVICE"
+                else
+                    # Kein Laufwerk gefunden - warte und versuche erneut
+                    sleep "$POLL_DRIVE_INTERVAL"
+                fi
+                ;;
+                
+            "$STATE_DRIVE_DETECTED")
+                # Laufwerk gefunden - stelle sicher dass es bereit ist
+                if ensure_device_ready "$CD_DEVICE"; then
+                    transition_to_state "$STATE_WAITING_FOR_MEDIA" "$MSG_DRIVE_MONITORING_STARTED"
+                else
+                    # Device nicht bereit - zurück zum Suchen
+                    transition_to_state "$STATE_WAITING_FOR_DRIVE" "$MSG_DRIVE_NOT_AVAILABLE $CD_DEVICE"
+                    sleep "$POLL_DRIVE_INTERVAL"
+                fi
+                ;;
+                
+            "$STATE_WAITING_FOR_MEDIA")
+                # Prüfe ob Medium eingelegt ist
+                if is_disc_inserted; then
+                    transition_to_state "$STATE_MEDIA_DETECTED" "$MSG_MEDIUM_DETECTED"
+                else
+                    # Prüfe ob Laufwerk noch da ist
+                    if ! detect_device; then
+                        transition_to_state "$STATE_WAITING_FOR_DRIVE" "Laufwerk nicht mehr verfügbar"
+                    fi
+                    sleep "$POLL_MEDIA_INTERVAL"
+                fi
+                ;;
+                
+            "$STATE_MEDIA_DETECTED")
+                # Medium erkannt - warte bis es bereit ist (Spin-Up)
+                if wait_for_disc_ready 3; then
+                    transition_to_state "$STATE_ANALYZING" "Analysiere Medium..."
+                else
+                    # Medium nicht lesbar - zurück zum Warten
+                    transition_to_state "$STATE_WAITING_FOR_MEDIA" "Medium nicht lesbar"
+                    sleep "$POLL_MEDIA_INTERVAL"
+                fi
+                ;;
+                
+            "$STATE_ANALYZING")
+                # Erkenne Disc-Typ
+                detect_disc_type
+                log_message "$MSG_DISC_TYPE_DETECTED $disc_type"
+                
+                # Generiere Label (für Audio-CDs wird Label in copy_audio_cd() gesetzt)
+                if [[ "$disc_type" != "audio-cd" ]]; then
+                    get_disc_label
+                    log_message "$MSG_VOLUME_LABEL $disc_label"
+                fi
+                
+                # Unmounte Disc falls sie auto-gemountet wurde
+                if mount | grep -q "$CD_DEVICE"; then
+                    log_message "$MSG_UNMOUNTING_DISC"
+                    umount "$CD_DEVICE" 2>/dev/null || sudo umount "$CD_DEVICE" 2>/dev/null
+                    sleep 1
+                fi
+                
+                # Starte Kopiervorgang
+                transition_to_state "$STATE_COPYING"
+                ;;
+                
+            "$STATE_COPYING")
+                # Kopiere Disc als ISO
+                if copy_disc_to_iso; then
+                    transition_to_state "$STATE_COMPLETED" "Kopiervorgang erfolgreich abgeschlossen"
+                    sleep 3  # Kurze Pause damit Status sichtbar wird
+                else
+                    transition_to_state "$STATE_ERROR" "Kopiervorgang fehlgeschlagen"
+                    sleep 3
+                fi
+                ;;
+                
+            "$STATE_COMPLETED"|"$STATE_ERROR")
+                # Warte auf Medium-Entfernung
+                transition_to_state "$STATE_WAITING_FOR_REMOVAL" "$MSG_WAITING_FOR_REMOVAL"
+                ;;
+                
+            "$STATE_WAITING_FOR_REMOVAL")
+                # Warte bis Medium entfernt wurde
+                if ! is_disc_inserted; then
+                    # Medium entfernt - zurück zum Warten auf neues Medium
+                    transition_to_state "$STATE_IDLE" "Medium entfernt"
+                else
+                    sleep "$POLL_REMOVAL_INTERVAL"
+                fi
+                ;;
+                
+            "$STATE_IDLE")
+                # Kurze Pause, dann zurück zum Warten auf Medium
+                sleep 1
+                transition_to_state "$STATE_WAITING_FOR_MEDIA" "$MSG_WAITING_FOR_MEDIUM"
+                ;;
+                
+            *)
+                # Unbekannter State - zurück zum Anfang
+                log_message "FEHLER: Unbekannter State: $CURRENT_STATE"
+                transition_to_state "$STATE_INITIALIZING"
+                ;;
+        esac
     done
 }
 
@@ -494,39 +653,14 @@ main() {
     log_message "$MSG_DISK2ISO_STARTED"
     log_message "$MSG_OUTPUT_DIRECTORY $OUTPUT_DIR"
     
-    # Prüfe ob ein Optisches-Device angeschlossen ist (mit Retry für USB-Laufwerke)
-    local max_attempts="$USB_DRIVE_DETECTION_ATTEMPTS"
-    local attempt=1
-    
-    while [[ $attempt -le $max_attempts ]]; do
-        if detect_device; then
-            log_message "$MSG_DRIVE_DETECTED $CD_DEVICE"
-            break
-        fi
-        
-        if [[ $attempt -lt $max_attempts ]]; then
-            log_message "$MSG_SEARCHING_USB_DRIVE $attempt$MSG_OF_ATTEMPTS$max_attempts)"
-            sleep "$USB_DRIVE_DETECTION_DELAY"
-            ((attempt++))
-        else
-            log_message "$MSG_ERROR_NO_DRIVE_FOUND $max_attempts $MSG_ATTEMPTS"
-            exit 1
-        fi
-    done
-    
-    # Stelle sicher dass Device bereit ist (lädt sr_mod, wartet auf udev)
-    if ! ensure_device_ready "$CD_DEVICE"; then
-        log_message "$MSG_DRIVE_NOT_AVAILABLE $CD_DEVICE"
-        exit 1
-    fi
-    
     # Abhängigkeiten wurden bereits beim Modul-Loading geprüft
     # Kern-Abhängigkeiten: check_common_dependencies()
     # Audio-CD: check_audio_cd_dependencies() (optional)
     # Video-DVD/BD: check_video_dvd_dependencies() (optional)
     
-    # Starte Überwachung
-    monitor_cdrom
+    # Starte State Machine (läuft endlos)
+    # Die State Machine kümmert sich selbst um Laufwerk-Erkennung und Retry-Logik
+    run_state_machine
 }
 
 # Signal-Handler für sauberes Service-Beenden

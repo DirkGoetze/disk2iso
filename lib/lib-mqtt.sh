@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - MQTT Library
+# disk2iso v1.3.0 - MQTT Library
 # Filepath: lib/lib-mqtt.sh
 #
 # Beschreibung:
@@ -13,7 +13,7 @@
 # Abhängigkeiten:
 #   - mosquitto-clients (mosquitto_pub)
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 ################################################################################
 
@@ -44,8 +44,9 @@ MQTT_LAST_STATE=""
 MQTT_LAST_PROGRESS=0
 MQTT_LAST_UPDATE=0
 
-# API-Verzeichnis für JSON-Dateien
-API_DIR="${INSTALL_DIR:-/opt/disk2iso}/api"
+# API-Verzeichnis wird von lib-api.sh definiert (readonly)
+# API_DIR ist bereits in lib-api.sh als readonly gesetzt
+# NICHT hier nochmal definieren da lib-api.sh VOR lib-mqtt.sh geladen wird
 
 # ============================================================================
 # DEPENDENCY CHECK
@@ -285,33 +286,10 @@ mqtt_publish_availability() {
 #   {prefix}/state - JSON mit Status + Timestamp
 #   {prefix}/attributes - JSON mit allen Details
 mqtt_publish_state() {
-    if [[ "$MQTT_AVAILABLE" != "true" ]]; then
-        return 0
-    fi
-    
     local state="$1"
     local label="${2:-}"
     local type="${3:-}"
     local error_msg="${4:-}"
-    
-    # Vermeide doppelte Updates
-    if [[ "$state" == "$MQTT_LAST_STATE" ]] && [[ "$state" != "copying" ]]; then
-        return 0
-    fi
-    
-    # Wenn neuer Kopiervorgang startet: Reset Tracking-Variablen
-    if [[ "$state" == "copying" ]] && [[ "$MQTT_LAST_STATE" != "copying" ]]; then
-        MQTT_LAST_PROGRESS=0
-        MQTT_LAST_UPDATE=0
-    fi
-    
-    # Wenn zu idle/waiting wechselt: Reset Progress auf 0
-    if [[ "$state" == "idle" ]] || [[ "$state" == "waiting" ]]; then
-        MQTT_LAST_PROGRESS=0
-        MQTT_LAST_UPDATE=0
-    fi
-    
-    MQTT_LAST_STATE="$state"
     
     # Timestamp
     local timestamp=$(date '+%Y-%m-%dT%H:%M:%S')
@@ -325,9 +303,7 @@ mqtt_publish_state() {
 EOF
 )
     
-    mqtt_publish "state" "${state_json}"
-    
-    # Schreibe status.json für API
+    # IMMER status.json für API schreiben (unabhängig von MQTT)
     api_write_json "status.json" "${state_json}"
     
     # Attributes Topic (vollständige Informationen)
@@ -362,10 +338,36 @@ EOF
 EOF
 )
     
-    mqtt_publish "attributes" "${attr_json}"
-    
-    # Schreibe attributes.json für API
+    # IMMER attributes.json für API schreiben (unabhängig von MQTT)
     api_write_json "attributes.json" "${attr_json}"
+    
+    # Ab hier: Nur MQTT-spezifische Logik
+    if [[ "$MQTT_AVAILABLE" != "true" ]]; then
+        return 0
+    fi
+    
+    # Vermeide doppelte Updates
+    if [[ "$state" == "$MQTT_LAST_STATE" ]] && [[ "$state" != "copying" ]]; then
+        return 0
+    fi
+    
+    # Wenn neuer Kopiervorgang startet: Reset Tracking-Variablen
+    if [[ "$state" == "copying" ]] && [[ "$MQTT_LAST_STATE" != "copying" ]]; then
+        MQTT_LAST_PROGRESS=0
+        MQTT_LAST_UPDATE=0
+    fi
+    
+    # Wenn zu idle/waiting wechselt: Reset Progress auf 0
+    if [[ "$state" == "idle" ]] || [[ "$state" == "waiting" ]]; then
+        MQTT_LAST_PROGRESS=0
+        MQTT_LAST_UPDATE=0
+    fi
+    
+    MQTT_LAST_STATE="$state"
+    
+    # MQTT Publishing
+    mqtt_publish "state" "${state_json}"
+    mqtt_publish "attributes" "${attr_json}"
     
     # Progress-Topic auf 0 setzen bei idle/waiting
     if [[ "$state" == "idle" ]] || [[ "$state" == "waiting" ]]; then
@@ -409,14 +411,28 @@ EOF
 #   {prefix}/progress - Nur Prozent-Wert (für einfache Gauges)
 #   {prefix}/attributes - Update mit aktuellen Werten
 mqtt_publish_progress() {
-    if [[ "$MQTT_AVAILABLE" != "true" ]]; then
-        return 0
-    fi
-    
     local percent="$1"
     local copied_mb="${2:-0}"
     local total_mb="${3:-0}"
     local eta="${4:-}"
+    
+    # IMMER progress.json für API schreiben (unabhängig von MQTT)
+    local progress_json=$(cat <<EOF
+{
+  "percent": ${percent},
+  "copied_mb": ${copied_mb},
+  "total_mb": ${total_mb},
+  "eta": "${eta}",
+  "timestamp": "$(date '+%Y-%m-%dT%H:%M:%S')"
+}
+EOF
+)
+    api_write_json "progress.json" "${progress_json}"
+    
+    # Ab hier: Nur MQTT-spezifische Logik
+    if [[ "$MQTT_AVAILABLE" != "true" ]]; then
+        return 0
+    fi
     
     # Rate-Limiting: Nur alle 10 Sekunden updaten
     local current_time=$(date +%s)
@@ -436,21 +452,8 @@ mqtt_publish_progress() {
     MQTT_LAST_PROGRESS=$percent
     MQTT_LAST_UPDATE=$current_time
     
-    # Progress Topic (nur Zahl)
+    # MQTT Publishing
     mqtt_publish "progress" "${percent}"
-    
-    # Schreibe progress.json für API
-    local progress_json=$(cat <<EOF
-{
-  "percent": ${percent},
-  "copied_mb": ${copied_mb},
-  "total_mb": ${total_mb},
-  "eta": "${eta}",
-  "timestamp": "$(date '+%Y-%m-%dT%H:%M:%S')"
-}
-EOF
-)
-    api_write_json "progress.json" "${progress_json}"
     
     # Attributes Topic (Update nur relevante Felder)
     local attr_json=$(cat <<EOF

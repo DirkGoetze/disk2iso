@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - Drive Status Library
+# disk2iso v1.3.0 - Drive Status Library
 # Filepath: lib/lib-drivestat.sh
 #
 # Beschreibung:
@@ -14,7 +14,7 @@
 #   - wait_for_disc_change(): Wartet auf Status-Änderung
 #   - wait_for_disc_ready() : Wartet bis Medium bereit ist
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 ################################################################################
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - Blu-ray Library
+# disk2iso v1.3.0 - Blu-ray Library
 # Filepath: lib/lib-bluray.sh
 #
 # Beschreibung:
@@ -8,7 +8,7 @@
 #   - copy_bluray_ddrescue() - Blu-ray mit ddrescue (verschlüsselt, robust)
 #   - copy_bluray_dd() - Blu-ray mit dd (verschlüsselt, langsam)
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 ################################################################################
 
@@ -24,13 +24,12 @@ readonly BD_DIR="bd"
 
 # Funktion: Ermittle Pfad für Blu-ray Videos
 # Rückgabe: Vollständiger Pfad zu bd/ oder Fallback zu data/
-# Nutzt ensure_subfolder aus lib-folders.sh für konsistente Ordner-Verwaltung
 get_path_bd() {
     if [[ "$BLURAY_SUPPORT" == true ]] && [[ -n "$BD_DIR" ]]; then
-        ensure_subfolder "$BD_DIR"
+        echo "${OUTPUT_DIR}/${BD_DIR}"
     else
         # Fallback auf data/ wenn Blu-ray-Modul nicht geladen
-        ensure_subfolder "data"
+        echo "${OUTPUT_DIR}/data"
     fi
 }
 
@@ -86,10 +85,16 @@ copy_bluray_ddrescue() {
     # ddrescue benötigt Map-Datei
     local mapfile="${iso_filename}.mapfile"
     
-    # Ermittle Disc-Größe mit isoinfo
-    get_disc_size
-    if [[ $total_bytes -gt 0 ]]; then
-        log_message "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE 2048 $MSG_ISO_BYTES ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
+    # Ermittle Disc-Größe mit isoinfo (falls verfügbar)
+    local volume_size=""
+    local total_bytes=0
+    
+    if command -v isoinfo >/dev/null 2>&1; then
+        volume_size=$(isoinfo -d -i "$CD_DEVICE" 2>/dev/null | grep "Volume size is:" | awk '{print $4}')
+        if [[ -n "$volume_size" ]] && [[ "$volume_size" =~ ^[0-9]+$ ]]; then
+            total_bytes=$((volume_size * 2048))
+            log_message "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
+        fi
     fi
     
     # Fallback: Bei UDF-Blu-rays liefert isoinfo keine Größe - verwende blockdev
@@ -125,8 +130,8 @@ copy_bluray_ddrescue() {
     log_message "$MSG_START_DDRESCUE_BLURAY"
     
     # ddrescue Parameter:
-    # -b: Blockgröße (dynamisch ermittelt, Standard: 2048 für optische Medien)
-    # -r: Retry-Count aus Konfiguration (verhindert wildes Hin-und-Her-Springen)
+    # -b 2048: Blockgröße für optische Medien
+    # -r 1: Max 1 Retry bei Lesefehlern (verhindert wildes Hin-und-Her-Springen)
     # -s: Größe begrenzen (falls bekannt)
     
     # Verhindere konkurrierende Zugriffe durch udisks/automount während ddrescue läuft
@@ -139,15 +144,15 @@ copy_bluray_ddrescue() {
     # Starte ddrescue im Hintergrund (mit oder ohne flock)
     if $use_flock; then
         if [[ $total_bytes -gt 0 ]]; then
-            flock -x "$CD_DEVICE" ddrescue -b "$block_size" -r "$DDRESCUE_RETRIES" -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+            flock -x "$CD_DEVICE" ddrescue -b 2048 -r 1 -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
         else
-            flock -x "$CD_DEVICE" ddrescue -b "$block_size" -r "$DDRESCUE_RETRIES" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+            flock -x "$CD_DEVICE" ddrescue -b 2048 -r 1 "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
         fi
     else
         if [[ $total_bytes -gt 0 ]]; then
-            ddrescue -b "$block_size" -r "$DDRESCUE_RETRIES" -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+            ddrescue -b 2048 -r 1 -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
         else
-            ddrescue -b "$block_size" -r "$DDRESCUE_RETRIES" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+            ddrescue -b 2048 -r 1 "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
         fi
     fi
     local ddrescue_pid=$!
@@ -165,16 +170,42 @@ copy_bluray_ddrescue() {
         
         # Log alle 60 Sekunden
         if [[ $elapsed -ge 60 ]]; then
-            local current_bytes=0
+            local copied_mb=0
             if [[ -f "$iso_filename" ]]; then
-                current_bytes=$(stat -c %s "$iso_filename" 2>/dev/null || echo 0)
+                local file_size=$(stat -c %s "$iso_filename" 2>/dev/null)
+                if [[ -n "$file_size" ]]; then
+                    copied_mb=$((file_size / 1024 / 1024))
+                fi
             fi
             
-            # Nutze zentrale Fortschrittsberechnung
-            calculate_and_log_progress "$current_bytes" "$total_bytes" "$start_time" "$MSG_BLURAY_PROGRESS"
+            local percent=0
+            local eta="--:--:--"
             
-            last_log_time=$current_time
-        fi
+            if [[ $total_bytes -gt 0 ]] && [[ $copied_mb -gt 0 ]]; then
+                local total_mb=$((total_bytes / 1024 / 1024))
+                percent=$((copied_mb * 100 / total_mb))
+                if [[ $percent -gt 100 ]]; then percent=100; fi
+                
+                # Berechne geschätzte Restzeit
+                local total_elapsed=$((current_time - start_time))
+                if [[ $percent -gt 0 ]]; then
+                    local estimated_total=$((total_elapsed * 100 / percent))
+                    local remaining=$((estimated_total - total_elapsed))
+                    local hours=$((remaining / 3600))
+                    local minutes=$(((remaining % 3600) / 60))
+                    local seconds=$((remaining % 60))
+                    eta=$(printf "%02d:%02d:%02d" $hours $minutes $seconds)
+                fi
+                
+                log_message "$MSG_BLURAY_PROGRESS ${copied_mb} $MSG_PROGRESS_MB / ${total_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
+                
+                # MQTT: Fortschritt senden
+                if [[ "$MQTT_SUPPORT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
+                    mqtt_publish_progress "$percent" "$copied_mb" "$total_mb" "$eta"
+                fi
+            else
+                log_message "$MSG_BLURAY_PROGRESS ${copied_mb} $MSG_PROGRESS_MB $MSG_COPIED"
+            fi
             
             last_log_time=$current_time
         fi

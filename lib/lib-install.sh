@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - Installation & Maintenance Library
+# disk2iso v1.3.0 - Installation & Maintenance Library
 # Filepath: lib/lib-install.sh
 #
 # Beschreibung:
@@ -10,7 +10,7 @@
 #   - uninstall.sh  
 #   - Web-Interface (zukünftig: Update-Funktion)
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 07.01.2026
 ################################################################################
 

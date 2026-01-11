@@ -1,6 +1,6 @@
 #!/bin/bash
 ################################################################################
-# disk2iso v1.2.0 - Logging Library
+# disk2iso v1.3.0 - Logging Library
 # Filepath: lib/lib-logging.sh
 #
 # Beschreibung:
@@ -9,7 +9,7 @@
 #   - Modulares Sprachsystem
 #   - Wird von allen Modulen verwendet
 #
-# Version: 1.2.0
+# Version: 1.3.0
 # Datum: 06.01.2026
 ################################################################################
 
@@ -24,10 +24,9 @@ readonly LOG_DIR=".log"
 # ============================================================================
 
 # Funktion: Ermittle Pfad für Log-Dateien
-# Rückgabe: Vollständiger Pfad zu .log/
-# Nutzt ensure_subfolder aus lib-folders.sh für konsistente Ordner-Verwaltung
+# Rückgabe: Vollständiger Pfad zu log/
 get_path_log() {
-    ensure_subfolder "$LOG_DIR"
+    echo "${OUTPUT_DIR}/${LOG_DIR}"
 }
 
 # ============================================================================
@@ -40,26 +39,40 @@ get_path_log() {
 # Beispiel: load_module_language "cd" lädt lang/lib-cd.de
 load_module_language() {
     local module_name="$1"
-    local lang_file="${SCRIPT_DIR}/../lang/lib-${module_name}.${LANGUAGE}"
+    
+    # Für Hauptskript (disk2iso) ohne lib- Präfix suchen
+    # Für Module mit lib- Präfix suchen
+    local lang_file
+    if [[ -f "${SCRIPT_DIR}/lang/${module_name}.${LANGUAGE}" ]]; then
+        lang_file="${SCRIPT_DIR}/lang/${module_name}.${LANGUAGE}"
+    else
+        lang_file="${SCRIPT_DIR}/lang/lib-${module_name}.${LANGUAGE}"
+    fi
     
     if [[ -f "$lang_file" ]]; then
         source "$lang_file"
         # Optional: Log-Nachricht nur wenn log_message bereits definiert
         if declare -f log_message >/dev/null 2>&1; then
-            log_message "Sprachdatei geladen: lib-${module_name}.${LANGUAGE}"
+            log_message "Sprachdatei geladen: $(basename "$lang_file")"
         fi
     else
-        # Fallback auf Englisch oder keine Meldung
-        local fallback_file="${SCRIPT_DIR}/../lang/lib-${module_name}.en"
+        # Fallback auf Englisch
+        local fallback_file
+        if [[ -f "${SCRIPT_DIR}/lang/${module_name}.en" ]]; then
+            fallback_file="${SCRIPT_DIR}/lang/${module_name}.en"
+        else
+            fallback_file="${SCRIPT_DIR}/lang/lib-${module_name}.en"
+        fi
+        
         if [[ -f "$fallback_file" ]]; then
             source "$fallback_file"
             if declare -f log_message >/dev/null 2>&1; then
-                log_message "Fallback: Sprachdatei geladen: lib-${module_name}.en"
+                log_message "Fallback: Sprachdatei geladen: $(basename "$fallback_file")"
             fi
         else
             # Keine Sprachdatei gefunden - Module funktionieren trotzdem
             if declare -f log_message >/dev/null 2>&1; then
-                # Keine Warnung ausgeben - Bootstrap-Phase, log_message könnte $MSG_* verwenden
+                log_message "WARNUNG: Keine Sprachdatei gefunden für: ${module_name}.${LANGUAGE}"
             fi
         fi
     fi
@@ -81,20 +94,12 @@ fi
 
 # Funktion für Logging (verwendet aktuelles log_filename)
 # Parameter: $1 = Nachricht zum Loggen
-# Ausgabe: Nur log_filename (falls gesetzt) und systemd Journal
-# KEINE Konsolen-Ausgabe mehr - nur Service-Modus
+# Ausgabe: Konsole + Optional log_filename (falls gesetzt)
 log_message() {
     local message="$(date '+%Y-%m-%d %H:%M:%S') - $1"
-    
-    # Schreibe in Log-Datei (falls gesetzt)
+    echo "$message"
     if [[ -n "$log_filename" ]]; then
         echo "$message" >> "$log_filename"
-    fi
-    
-    # Schreibe auch ins systemd Journal (erscheint in journalctl)
-    # Nutze logger falls verfügbar, sonst nur Datei
-    if command -v logger >/dev/null 2>&1; then
-        logger -t "disk2iso" "$1"
     fi
 }
 
