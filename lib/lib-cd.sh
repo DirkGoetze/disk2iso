@@ -159,13 +159,14 @@ get_cdtext_metadata() {
 
 # Funktion: MusicBrainz-Metadaten abrufen
 # Benötigt: cd-discid, curl, jq
-# Rückgabe: Setzt globale Variablen: cd_artist, cd_album, cd_year, cd_discid, mb_response
+# Rückgabe: Setzt globale Variablen: cd_artist, cd_album, cd_year, cd_discid, mb_response, best_release_index
 get_musicbrainz_metadata() {
     cd_artist=""
     cd_album=""
     cd_year=""
     cd_discid=""
     mb_response=""  # Speichere vollständige Antwort für Track-Infos
+    best_release_index=0  # Index des gewählten Release (bei mehreren Treffern)
     
     log_message "$MSG_RETRIEVE_METADATA"
     
@@ -235,10 +236,90 @@ get_musicbrainz_metadata() {
         return 1
     fi
     
-    # Extrahiere ersten Release (meist korrekt)
-    cd_album=$(echo "$mb_response" | jq -r '.releases[0].title' 2>/dev/null)
-    cd_artist=$(echo "$mb_response" | jq -r '.releases[0]["artist-credit"][0].name' 2>/dev/null)
-    cd_year=$(echo "$mb_response" | jq -r '.releases[0].date' 2>/dev/null | cut -d'-' -f1)
+    # Wähle bestes Release (falls mehrere vorhanden)
+    best_release_index=0  # Global, wird auch in download_cover_art() und create_album_nfo() verwendet
+    
+    if [[ "$releases_count" -gt 1 ]]; then
+        # Mehrere Releases gefunden - speichere für User-Auswahl
+        log_message "WARNUNG: $releases_count Releases gefunden - Benutzer-Auswahl erforderlich"
+        
+        # Speichere alle Releases in API-Datei für Web-Interface
+        if declare -f api_write_json >/dev/null 2>&1; then
+            # Extrahiere Releases-Array direkt
+            local releases_array=$(echo "$mb_response" | jq -c '[.releases[] | {
+              title: .title,
+              artist: (."artist-credit"[0].name // "Unknown"),
+              date: (.date // "unknown"),
+              country: (.country // "unknown"),
+              tracks: (.media[0].tracks | length),
+              label: (."label-info"[0]?.label?.name // "Unknown")
+            }]')
+            
+            # Baue finale JSON-Struktur
+            local releases_json="{\"disc_id\":\"$cd_discid\",\"track_count\":$track_count,\"releases\":$releases_array}"
+            
+            api_write_json "musicbrainz_releases.json" "$releases_json"
+        fi
+        
+        # Automatische Auswahl nach Score (kann vom User überschrieben werden)
+        local best_score=0
+        
+        for ((i=0; i<releases_count; i++)); do
+            local score=0
+            
+            # Prüfe Track-Anzahl-Übereinstimmung (wichtigster Faktor)
+            local release_tracks
+            release_tracks=$(echo "$mb_response" | jq -r ".releases[$i].media[0].tracks | length" 2>/dev/null)
+            
+            if [[ "$release_tracks" == "$track_count" ]]; then
+                score=$((score + 100))  # Exakte Track-Anzahl = +100 Punkte
+            fi
+            
+            # Bevorzuge neuere Releases (besseres Remastering, mehr Tracks)
+            local release_year
+            release_year=$(echo "$mb_response" | jq -r ".releases[$i].date" 2>/dev/null | cut -d'-' -f1)
+            
+            if [[ -n "$release_year" ]] && [[ "$release_year" != "null" ]]; then
+                # Neuere Releases bekommen mehr Punkte (max +20 für 2020+)
+                if [[ "$release_year" -ge 2000 ]]; then
+                    score=$((score + (release_year - 2000)))
+                fi
+            fi
+            
+            # Bestes Release merken
+            if [[ $score -gt $best_score ]]; then
+                best_score=$score
+                best_release_index=$i
+            fi
+        done
+        
+        if [[ "${DEBUG:-0}" == "1" ]]; then
+            log_message "DEBUG: $releases_count Releases gefunden, gewählt: Index $best_release_index (Score: $best_score)"
+        fi
+        
+        # Wenn Score niedrig (< 100 = keine Track-Übereinstimmung), warte auf User-Eingabe
+        if [[ $best_score -lt 100 ]]; then
+            log_message "WARNUNG: Keine exakte Übereinstimmung - Benutzer-Bestätigung erforderlich"
+            
+            # Setze vorläufige Auswahl
+            if declare -f api_write_json >/dev/null 2>&1; then
+                api_write_json "musicbrainz_selection.json" '{
+                  "status": "waiting_user_input",
+                  "selected_index": '"$best_release_index"',
+                  "confidence": "low",
+                  "message": "Mehrere Alben gefunden. Bitte wählen Sie das richtige Album aus."
+                }'
+            fi
+            
+            # Markiere, dass User-Input benötigt wird
+            export MUSICBRAINZ_NEEDS_CONFIRMATION=true
+        fi
+    fi
+    
+    # Extrahiere gewähltes Release
+    cd_album=$(echo "$mb_response" | jq -r ".releases[$best_release_index].title" 2>/dev/null)
+    cd_artist=$(echo "$mb_response" | jq -r ".releases[$best_release_index][\"artist-credit\"][0].name" 2>/dev/null)
+    cd_year=$(echo "$mb_response" | jq -r ".releases[$best_release_index].date" 2>/dev/null | cut -d'-' -f1)
     
     # Bereinige null-Werte
     [[ "$cd_album" == "null" ]] && cd_album=""
@@ -250,16 +331,16 @@ get_musicbrainz_metadata() {
         log_message "$MSG_ARTIST: $cd_artist"
         [[ -n "$cd_year" ]] && log_message "$MSG_YEAR: $cd_year"
         
-        # Zähle Track-Anzahl
+        # Zähle Track-Anzahl (vom gewählten Release)
         local mb_track_count
-        mb_track_count=$(echo "$mb_response" | jq -r '.releases[0].media[0].tracks | length' 2>/dev/null)
+        mb_track_count=$(echo "$mb_response" | jq -r ".releases[$best_release_index].media[0].tracks | length" 2>/dev/null)
         if [[ -n "$mb_track_count" ]] && [[ "$mb_track_count" != "null" ]] && [[ "$mb_track_count" != "0" ]]; then
             log_message "$MSG_MUSICBRAINZ_TRACKS_FOUND $mb_track_count"
         fi
         
-        # Prüfe Cover-Art Verfügbarkeit
+        # Prüfe Cover-Art Verfügbarkeit (vom gewählten Release)
         local has_cover
-        has_cover=$(echo "$mb_response" | jq -r '.releases[0]["cover-art-archive"].front' 2>/dev/null)
+        has_cover=$(echo "$mb_response" | jq -r ".releases[$best_release_index][\"cover-art-archive\"].front" 2>/dev/null)
         if [[ "$has_cover" == "true" ]]; then
             log_message "$MSG_COVER_AVAILABLE"
         fi
@@ -282,8 +363,11 @@ download_cover_art() {
     fi
     
     # Prüfe ob Cover verfügbar ist
+    # Nutze besten Release-Index (falls aus get_musicbrainz_metadata gesetzt)
+    local release_idx="${best_release_index:-0}"
+    
     local has_cover
-    has_cover=$(echo "$mb_response" | jq -r '.releases[0]["cover-art-archive"].front' 2>/dev/null)
+    has_cover=$(echo "$mb_response" | jq -r ".releases[$release_idx][\"cover-art-archive\"].front" 2>/dev/null)
     
     if [[ "$has_cover" != "true" ]]; then
         return 1
@@ -291,7 +375,7 @@ download_cover_art() {
     
     # Extrahiere Release-ID
     local release_id
-    release_id=$(echo "$mb_response" | jq -r '.releases[0].id' 2>/dev/null)
+    release_id=$(echo "$mb_response" | jq -r ".releases[$release_idx].id" 2>/dev/null)
     
     if [[ -z "$release_id" ]] || [[ "$release_id" == "null" ]]; then
         log_message "$MSG_WARNING_NO_RELEASE_ID"
@@ -358,17 +442,20 @@ create_album_nfo() {
     
     log_message "$MSG_CREATE_ALBUM_NFO"
     
+    # Nutze besten Release-Index (falls aus get_musicbrainz_metadata gesetzt)
+    local release_idx="${best_release_index:-0}"
+    
     # Extrahiere MusicBrainz IDs
-    local release_id=$(echo "$mb_response" | jq -r '.releases[0].id' 2>/dev/null)
-    local release_group_id=$(echo "$mb_response" | jq -r '.releases[0]["release-group"].id' 2>/dev/null)
-    local artist_id=$(echo "$mb_response" | jq -r '.releases[0]["artist-credit"][0].artist.id' 2>/dev/null)
+    local release_id=$(echo "$mb_response" | jq -r ".releases[$release_idx].id" 2>/dev/null)
+    local release_group_id=$(echo "$mb_response" | jq -r ".releases[$release_idx][\"release-group\"].id" 2>/dev/null)
+    local artist_id=$(echo "$mb_response" | jq -r ".releases[$release_idx][\"artist-credit\"][0].artist.id" 2>/dev/null)
     
     # Berechne Gesamtlaufzeit in Minuten
     local total_duration_ms=0
-    local track_count=$(echo "$mb_response" | jq -r '.releases[0].media[0].tracks | length' 2>/dev/null)
+    local track_count=$(echo "$mb_response" | jq -r ".releases[$release_idx].media[0].tracks | length" 2>/dev/null)
     
     for ((i=0; i<track_count; i++)); do
-        local track_length=$(echo "$mb_response" | jq -r ".releases[0].media[0].tracks[$i].length" 2>/dev/null)
+        local track_length=$(echo "$mb_response" | jq -r ".releases[$release_idx].media[0].tracks[$i].length" 2>/dev/null)
         if [[ -n "$track_length" ]] && [[ "$track_length" != "null" ]]; then
             total_duration_ms=$((total_duration_ms + track_length))
         fi
@@ -466,6 +553,64 @@ copy_audio_cd() {
         else
             log_message "$MSG_CONTINUE_NO_METADATA"
         fi
+    fi
+    
+    # Falls MusicBrainz-Metadaten Benutzer-Bestätigung benötigen
+    if [[ "${MUSICBRAINZ_NEEDS_CONFIRMATION:-false}" == "true" ]]; then
+        log_message "WARNUNG: Mehrere Alben gefunden - warte auf Benutzer-Auswahl..."
+        
+        local wait_seconds=0
+        local max_wait=300
+        
+        while [[ $wait_seconds -lt $max_wait ]]; do
+            local api_dir="${INSTALL_DIR:-/opt/disk2iso}/api"
+            local selection_file="${api_dir}/musicbrainz_selection.json"
+            local manual_file="${api_dir}/musicbrainz_manual.json"
+            
+            if [[ -f "$selection_file" ]]; then
+                local selection_status=$(jq -r '.status // "unknown"' "$selection_file" 2>/dev/null)
+                
+                if [[ "$selection_status" == "confirmed" ]]; then
+                    best_release_index=$(jq -r '.selected_index // 0' "$selection_file" 2>/dev/null)
+                    log_message "Benutzer hat Album $best_release_index ausgewählt"
+                    
+                    cd_album=$(echo "$mb_response" | jq -r ".releases[$best_release_index].title" 2>/dev/null)
+                    cd_artist=$(echo "$mb_response" | jq -r ".releases[$best_release_index][\"artist-credit\"][0].name" 2>/dev/null)
+                    cd_year=$(echo "$mb_response" | jq -r ".releases[$best_release_index].date" 2>/dev/null | cut -d'-' -f1)
+                    
+                    [[ "$cd_album" == "null" ]] && cd_album=""
+                    [[ "$cd_artist" == "null" ]] && cd_artist=""
+                    [[ "$cd_year" == "null" ]] && cd_year=""
+                    
+                    log_message "Aktualisierte Metadaten: $cd_artist - $cd_album ($cd_year)"
+                    break
+                fi
+            fi
+            
+            if [[ -f "$manual_file" ]]; then
+                local manual_status=$(jq -r '.status // "unknown"' "$manual_file" 2>/dev/null)
+                
+                if [[ "$manual_status" == "manual" ]]; then
+                    cd_artist=$(jq -r '.artist' "$manual_file" 2>/dev/null)
+                    cd_album=$(jq -r '.album' "$manual_file" 2>/dev/null)
+                    cd_year=$(jq -r '.year' "$manual_file" 2>/dev/null)
+                    
+                    log_message "Manuelle Metadaten: $cd_artist - $cd_album ($cd_year)"
+                    mb_response=""
+                    break
+                fi
+            fi
+            
+            sleep 2
+            wait_seconds=$((wait_seconds + 2))
+        done
+        
+        if [[ $wait_seconds -ge $max_wait ]]; then
+            log_message "TIMEOUT: Keine Benutzer-Auswahl - verwende automatische Auswahl"
+        fi
+        
+        unset MUSICBRAINZ_NEEDS_CONFIRMATION
+        rm -f "$selection_file" "$manual_file" 2>/dev/null || true
     fi
     
     # Nutze globales temp_pathname (wird von init_filenames erstellt)

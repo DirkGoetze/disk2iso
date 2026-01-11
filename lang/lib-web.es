@@ -117,6 +117,12 @@ readonly MSG_COMMON_CLOSE="Cerrar"
 readonly MSG_COMMON_BACK="Atrás"
 readonly MSG_COMMON_NEXT="Siguiente"
 
+# Estado del Servicio
+readonly MSG_SERVICE_STATUS_NOT_INSTALLED="No instalado"
+readonly MSG_SERVICE_STATUS_INACTIVE="Inactivo"
+readonly MSG_SERVICE_STATUS_ACTIVE="Activo"
+readonly MSG_SERVICE_STATUS_ERROR="Error"
+
 # Mensajes de estado
 readonly MSG_STATUS_SERVICE_STOPPED="Servicio detenido"
 readonly MSG_STATUS_NO_DRIVE="Unidad no detectada"

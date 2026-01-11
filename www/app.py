@@ -101,18 +101,53 @@ def inject_translations():
     """Macht Übersetzungen in allen Templates verfügbar"""
     return {'t': g.get('t', {})}
 
-def get_service_status():
-    """Prüft Status des disk2iso Service"""
+def get_service_status_detailed(service_name):
+    """Prüft detaillierten Status eines systemd Service
+    
+    Args:
+        service_name: Name des Service ohne .service Endung
+        
+    Returns:
+        dict mit 'status' (not_installed|inactive|active|error) und 'running' (bool)
+    """
     try:
-        result = subprocess.run(
-            ['/usr/bin/systemctl', 'is-active', 'disk2iso'],
+        # Prüfe ob Service existiert
+        result_exists = subprocess.run(
+            ['/usr/bin/systemctl', 'list-unit-files', f'{service_name}.service'],
             capture_output=True,
             text=True,
             timeout=2
         )
-        return result.stdout.strip() == 'active'
+        
+        if service_name not in result_exists.stdout:
+            return {'status': 'not_installed', 'running': False}
+        
+        # Prüfe Service-Status
+        result = subprocess.run(
+            ['/usr/bin/systemctl', 'is-active', service_name],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        
+        status_text = result.stdout.strip()
+        
+        if status_text == 'active':
+            return {'status': 'active', 'running': True}
+        elif status_text == 'inactive':
+            return {'status': 'inactive', 'running': False}
+        elif status_text == 'failed':
+            return {'status': 'error', 'running': False}
+        else:
+            return {'status': 'inactive', 'running': False}
+            
     except:
-        return False
+        return {'status': 'error', 'running': False}
+
+def get_service_status():
+    """Prüft Status des disk2iso Service (Legacy-Kompatibilität)"""
+    status = get_service_status_detailed('disk2iso')
+    return status['running']
 
 def get_disk_space(path):
     """Ermittelt freien Speicherplatz"""
@@ -270,6 +305,11 @@ def get_status_text(live_status, service_running):
     status = live_status.get('status', 'idle')
     method = live_status.get('method', 'unknown')
     
+    # Prüfe ob MusicBrainz User-Input benötigt
+    mb_selection = read_api_json('musicbrainz_selection.json')
+    if mb_selection and mb_selection.get('status') == 'waiting_user_input':
+        return t.get('MUSICBRAINZ_WAITING', 'Waiting for user selection...')
+    
     if status == 'idle':
         # Prüfe ob jemals ein Laufwerk erkannt wurde
         if not method or method == 'unknown':
@@ -294,6 +334,17 @@ def index():
     config = get_config()
     version = get_version()
     service_running = get_service_status()
+    
+    # Service-Status für alle drei Services
+    disk2iso_status = get_service_status_detailed('disk2iso')
+    webui_status = {'status': 'active', 'running': True}  # Web-UI läuft wenn diese Route aufgerufen wird
+    
+    # MQTT-Status basierend auf config.sh
+    if config['mqtt_enabled']:
+        mqtt_status = {'status': 'active', 'running': True}
+    else:
+        mqtt_status = {'status': 'inactive', 'running': False}
+    
     disk_space = get_disk_space(config['output_dir'])
     iso_count = count_iso_files(config['output_dir'])
     live_status = get_live_status()
@@ -311,6 +362,9 @@ def index():
     return render_template('index.html',
         version=version,
         service_running=service_running,
+        disk2iso_status=disk2iso_status,
+        webui_status=webui_status,
+        mqtt_status=mqtt_status,
         config=config,
         disk_space=disk_space,
         iso_count=iso_count,
@@ -399,6 +453,83 @@ def api_status():
 def api_history():
     """API-Endpoint für Aktivitäts-History"""
     return jsonify(get_history())
+
+@app.route('/api/musicbrainz/releases')
+def api_musicbrainz_releases():
+    """API-Endpoint für MusicBrainz Release-Auswahl"""
+    releases = read_api_json('musicbrainz_releases.json')
+    selection = read_api_json('musicbrainz_selection.json')
+    
+    if not releases:
+        return jsonify({'status': 'no_data', 'releases': []}), 404
+    
+    return jsonify({
+        'status': selection.get('status', 'unknown') if selection else 'unknown',
+        'releases': releases.get('releases', []),
+        'disc_id': releases.get('disc_id', ''),
+        'track_count': releases.get('track_count', 0),
+        'selected_index': selection.get('selected_index', 0) if selection else 0,
+        'confidence': selection.get('confidence', 'unknown') if selection else 'unknown',
+        'message': selection.get('message', '') if selection else ''
+    })
+
+@app.route('/api/musicbrainz/select', methods=['POST'])
+def api_musicbrainz_select():
+    """API-Endpoint zum Auswählen eines MusicBrainz Release"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'index' not in data:
+            return jsonify({'success': False, 'message': 'Index fehlt'}), 400
+        
+        selected_index = int(data['index'])
+        
+        # Aktualisiere Selection-Status
+        selection_data = {
+            'status': 'confirmed',
+            'selected_index': selected_index,
+            'confidence': 'user_confirmed',
+            'message': 'Album vom Benutzer ausgewählt',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # Schreibe in API-Datei
+        api_file = Path(CONFIG_FILE).parent.parent / 'api' / 'musicbrainz_selection.json'
+        with open(api_file, 'w') as f:
+            json.dump(selection_data, f, indent=2)
+        
+        return jsonify({'success': True, 'selected_index': selected_index})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/musicbrainz/manual', methods=['POST'])
+def api_musicbrainz_manual():
+    """API-Endpoint für manuelle Metadaten-Eingabe"""
+    try:
+        data = request.get_json()
+        
+        required = ['artist', 'album', 'year']
+        if not all(field in data for field in required):
+            return jsonify({'success': False, 'message': 'Fehlende Felder'}), 400
+        
+        # Speichere manuelle Metadaten
+        manual_data = {
+            'status': 'manual',
+            'artist': data['artist'],
+            'album': data['album'],
+            'year': data['year'],
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        api_file = Path(CONFIG_FILE).parent.parent / 'api' / 'musicbrainz_manual.json'
+        with open(api_file, 'w') as f:
+            json.dump(manual_data, f, indent=2)
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/archive')
 def api_archive():

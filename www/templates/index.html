@@ -93,14 +93,17 @@
             <div class="info-row">
                 <span class="info-label">{{ t.INDEX_STATE }}</span>
                 <span class="info-value">
-                    <span class="status-indicator {{ 'running' if service_running else 'stopped' }}" id="disk2iso-indicator"></span>
-                    <span id="disk2iso-status">{{ 'Running' if service_running else 'Stopped' }}</span>
+                    <span class="status-indicator {{ 'running' if disk2iso_status.running else 'stopped' }}" id="disk2iso-indicator"></span>
+                    <span id="disk2iso-status">{{ 'Running' if disk2iso_status.running else 'Stopped' }}</span>
                 </span>
             </div>
             <div class="info-row">
                 <span class="info-label">{{ t.SYSTEM_SERVICE_STATUS }}</span>
-                <span class="badge {{ 'success' if service_running else 'error' }}" id="disk2iso-badge">
-                    {{ t.COMMON_SUCCESS if service_running else t.COMMON_ERROR }}
+                <span class="badge {{ 'success' if disk2iso_status.status == 'active' else ('error' if disk2iso_status.status == 'error' else 'warning') }}" id="disk2iso-badge">
+                    {% if disk2iso_status.status == 'active' %}{{ t.SERVICE_STATUS_ACTIVE }}
+                    {% elif disk2iso_status.status == 'inactive' %}{{ t.SERVICE_STATUS_INACTIVE }}
+                    {% elif disk2iso_status.status == 'error' %}{{ t.SERVICE_STATUS_ERROR }}
+                    {% else %}{{ t.SERVICE_STATUS_NOT_INSTALLED }}{% endif %}
                 </span>
             </div>
             <div class="info-row">
@@ -115,13 +118,18 @@
             <div class="info-row">
                 <span class="info-label">{{ t.INDEX_STATE }}</span>
                 <span class="info-value">
-                    <span class="status-indicator running" id="webui-indicator"></span>
-                    <span id="webui-status">Running</span>
+                    <span class="status-indicator {{ 'running' if webui_status.running else 'stopped' }}" id="webui-indicator"></span>
+                    <span id="webui-status">{{ 'Running' if webui_status.running else 'Stopped' }}</span>
                 </span>
             </div>
             <div class="info-row">
                 <span class="info-label">{{ t.SYSTEM_SERVICE_STATUS }}</span>
-                <span class="badge success" id="webui-badge">{{ t.COMMON_SUCCESS }}</span>
+                <span class="badge {{ 'success' if webui_status.status == 'active' else ('error' if webui_status.status == 'error' else 'warning') }}" id="webui-badge">
+                    {% if webui_status.status == 'active' %}{{ t.SERVICE_STATUS_ACTIVE }}
+                    {% elif webui_status.status == 'inactive' %}{{ t.SERVICE_STATUS_INACTIVE }}
+                    {% elif webui_status.status == 'error' %}{{ t.SERVICE_STATUS_ERROR }}
+                    {% else %}{{ t.SERVICE_STATUS_NOT_INSTALLED }}{% endif %}
+                </span>
             </div>
             <div class="info-row">
                 <span class="info-label">{{ t.LOGS_TIMESTAMP }}</span>
@@ -135,14 +143,17 @@
             <div class="info-row">
                 <span class="info-label">{{ t.INDEX_STATE }}</span>
                 <span class="info-value">
-                    <span class="status-indicator {{ 'running' if config.mqtt_enabled else 'stopped' }}" id="mqtt-indicator"></span>
-                    <span id="mqtt-status">{{ 'Running' if config.mqtt_enabled else 'Stopped' }}</span>
+                    <span class="status-indicator {{ 'running' if mqtt_status.running else 'stopped' }}" id="mqtt-indicator"></span>
+                    <span id="mqtt-status">{{ 'Running' if mqtt_status.running else 'Stopped' }}</span>
                 </span>
             </div>
             <div class="info-row">
                 <span class="info-label">{{ t.SYSTEM_SERVICE_STATUS }}</span>
-                <span class="badge {{ 'success' if config.mqtt_enabled else 'info' }}" id="mqtt-badge">
-                    {{ t.SYSTEM_MQTT_ENABLED if config.mqtt_enabled else 'Disabled' }}
+                <span class="badge {{ 'success' if mqtt_status.status == 'active' else ('error' if mqtt_status.status == 'error' else 'warning') }}" id="mqtt-badge">
+                    {% if mqtt_status.status == 'active' %}{{ t.SERVICE_STATUS_ACTIVE }}
+                    {% elif mqtt_status.status == 'inactive' %}{{ t.SERVICE_STATUS_INACTIVE }}
+                    {% elif mqtt_status.status == 'error' %}{{ t.SERVICE_STATUS_ERROR }}
+                    {% else %}{{ t.SERVICE_STATUS_NOT_INSTALLED }}{% endif %}
                 </span>
             </div>
             <div class="info-row">
@@ -152,10 +163,44 @@
         </div>
     </div>
     
+    <!-- MusicBrainz Album-Auswahl Modal -->
+    <div id="musicbrainz-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>{{ t.MUSICBRAINZ_SELECT_TITLE }}</h2>
+                <button class="close-modal" onclick="closeMusicBrainzModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="mb-message">{{ t.MUSICBRAINZ_SELECT_MESSAGE }}</p>
+                <div id="mb-releases-list"></div>
+                
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #444;">
+                    <h3>{{ t.MUSICBRAINZ_MANUAL_TITLE }}</h3>
+                    <div class="form-group">
+                        <label>{{ t.MUSICBRAINZ_MANUAL_ARTIST }}</label>
+                        <input type="text" id="manual-artist" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t.MUSICBRAINZ_MANUAL_ALBUM }}</label>
+                        <input type="text" id="manual-album" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t.MUSICBRAINZ_MANUAL_YEAR }}</label>
+                        <input type="text" id="manual-year" class="form-input" placeholder="YYYY" />
+                    </div>
+                    <button onclick="submitManualMetadata()" class="btn btn-primary">
+                        {{ t.MUSICBRAINZ_MANUAL_BUTTON }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     </div>
 {% endblock %}
 
 {% block scripts %}
     <script src="{{ url_for('static', filename='js/index.js') }}?v=1768148211"></script>
+    <script src="{{ url_for('static', filename='js/musicbrainz.js') }}?v={{ current_time }}"></script>
 {% endblock %}
 

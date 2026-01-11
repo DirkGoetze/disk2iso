@@ -117,6 +117,26 @@ readonly MSG_COMMON_CLOSE="Schließen"
 readonly MSG_COMMON_BACK="Zurück"
 readonly MSG_COMMON_NEXT="Weiter"
 
+# Service-Status
+readonly MSG_SERVICE_STATUS_NOT_INSTALLED="Nicht installiert"
+readonly MSG_SERVICE_STATUS_INACTIVE="Inaktiv"
+readonly MSG_SERVICE_STATUS_ACTIVE="Aktiv"
+readonly MSG_SERVICE_STATUS_ERROR="Fehler"
+
+# MusicBrainz Auswahl
+readonly MSG_MUSICBRAINZ_SELECT_TITLE="Album auswählen"
+readonly MSG_MUSICBRAINZ_SELECT_MESSAGE="Mehrere Alben gefunden. Bitte wählen Sie das richtige Album aus:"
+readonly MSG_MUSICBRAINZ_SELECT_BUTTON="Album bestätigen"
+readonly MSG_MUSICBRAINZ_MANUAL_TITLE="Manuelle Eingabe"
+readonly MSG_MUSICBRAINZ_MANUAL_ARTIST="Künstler"
+readonly MSG_MUSICBRAINZ_MANUAL_ALBUM="Album"
+readonly MSG_MUSICBRAINZ_MANUAL_YEAR="Jahr"
+readonly MSG_MUSICBRAINZ_MANUAL_BUTTON="Metadaten speichern"
+readonly MSG_MUSICBRAINZ_SELECT_LABEL="Label"
+readonly MSG_MUSICBRAINZ_SELECT_COUNTRY="Land"
+readonly MSG_MUSICBRAINZ_SELECT_TRACKS="Tracks"
+readonly MSG_MUSICBRAINZ_WAITING="Warte auf Benutzer-Auswahl..."
+
 # Status-Meldungen
 readonly MSG_STATUS_SERVICE_STOPPED="Service gestoppt"
 readonly MSG_STATUS_NO_DRIVE="Kein Laufwerk erkannt"

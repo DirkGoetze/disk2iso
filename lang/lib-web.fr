@@ -117,6 +117,12 @@ readonly MSG_COMMON_CLOSE="Fermer"
 readonly MSG_COMMON_BACK="Retour"
 readonly MSG_COMMON_NEXT="Suivant"
 
+# État du Service
+readonly MSG_SERVICE_STATUS_NOT_INSTALLED="Non installé"
+readonly MSG_SERVICE_STATUS_INACTIVE="Inactif"
+readonly MSG_SERVICE_STATUS_ACTIVE="Actif"
+readonly MSG_SERVICE_STATUS_ERROR="Erreur"
+
 # Messages de statut
 readonly MSG_STATUS_SERVICE_STOPPED="Service arrêté"
 readonly MSG_STATUS_NO_DRIVE="Lecteur non détecté"

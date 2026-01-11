@@ -117,6 +117,26 @@ readonly MSG_COMMON_CLOSE="Close"
 readonly MSG_COMMON_BACK="Back"
 readonly MSG_COMMON_NEXT="Next"
 
+# Service Status
+readonly MSG_SERVICE_STATUS_NOT_INSTALLED="Not installed"
+readonly MSG_SERVICE_STATUS_INACTIVE="Inactive"
+readonly MSG_SERVICE_STATUS_ACTIVE="Active"
+readonly MSG_SERVICE_STATUS_ERROR="Error"
+
+# MusicBrainz Selection
+readonly MSG_MUSICBRAINZ_SELECT_TITLE="Select Album"
+readonly MSG_MUSICBRAINZ_SELECT_MESSAGE="Multiple albums found. Please select the correct album:"
+readonly MSG_MUSICBRAINZ_SELECT_BUTTON="Confirm Album"
+readonly MSG_MUSICBRAINZ_MANUAL_TITLE="Manual Entry"
+readonly MSG_MUSICBRAINZ_MANUAL_ARTIST="Artist"
+readonly MSG_MUSICBRAINZ_MANUAL_ALBUM="Album"
+readonly MSG_MUSICBRAINZ_MANUAL_YEAR="Year"
+readonly MSG_MUSICBRAINZ_MANUAL_BUTTON="Save Metadata"
+readonly MSG_MUSICBRAINZ_SELECT_LABEL="Label"
+readonly MSG_MUSICBRAINZ_SELECT_COUNTRY="Country"
+readonly MSG_MUSICBRAINZ_SELECT_TRACKS="Tracks"
+readonly MSG_MUSICBRAINZ_WAITING="Waiting for user selection..."
+
 # Status Messages
 readonly MSG_STATUS_SERVICE_STOPPED="Service stopped"
 readonly MSG_STATUS_NO_DRIVE="No drive detected"
