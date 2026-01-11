@@ -45,6 +45,8 @@ readonly MSG_MEDIUM_DETECTED="Medium inserted detected"
 readonly MSG_DISC_TYPE_DETECTED="Disc type detected:"
 readonly MSG_VOLUME_LABEL="Volume label:"
 readonly MSG_UNMOUNTING_DISC="Unmounting disc for direct access..."
+readonly MSG_DISC_EJECTED="✓ Medium ejected"
+readonly MSG_EJECT_FAILED="⚠ Ejection failed - please remove manually"
 readonly MSG_WAITING_FOR_REMOVAL="Waiting for medium removal..."
 readonly MSG_WAITING_FOR_MEDIUM="Waiting for medium..."
 readonly MSG_DRIVE_DETECTED="Drive detected:"
@@ -55,7 +57,6 @@ readonly MSG_ATTEMPTS="attempts"
 readonly MSG_DRIVE_NOT_AVAILABLE="Drive not available:"
 readonly MSG_COPY_SUCCESS_FINAL="Copy process successful:"
 readonly MSG_COPY_FAILED_FINAL="Copy process failed:"
-readonly MSG_SERVICE_STOPPING="Service stopping"
 
 # ============================================================================
 # DISK SPACE
@@ -80,7 +81,6 @@ readonly MSG_INSTALL_GENISOIMAGE_GDDRESCUE="Installation: apt-get install geniso
 # ============================================================================
 
 readonly MSG_METHOD_DDRESCUE="Method: Robust copying"
-readonly MSG_METHOD_DD="Method: Standard copying"
 
 # ============================================================================
 # COPY PROCESS (DATA DISC)
@@ -99,7 +99,6 @@ readonly MSG_ERROR_DDRESCUE_FAILED="ERROR: ddrescue failed"
 readonly MSG_PROGRESS="Progress:"
 readonly MSG_PROGRESS_OF="MB /"
 readonly MSG_PROGRESS_MB="MB"
-readonly MSG_PROGRESS_PERCENT="%"
 readonly MSG_REMAINING="Remaining"
 readonly MSG_COPIED="copied"
 

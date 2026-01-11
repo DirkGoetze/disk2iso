@@ -22,7 +22,6 @@ readonly MSG_ERROR_NO_VIDEO_METHOD="FEHLER: Keine Video-DVD/BD Methode verfügba
 # ============================================================================
 
 readonly MSG_METHOD_DVDBACKUP="Methode: Entschlüsseltes Kopieren"
-readonly MSG_ERROR_CREATE_DVD_TEMP="FEHLER: Kann DVD-Temp-Verzeichnis nicht erstellen:"
 readonly MSG_DVD_SIZE="DVD-Größe:"
 readonly MSG_EXTRACT_DVD_STRUCTURE="Kopiere DVD-Inhalte..."
 readonly MSG_ERROR_DVDBACKUP_FAILED="FEHLER: dvdbackup fehlgeschlagen"

@@ -12,6 +12,9 @@
 # ABHÄNGIGKEITEN
 # ============================================================================
 
+readonly MSG_CDTEXT_FALLBACK_AVAILABLE="CD-TEXT Fallback verfügbar"
+readonly MSG_CDTEXT_FALLBACK_INSTALL_HINT="Hinweis: Für CD-TEXT Fallback installieren: icedax oder libcdio-utils (cd-info)"
+
 readonly MSG_AUDIO_SUPPORT_NOT_AVAILABLE="Audio-CD Support NICHT verfügbar - fehlende Tools:"
 readonly MSG_INSTALL_AUDIO_TOOLS="Installation: apt-get install cdparanoia lame genisoimage"
 readonly MSG_AUDIO_OPTIONAL_LIMITED="Audio-CD: Optionale Features eingeschränkt - fehlende Tools:"
@@ -21,6 +24,12 @@ readonly MSG_AUDIO_SUPPORT_AVAILABLE="Audio-CD Support verfügbar"
 # ============================================================================
 # METADATEN
 # ============================================================================
+
+readonly MSG_TRY_CDTEXT="Versuche CD-TEXT auszulesen..."
+readonly MSG_CDTEXT_FOUND="CD-TEXT gefunden:"
+readonly MSG_NO_CDTEXT_FOUND="Kein CD-TEXT gefunden oder Tools nicht verfügbar (icedax/cd-info/cdda2wav)"
+readonly MSG_USE_CDTEXT_METADATA="Verwende CD-TEXT Metadaten"
+readonly MSG_CONTINUE_NO_METADATA="Fahre ohne Metadaten fort"
 
 readonly MSG_RETRIEVE_METADATA="Ermittle CD-Informationen..."
 readonly MSG_WARNING_CDISCID_MISSING="WARNUNG: cd-discid nicht installiert - Metadaten-Abfrage nicht möglich"
@@ -72,7 +81,6 @@ readonly MSG_CONTINUE_WITHOUT_METADATA="Fahre ohne Metadaten fort..."
 readonly MSG_INFO_EYED3_MISSING="INFO: eyeD3 nicht installiert - Cover-Einbettung übersprungen"
 
 readonly MSG_ALBUM_DIRECTORY="Album-Verzeichnis:"
-readonly MSG_ALBUM_DIR="Album-Verzeichnis:"
 readonly MSG_ERROR_NO_TRACKS="FEHLER: Keine Tracks gefunden"
 readonly MSG_TRACKS_FOUND="Gefundene Tracks:"
 

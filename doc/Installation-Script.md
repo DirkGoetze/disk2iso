@@ -282,7 +282,7 @@ sudo apt update
 sudo apt install -y coreutils util-linux genisoimage whiptail
 
 # Optional: Audio-CD Modul
-sudo apt install -y cdparanoia lame eyed3 curl jq
+sudo apt install -y cdparanoia lame eyed3 curl jq cd-discid wodim libcdio-utils
 
 # Optional: Video-DVD Modul
 sudo apt install -y dvdbackup libdvd-pkg
@@ -389,6 +389,8 @@ sudo journalctl -u disk2iso -f
 - `lame` - MP3-Encoding
 - `eyed3` - ID3-Tag-Editor
 - `curl`, `jq` - MusicBrainz API
+- `cd-discid` - MusicBrainz Disc-ID
+- `wodim` (icedax), `libcdio-utils` (cd-info) - CD-TEXT Fallback (optional)
 
 **Speicherplatz**: ~700 MB pro Audio-CD (VBR V2)
 
@@ -520,4 +522,4 @@ sudo usermod -a -G disk $USER
 
 ---
 
-**Version**: 1.2.0 | **Letzte Aktualisierung**: 06.01.2026
+**Version**: 1.3.0 | **Letzte Aktualisierung**: 11.01.2026

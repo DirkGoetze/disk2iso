@@ -436,9 +436,14 @@ transition_to_state() {
 
 # State Machine Main Loop
 run_state_machine() {
-    log_message "State Machine gestartet"
+    log_message "$MSG_STATE_MACHINE_STARTED"
     
     transition_to_state "$STATE_INITIALIZING" "Initialisiere Service..."
+    
+    # Sammle initiale System-Informationen
+    if declare -f collect_system_information >/dev/null 2>&1; then
+        collect_system_information
+    fi
     
     # Hauptschleife - läuft endlos
     while true; do
@@ -461,6 +466,10 @@ run_state_machine() {
             "$STATE_DRIVE_DETECTED")
                 # Laufwerk gefunden - stelle sicher dass es bereit ist
                 if ensure_device_ready "$CD_DEVICE"; then
+                    # Aktualisiere System-Info mit Laufwerk-Informationen
+                    if declare -f collect_system_information >/dev/null 2>&1; then
+                        collect_system_information
+                    fi
                     transition_to_state "$STATE_WAITING_FOR_MEDIA" "$MSG_DRIVE_MONITORING_STARTED"
                 else
                     # Device nicht bereit - zurück zum Suchen
@@ -549,7 +558,7 @@ run_state_machine() {
                 
             *)
                 # Unbekannter State - zurück zum Anfang
-                log_message "FEHLER: Unbekannter State: $CURRENT_STATE"
+                log_message "$MSG_ERROR_UNKNOWN_STATE $CURRENT_STATE"
                 transition_to_state "$STATE_INITIALIZING"
                 ;;
         esac

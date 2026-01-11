@@ -1,10 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>disk2iso - System</title>
+    <title>disk2iso - Hilfe</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -37,13 +38,13 @@
                             </a>
                         </li>
                         <li>
-                            <a href="/system" class="active">
+                            <a href="/system">
                                 <span class="nav-icon"><img src="{{ url_for('static', filename='img/system.svg') }}" alt="System"></span>
                                 <span>System</span>
                             </a>
                         </li>
                         <li>
-                            <a href="/help">
+                            <a href="/help" class="active">
                                 <span class="nav-icon"><img src="{{ url_for('static', filename='img/help.svg') }}" alt="Hilfe"></span>
                                 <span>Hilfe</span>
                             </a>
@@ -67,60 +68,44 @@
                             <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">Home</a>
                         </li>
                         <li class="breadcrumb-separator">></li>
-                        <li class="current">System</li>
+                        <li class="current">Hilfe</li>
                     </ul>
                 </nav>
 
-                <!-- System Information Grid -->
-                <div class="system-grid">
-                    <!-- OS Information -->
-                    <div class="card">
-                        <div class="category-header"><img src="{{ url_for('static', filename='img/linux.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Betriebssystem</div>
-                        <div class="system-info-grid" id="os-info">
-                            <div class="info-item">
-                                <span class="info-label">Lade...</span>
-                                <span class="info-value"></span>
-                            </div>
-                        </div>
-                    </div>
+                <div class="help-container">
+                    <!-- Document Selection Sidebar -->
+                    <aside class="docs-sidebar">
+                        <h3>Dokumentation</h3>
+                        <ul class="docs-menu" id="docs-menu">
+                            <li><a href="#" data-doc="Handbuch.md" class="active">📖 Handbuch</a></li>
+                            <li><a href="#" data-doc="Verwendung.md">🎯 Verwendung</a></li>
+                            <li><a href="#" data-doc="Installation-Script.md">⚙️ Installation (Script)</a></li>
+                            <li><a href="#" data-doc="Installation-Service.md">🔧 Installation (Service)</a></li>
+                            <li><a href="#" data-doc="MQTT-HomeAssistant.md">🏠 MQTT & Home Assistant</a></li>
+                            <li><a href="#" data-doc="Deinstallation.md">🗑️ Deinstallation</a></li>
+                            <li><a href="#" data-doc="Entwickler.md">👨‍💻 Entwickler</a></li>
+                            <li><a href="#" data-doc="Fehler-Tracking.md">🐛 Fehler-Tracking</a></li>
+                        </ul>
+                    </aside>
 
-                    <!-- disk2iso Information -->
-                    <div class="card">
-                        <div class="category-header"><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">disk2iso</div>
-                        <div class="service-info-grid" id="disk2iso-info">
-                            <div class="info-item">
-                                <span class="info-label">Lade...</span>
-                                <span class="info-value"></span>
-                            </div>
+                    <!-- Document Content -->
+                    <div class="docs-content card">
+                        <div id="markdown-content">
+                            <p style="text-align: center; padding: 40px; color: #666;">
+                                Lade Dokumentation...
+                            </p>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Software Versions -->
-                <div class="card">
-                    <h2>
-                        <img src="{{ url_for('static', filename='img/package.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Installierte Software
-                        <button class="refresh-btn" onclick="refreshSystemInfo()" style="float: right;">
-                            <span id="refresh-icon"><img src="{{ url_for('static', filename='img/refresh.svg') }}" alt="" style="width:20px;height:20px;"></span>
-                            <span>Aktualisieren</span>
-                        </button>
-                    </h2>
-                    
-                    <div id="software-container">
-                        <p style="text-align: center; padding: 40px; color: #666;">
-                            Lade Systeminformationen...
-                        </p>
                     </div>
                 </div>
 
                 <div class="footer">
                     <p>disk2iso - Automatische ISO Erstellung von optischen Medien</p>
-                    <p style="margin-top: 5px; font-size: 0.9em;">Â© 2026 | Version {{ version }}</p>
+                    <p style="margin-top: 5px; font-size: 0.9em;">© 2026 | Version {{ version }}</p>
                 </div>
             </main>
         </div>
     </div>
     
-    <script src="{{ url_for('static', filename='js/system.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/help.js') }}"></script>
 </body>
 </html>

@@ -1212,7 +1212,7 @@ wizard_page_module_selection() {
         choices=$(whiptail --title "disk2iso Installation - Seite 3/10" \
             --checklist "Welche Module möchten Sie installieren?\n\nNavigieren: ↑/↓  Auswählen: Leertaste  Weiter: Enter" \
             18 70 3 \
-            "AUDIO_CD" "Audio-CD Ripping (cdparanoia, lame, MusicBrainz)" ON \
+            "AUDIO_CD" "Audio-CD Ripping (cdparanoia, lame, MusicBrainz, CD-TEXT)" ON \
             "VIDEO_DVD" "Video-DVD Support (dvdbackup, libdvdcss2)" ON \
             "VIDEO_BD" "Video-Blu-ray Support (nur ddrescue)" OFF \
             3>&1 1>&2 2>&3)
@@ -1258,6 +1258,8 @@ wizard_page_install_audio_cd() {
         "curl:HTTP-Client"
         "jq:JSON-Parser"
         "eyed3:ID3-Tag Editor"
+        "wodim:CD-TEXT Auslesen (icedax)"
+        "libcdio-utils:CD-TEXT Auslesen (cd-info)"
     )
     
     local total=${#packages[@]}

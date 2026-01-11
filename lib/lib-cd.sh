@@ -66,13 +66,91 @@ check_audio_cd_dependencies() {
     command -v jq >/dev/null 2>&1 || optional_missing+=("jq")
     command -v eyeD3 >/dev/null 2>&1 || optional_missing+=("eyeD3")
     
+    # CD-TEXT Tools (Fallback wenn MusicBrainz nicht verfügbar)
+    local cdtext_available=false
+    command -v icedax >/dev/null 2>&1 && cdtext_available=true
+    command -v cd-info >/dev/null 2>&1 && cdtext_available=true
+    command -v cdda2wav >/dev/null 2>&1 && cdtext_available=true
+    
     if [[ ${#optional_missing[@]} -gt 0 ]]; then
         log_message "$MSG_AUDIO_OPTIONAL_LIMITED ${optional_missing[*]}"
         log_message "$MSG_INSTALL_MUSICBRAINZ_TOOLS"
+        
+        if [[ "$cdtext_available" == "true" ]]; then
+            log_message "$MSG_CDTEXT_FALLBACK_AVAILABLE"
+        else
+            log_message "$MSG_CDTEXT_FALLBACK_INSTALL_HINT"
+        fi
     fi
     
     log_message "$MSG_AUDIO_SUPPORT_AVAILABLE"
     return 0
+}
+
+# ============================================================================
+# CD-TEXT METADATA FALLBACK
+# ============================================================================
+
+# Funktion: CD-TEXT auslesen (Fallback wenn MusicBrainz nicht verfügbar)
+# Benötigt: icedax oder cd-info (aus libcdio)
+# Rückgabe: Setzt globale Variablen: cd_artist, cd_album
+get_cdtext_metadata() {
+    cd_artist=""
+    cd_album=""
+    
+    log_message "$MSG_TRY_CDTEXT"
+    
+    # Methode 1: icedax (aus cdrtools/cdrkit)
+    if command -v icedax >/dev/null 2>&1; then
+        local cdtext_output
+        cdtext_output=$(icedax -J -H -D "$CD_DEVICE" -g 2>&1 | grep -E "^Albumtitle:|^Performer:")
+        
+        if [[ -n "$cdtext_output" ]]; then
+            cd_album=$(echo "$cdtext_output" | grep "^Albumtitle:" | cut -d':' -f2- | xargs)
+            cd_artist=$(echo "$cdtext_output" | grep "^Performer:" | cut -d':' -f2- | xargs)
+            
+            if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
+                log_message "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
+                return 0
+            fi
+        fi
+    fi
+    
+    # Methode 2: cd-info (aus libcdio-utils)
+    if command -v cd-info >/dev/null 2>&1; then
+        local cdtext_output
+        cdtext_output=$(cd-info --no-header --no-device-info --cdtext-only "$CD_DEVICE" 2>/dev/null)
+        
+        if [[ -n "$cdtext_output" ]]; then
+            # cd-info Format: TITLE, PERFORMER
+            cd_album=$(echo "$cdtext_output" | grep -i "TITLE" | head -1 | cut -d':' -f2- | xargs)
+            cd_artist=$(echo "$cdtext_output" | grep -i "PERFORMER" | head -1 | cut -d':' -f2- | xargs)
+            
+            if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
+                log_message "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
+                return 0
+            fi
+        fi
+    fi
+    
+    # Methode 3: cdda2wav (aus cdrtools)
+    if command -v cdda2wav >/dev/null 2>&1; then
+        local cdtext_output
+        cdtext_output=$(cdda2wav -J -H -D "$CD_DEVICE" -g 2>&1 | grep -E "^Albumtitle:|^Performer:")
+        
+        if [[ -n "$cdtext_output" ]]; then
+            cd_album=$(echo "$cdtext_output" | grep "^Albumtitle:" | cut -d':' -f2- | xargs)
+            cd_artist=$(echo "$cdtext_output" | grep "^Performer:" | cut -d':' -f2- | xargs)
+            
+            if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
+                log_message "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
+                return 0
+            fi
+        fi
+    fi
+    
+    log_message "$MSG_NO_CDTEXT_FOUND"
+    return 1
 }
 
 # ============================================================================
@@ -377,8 +455,18 @@ copy_audio_cd() {
         return 1
     fi
     
-    # Metadaten abrufen (optional, Fehler nicht kritisch)
-    get_musicbrainz_metadata || log_message "$MSG_CONTINUE_WITHOUT_METADATA"
+    # Metadaten abrufen
+    # 1. Versuch: MusicBrainz (bevorzugt - liefert Cover-Art, Track-Namen, Jahr)
+    # 2. Fallback: CD-TEXT (wenn MusicBrainz fehlschlägt)
+    if ! get_musicbrainz_metadata; then
+        log_message "$MSG_CONTINUE_WITHOUT_METADATA"
+        # Fallback: CD-TEXT versuchen
+        if get_cdtext_metadata; then
+            log_message "$MSG_USE_CDTEXT_METADATA"
+        else
+            log_message "$MSG_CONTINUE_NO_METADATA"
+        fi
+    fi
     
     # Nutze globales temp_pathname (wird von init_filenames erstellt)
     # Falls nicht vorhanden (standalone-Aufruf), erstelle eigenes Verzeichnis
@@ -451,6 +539,10 @@ copy_audio_cd() {
     
     log_message "$MSG_TRACKS_FOUND: $track_count"
     
+    # Initialisiere Fortschritts-Tracking
+    local total_tracks="$track_count"
+    local processed_tracks=0
+    
     # Rippe alle Tracks mit cdparanoia
     log_message "$MSG_START_CDPARANOIA_RIPPING"
     local track
@@ -519,6 +611,20 @@ copy_audio_cd() {
         
         # Lösche WAV-Datei um Speicherplatz zu sparen
         rm -f "$wav_file"
+        
+        # Fortschritt aktualisieren (Track fertig)
+        processed_tracks=$((processed_tracks + 1))
+        local percent=$((processed_tracks * 100 / total_tracks))
+        
+        # API: Fortschritt senden
+        if declare -f api_update_progress >/dev/null 2>&1; then
+            # Schätze verbleibende Zeit (ca. 4 Minuten pro Track als Durchschnitt)
+            local remaining_tracks=$((total_tracks - processed_tracks))
+            local eta_minutes=$((remaining_tracks * 4))
+            local eta=$(printf "%02d:%02d:00" $((eta_minutes / 60)) $((eta_minutes % 60)))
+            
+            api_update_progress "$percent" "$processed_tracks" "$total_tracks" "$eta"
+        fi
     done
     
     # Kopiere Cover als folder.jpg ins Album-Verzeichnis (Jellyfin-Standard)

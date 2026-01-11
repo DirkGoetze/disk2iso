@@ -12,6 +12,9 @@
 # DEPENDENCIES
 # ============================================================================
 
+readonly MSG_CDTEXT_FALLBACK_AVAILABLE="CD-TEXT fallback available"
+readonly MSG_CDTEXT_FALLBACK_INSTALL_HINT="Hint: For CD-TEXT fallback install: icedax or libcdio-utils (cd-info)"
+
 readonly MSG_AUDIO_SUPPORT_NOT_AVAILABLE="Audio-CD support NOT available - missing tools:"
 readonly MSG_INSTALL_AUDIO_TOOLS="Installation: apt-get install cdparanoia lame genisoimage"
 readonly MSG_AUDIO_OPTIONAL_LIMITED="Audio-CD: Optional features limited - missing tools:"
@@ -21,6 +24,12 @@ readonly MSG_AUDIO_SUPPORT_AVAILABLE="Audio-CD support available"
 # ============================================================================
 # METADATA
 # ============================================================================
+
+readonly MSG_TRY_CDTEXT="Trying to read CD-TEXT..."
+readonly MSG_CDTEXT_FOUND="CD-TEXT found:"
+readonly MSG_NO_CDTEXT_FOUND="No CD-TEXT found or tools not available (icedax/cd-info/cdda2wav)"
+readonly MSG_USE_CDTEXT_METADATA="Using CD-TEXT metadata"
+readonly MSG_CONTINUE_NO_METADATA="Continuing without metadata"
 
 readonly MSG_RETRIEVE_METADATA="Retrieving CD information..."
 readonly MSG_WARNING_CDISCID_MISSING="WARNING: cd-discid not installed - metadata query not possible"
@@ -72,7 +81,6 @@ readonly MSG_CONTINUE_WITHOUT_METADATA="Continuing without metadata..."
 readonly MSG_INFO_EYED3_MISSING="INFO: eyeD3 not installed - cover embedding skipped"
 
 readonly MSG_ALBUM_DIRECTORY="Album directory:"
-readonly MSG_ALBUM_DIR="Album directory:"
 readonly MSG_ERROR_NO_TRACKS="ERROR: No tracks found"
 readonly MSG_TRACKS_FOUND="Tracks found:"
 

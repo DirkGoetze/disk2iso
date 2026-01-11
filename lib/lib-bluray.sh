@@ -199,7 +199,12 @@ copy_bluray_ddrescue() {
                 
                 log_message "$MSG_BLURAY_PROGRESS ${copied_mb} $MSG_PROGRESS_MB / ${total_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
                 
-                # MQTT: Fortschritt senden
+                # API: Fortschritt senden (IMMER)
+                if declare -f api_update_progress >/dev/null 2>&1; then
+                    api_update_progress "$percent" "$copied_mb" "$total_mb" "$eta"
+                fi
+                
+                # MQTT: Fortschritt senden (optional)
                 if [[ "$MQTT_SUPPORT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
                     mqtt_publish_progress "$percent" "$copied_mb" "$total_mb" "$eta"
                 fi

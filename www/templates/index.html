@@ -43,6 +43,12 @@
                             </a>
                         </li>
                         <li>
+                            <a href="/help">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/help.svg') }}" alt="Hilfe"></span>
+                                <span>Hilfe</span>
+                            </a>
+                        </li>
+                        <li>
                             <a href="/config">
                                 <span class="nav-icon"><img src="{{ url_for('static', filename='img/settings.svg') }}" alt="Konfiguration"></span>
                                 <span>Konfiguration</span>
@@ -67,8 +73,8 @@
 
                 <div class="container">
         
-        <div class="status-grid">
-            <!-- Live Ripping Status -->
+        <!-- Live Status (volle Breite) -->
+        <div class="live-status-wrapper">
             <div class="card live-status-card" id="live-status-card">
                 <h2><img src="{{ url_for('static', filename='img/live.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">Live Status</h2>
                 <div class="info-row">
@@ -85,12 +91,10 @@
                 <div id="progress-section" style="display: none;">
                     <div class="info-row">
                         <span class="info-label">Fortschritt</span>
-                        <span class="info-value"><span id="progress-percent">0</span>% (<span id="progress-mb">0</span> / <span id="total-mb">0</span> MB)</span>
+                        <span class="info-value"><span id="progress-percent">0</span>% (<span id="progress-mb">0</span> / <span id="total-mb">0</span> <span id="progress-unit">MB</span>)</span>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress-bar-fill" style="width: 0%">
-                            0%
-                        </div>
+                    <div class="progress-bar" data-label="0%">
+                        <div class="progress-fill" id="progress-bar-fill" style="width: 0%"></div>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Verbleibende Zeit</span>
@@ -98,29 +102,10 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Service Status -->
-            <div class="card">
-                <h2>Service Status</h2>
-                <div class="info-row">
-                    <span class="info-label">disk2iso Service</span>
-                    <span class="info-value">
-                        <span class="status-indicator {{ 'running' if service_running else 'stopped' }}"></span>
-                        {{ 'Running' if service_running else 'Stopped' }}
-                    </span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Status</span>
-                    <span class="badge {{ 'success' if service_running else 'error' }}">
-                        {{ 'Aktiv' if service_running else 'Inaktiv' }}
-                    </span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Aktualisiert</span>
-                    <span class="info-value">{{ current_time }}</span>
-                </div>
-            </div>
-            
+        </div>
+        
+        <!-- Speicherplatz und ISO Archive (zweispaltig) -->
+        <div class="two-column-grid">
             <!-- Speicherplatz -->
             <div class="card">
                 <h2>Speicherplatz</h2>
@@ -132,41 +117,97 @@
                     <span class="info-label">Frei / Gesamt</span>
                     <span class="info-value">{{ disk_space.free_gb }} GB / {{ disk_space.total_gb }} GB</span>
                 </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: {{ disk_space.used_percent }}%">
-                        {{ disk_space.used_percent }}% belegt
-                    </div>
+                <div class="progress-bar" data-label="{{ disk_space.used_percent }}% belegt">
+                    <div class="progress-fill" style="width: {{ disk_space.used_percent }}%"></div>
                 </div>
             </div>
             
-            <!-- ISO Archive -->
+            <!-- Archive -->
             <div class="card">
-                <h2>ISO Archive</h2>
+                <h2>Archive</h2>
                 <div class="info-row">
-                    <span class="info-label">Anzahl ISOs</span>
-                    <span class="info-value">{{ iso_count }}</span>
+                    <span class="info-label">Daten</span>
+                    <span class="info-value">{{ archive_counts.data }}</span>
                 </div>
                 <div class="info-row">
-                    <span class="info-label">Speicherort</span>
-                    <span class="info-value">{{ config.output_dir }}</span>
+                    <span class="info-label">Audio</span>
+                    <span class="info-value">{{ archive_counts.audio }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">DVD</span>
+                    <span class="info-value">{{ archive_counts.dvd }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Blu-ray</span>
+                    <span class="info-value">{{ archive_counts.bluray }}</span>
                 </div>
             </div>
-            
-            <!-- MQTT Integration -->
+        </div>
+        
+        <!-- Services (dreispaltig) -->
+        <div class="three-column-grid">
+            <!-- disk2iso Service -->
             <div class="card">
-                <h2>MQTT Integration</h2>
+                <h2>disk2iso Service</h2>
                 <div class="info-row">
                     <span class="info-label">Status</span>
-                    <span class="badge {{ 'success' if config.mqtt_enabled else 'info' }}">
+                    <span class="info-value">
+                        <span class="status-indicator {{ 'running' if service_running else 'stopped' }}" id="disk2iso-indicator"></span>
+                        <span id="disk2iso-status">{{ 'Running' if service_running else 'Stopped' }}</span>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="badge {{ 'success' if service_running else 'error' }}" id="disk2iso-badge">
+                        {{ 'Aktiv' if service_running else 'Inaktiv' }}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Aktualisiert</span>
+                    <span class="info-value" id="disk2iso-updated">{{ current_time }}</span>
+                </div>
+            </div>
+            
+            <!-- WEB-UI Service -->
+            <div class="card">
+                <h2>WEB-UI Service</h2>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="info-value">
+                        <span class="status-indicator running" id="webui-indicator"></span>
+                        <span id="webui-status">Running</span>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="badge success" id="webui-badge">Aktiv</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Aktualisiert</span>
+                    <span class="info-value" id="webui-updated">{{ current_time }}</span>
+                </div>
+            </div>
+            
+            <!-- MQTT Service -->
+            <div class="card">
+                <h2>MQTT Service</h2>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="info-value">
+                        <span class="status-indicator {{ 'running' if config.mqtt_enabled else 'stopped' }}" id="mqtt-indicator"></span>
+                        <span id="mqtt-status">{{ 'Running' if config.mqtt_enabled else 'Stopped' }}</span>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="badge {{ 'success' if config.mqtt_enabled else 'info' }}" id="mqtt-badge">
                         {{ 'Aktiviert' if config.mqtt_enabled else 'Deaktiviert' }}
                     </span>
                 </div>
-                {% if config.mqtt_enabled and config.mqtt_broker %}
                 <div class="info-row">
-                    <span class="info-label">Broker</span>
-                    <span class="info-value">{{ config.mqtt_broker }}</span>
+                    <span class="info-label">Aktualisiert</span>
+                    <span class="info-value" id="mqtt-updated">{{ current_time }}</span>
                 </div>
-                {% endif %}
             </div>
         </div>
         

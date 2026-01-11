@@ -89,9 +89,18 @@ function updateLiveStatus() {
                 document.getElementById('total-mb').textContent = live.total_mb;
                 document.getElementById('eta-text').textContent = live.eta || '-';
                 
+                // Einheit basierend auf Disc-Typ setzen
+                const progressUnit = document.getElementById('progress-unit');
+                if (live.disc_type === 'audio-cd') {
+                    progressUnit.textContent = 'Tracks';
+                } else {
+                    progressUnit.textContent = 'MB';
+                }
+                
                 const progressBar = document.getElementById('progress-bar-fill');
+                const progressBarContainer = progressBar.parentElement;
                 progressBar.style.width = live.progress_percent + '%';
-                progressBar.textContent = live.progress_percent + '%';
+                progressBarContainer.setAttribute('data-label', live.progress_percent + '%');
             } else {
                 progressSection.style.display = 'none';
             }

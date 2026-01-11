@@ -1,22 +1,26 @@
 # disk2iso - Automatisches Optical Media Archivierungstool
 
-🚀 Professionelles Tool zur automatischen Archivierung von CDs, DVDs und Blu-rays als ISO-Images mit intelligenter Medien-Erkennung und MusicBrainz-Integration.
+🚀 Professionelles Tool zur automatischen Archivierung von CDs, DVDs und Blu-rays als ISO-Images mit State Machine, Web-Interface und MusicBrainz-Integration.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: Linux](https://img.shields.io/badge/Platform-Linux-blue.svg)](https://www.debian.org/)
 [![Shell: Bash](https://img.shields.io/badge/Shell-Bash-green.svg)](https://www.gnu.org/software/bash/)
+[![Version](https://img.shields.io/badge/Version-1.3.0-blue.svg)](doc/Handbuch.md)
 
 ## ✨ Highlights
 
 - 🎯 **Automatische Medien-Erkennung** - Unterscheidet 6 Disc-Typen (Audio-CD, DVD-Video, BD-Video, Data-CDs/DVDs/BDs)
-- 🎵 **Audio-CD Ripping** - MP3-Encoding mit MusicBrainz-Metadaten und Album-Cover
-- 📀 **Video-DVD Support** - Entschlüsselung mit dvdbackup/libdvdcss2
+- 🔄 **State Machine** - 11 definierte Zustände für präzise Ablaufsteuerung
+- 🌐 **Web-Interface** - Modernes Dashboard mit Live-Updates (Flask, Port 5000)
+- 🎵 **Audio-CD Ripping** - MP3-Encoding mit MusicBrainz-Metadaten, CD-TEXT Fallback und Album-Cover
+- 📀 **Video-DVD Support** - Entschlüsselung mit dvdbackup/libdvdcss2 & intelligenter Retry-Mechanismus
 - 🎬 **Blu-ray Support** - Robustes Kopieren mit ddrescue
 - 🔄 **Intelligente Methoden-Wahl** - Beste Kopiermethode basierend auf Disc-Typ und verfügbaren Tools
 - ✅ **MD5-Checksummen** - Automatische Integritätsprüfung
 - 🔧 **Systemd-Integration** - Automatischer Betrieb als Service
 - 📡 **MQTT/Home Assistant** - Echtzeit-Status, Push-Benachrichtigungen, Dashboard
-- 🌍 **Mehrsprachig** - Modulares Sprachsystem (Deutsch & Englisch)
+- 🌍 **Mehrsprachig** - 4 vollständige Sprachen (de, en, es, fr) mit je 202 Konstanten
+- 📊 **JSON REST API** - Vollständige Programmierschnittstelle für externe Tools
 - 🎨 **Whiptail-Wizard** - Komfortable grafische Installation (9 Seiten)
 
 ## 🚀 Quick Start
@@ -43,11 +47,12 @@ sudo journalctl -u disk2iso -f
 
 | Typ | Beschreibung | Methode | Modul |
 |-----|-------------|---------|-------|
-| 🎵 Audio-CD | MP3-Ripping mit MusicBrainz | cdparanoia + lame | lib-cd.sh |
-| 📀 DVD-Video | Entschlüsselte Backups | dvdbackup/ddrescue | lib-dvd.sh |
+| 🎵 Audio-CD | MP3-Ripping mit MusicBrainz/CD-TEXT | cdparanoia + lame | lib-cd.sh |
+| 📀 DVD-Video | Entschlüsselte Backups + Retry | dvdbackup/ddrescue | lib-dvd.sh |
 | 🎬 Blu-ray Video | Robustes Kopieren | ddrescue/dd | lib-bluray.sh |
 | 💾 Data-CD/DVD/BD | 1:1 ISO-Images | dd/ddrescue | Kern |
 | 📡 MQTT-Integration | Home Assistant Status | mosquitto-clients | lib-mqtt.sh |
+| 🌐 Web-Interface | Dashboard & API | Flask (Python) | www/ |
 
 ## 📦 Installation
 
@@ -70,7 +75,7 @@ sudo ./install.sh
 - Empfohlen: genisoimage, gddrescue
 
 **Optional je nach Modul:**
-- Audio-CD: cdparanoia, lame, cd-discid, curl, jq, eyed3
+- Audio-CD: cdparanoia, lame, cd-discid, curl, jq, eyed3, wodim/libcdio-utils (CD-TEXT)
 - Video-DVD: dvdbackup, libdvdcss2
 - Blu-ray: (nutzt gddrescue aus Kern-Paketen)
 
@@ -216,6 +221,7 @@ Contributions sind willkommen! Bitte:
 
 - **MusicBrainz** - Metadaten-API
 - **cdparanoia, lame** - Audio-CD Ripping
+- **icedax, cd-info** - CD-TEXT Auslesen
 - **dvdbackup, libdvdcss2** - DVD-Entschlüsselung
 - **ddrescue** - Robustes Kopieren
 
@@ -280,6 +286,8 @@ Contributions sind willkommen! Bitte:
 - **cd-discid** - MusicBrainz Disc-ID (optional)
 - **curl, jq** - MusicBrainz Metadaten-Abfrage (optional)
 - **eyeD3** - Cover-Art Einbettung (optional)
+- **wodim** (icedax) - CD-TEXT Auslesen (optional, Fallback)
+- **libcdio-utils** (cd-info) - CD-TEXT Auslesen (optional, Fallback)
 
 **Video-DVD Support (lib-dvd.sh):**
 

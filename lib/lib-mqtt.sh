@@ -123,70 +123,8 @@ mqtt_init() {
 # API JSON FILE HELPER
 # ============================================================================
 
-# Funktion: Schreibe JSON in API-Datei
-# Parameter: $1 = Dateiname (z.B. "status.json"), $2 = JSON-Content
-api_write_json() {
-    local filename="$1"
-    local json_content="$2"
-    
-    # Erstelle API-Verzeichnis falls nicht vorhanden
-    if [[ ! -d "$API_DIR" ]]; then
-        mkdir -p "$API_DIR" 2>/dev/null || return 1
-        chmod 755 "$API_DIR" 2>/dev/null || true
-    fi
-    
-    # Schreibe JSON-Datei (atomar mit temp-file)
-    local temp_file="${API_DIR}/.${filename}.tmp"
-    echo "$json_content" > "$temp_file" 2>/dev/null || return 1
-    mv -f "$temp_file" "${API_DIR}/${filename}" 2>/dev/null || return 1
-    chmod 644 "${API_DIR}/${filename}" 2>/dev/null || true
-    
-    return 0
-}
-
-# Funktion: Füge History-Eintrag hinzu
-# Parameter: $1 = Status, $2 = Label, $3 = Typ, $4 = Ergebnis (success/error)
-api_add_history() {
-    local status="$1"
-    local label="$2"
-    local type="$3"
-    local result="$4"
-    
-    # Nur completed/error Events zur History hinzufügen
-    if [[ "$status" != "completed" ]] && [[ "$status" != "error" ]]; then
-        return 0
-    fi
-    
-    local timestamp=$(date '+%Y-%m-%dT%H:%M:%S')
-    local history_file="${API_DIR}/history.json"
-    
-    # Lese existierende History
-    local history="[]"
-    if [[ -f "$history_file" ]]; then
-        history=$(cat "$history_file" 2>/dev/null || echo "[]")
-    fi
-    
-    # Erstelle neuen Eintrag
-    local new_entry=$(cat <<EOF
-{
-  "timestamp": "${timestamp}",
-  "status": "${status}",
-  "label": "${label}",
-  "type": "${type}",
-  "result": "${result}",
-  "filename": "${iso_basename:-}"
-}
-EOF
-)
-    
-    # Füge Eintrag hinzu und behalte nur letzte 10
-    local updated_history=$(echo "$history" | jq --argjson entry "$new_entry" '. + [$entry] | .[-10:]' 2>/dev/null || echo "[]")
-    
-    # Schreibe History zurück
-    api_write_json "history.json" "$updated_history"
-    
-    return 0
-}
+# HINWEIS: api_write_json() und api_add_history() werden aus lib-api.sh geladen
+# Diese Funktionen sind bereits in lib-api.sh definiert und müssen nicht dupliziert werden
 
 # ============================================================================
 # MQTT PUBLISH HELPER

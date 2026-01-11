@@ -43,16 +43,18 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 #### 🎵 Audio-CD Support (Modul: lib-cd.sh)
 - **Lossless Ripping**: cdparanoia mit Fehlerkorrektur
 - **MP3-Encoding**: LAME VBR V2 (~190 kbps, fest kodiert)
-- **MusicBrainz-Integration**:
-  - Automatische Disc-ID-Erkennung
-  - Metadaten-Lookup (Artist, Album, Track, Jahr)
-  - Album-Cover Download (Cover Art Archive)
-- **ID3-Tags**: Vollständige Metadaten-Einbettung
+- **Intelligente Metadaten-Erfassung**:
+  - **Primär**: MusicBrainz-API (Disc-ID → Album/Artist/Tracks/Cover)
+  - **Fallback**: CD-TEXT (icedax/cd-info/cdda2wav)
+  - **Automatisch**: Cover-Download via Cover Art Archive
+- **ID3-Tags**: Vollständige Metadaten-Einbettung in MP3s
 - **Jellyfin-Support**: NFO-Dateien für Media-Server
 
 #### 📀 Video-DVD Support (Modul: lib-dvd.sh)
 - **Entschlüsselung**: dvdbackup mit libdvdcss2
-- **Fallback-Methoden**: ddrescue → dd
+- **Intelligenter Retry**: Automatischer Fallback bei Fehlern (dvdbackup → ddrescue)
+- **Fehler-Tracking**: Persistente .failed_dvds Liste (max. 2 Versuche)
+- **Automatisches Reject**: DVDs nach 2 Fehlversuchen
 - **Priorität**: Entschlüsselt vor verschlüsselt
 - **Struktur**: VIDEO_TS → ISO-Konvertierung
 
@@ -75,9 +77,9 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 
 #### 🌍 Mehrsprachigkeit
 - **Modulares Sprachsystem**: Jedes Modul hat eigene Sprachdateien
-- **Aktuell verfügbar**: Deutsch (de)
-- **Erweiterbar**: Einfaches Hinzufügen neuer Sprachen
-- **Fallback**: Englisch bei fehlenden Übersetzungen
+- **Verfügbare Sprachen**: Deutsch (de), English (en), Español (es), Français (fr)
+- **Vollständig synchronisiert**: 202 Konstanten pro Sprache
+- **Erweiterbar**: Einfaches Hinzufügen weiterer Sprachen
 
 #### 📡 MQTT-Integration (Modul: lib-mqtt.sh)
 - **Home Assistant Support**: Native Integration über MQTT
@@ -87,11 +89,31 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 - **Availability-Tracking**: Online/Offline Status
 - **Konfigurierbar**: Broker, Auth, Topics
 
+#### 🔄 State Machine Architektur
+- **11 definierte Zustände**: Präzise Ablaufsteuerung
+- **Zustandsübergänge**: initializing → waiting_for_drive → drive_detected → waiting_for_media → media_detected → analyzing → copying → completed → waiting_for_removal → idle
+- **Fehlerbehandlung**: Automatischer Übergang zu error-State bei Problemen
+- **Polling-Intervalle**: Optimiert (Laufwerk: 20s, Medium: 2s, Entnahme: 5s)
+- **API-Integration**: JSON-API liefert aktuellen State in Echtzeit
+
+#### 🌐 Web-Interface & REST API
+- **Flask-basiertes Dashboard**: Modernes Web-UI auf Port 5000
+- **6 Hauptseiten**: Home, Archive, Logs, Config, System, Help
+- **Live-Updates**: Auto-Refresh alle 5 Sekunden
+- **JSON REST API** (lib-api.sh):
+  - `/api/status` - Aktueller State und Fortschritt
+  - `/api/archive` - Liste aller ISOs
+  - `/api/logs` - Log-Dateien
+  - `/api/config` - Konfiguration
+  - `/api/system` - System-Informationen
+- **Markdown-Rendering**: Integrierte Hilfe-Dokumentation
+
 ### Systemarchitektur
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │              disk2iso.sh (Hauptskript)                  │
+│  • State Machine (11 Zustände)                          │
 │  • Laufwerks-Überwachung                                │
 │  • Disc-Erkennung                                       │
 │  • Modul-Loading (konditional)                          │
@@ -103,7 +125,9 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
                │   ├── lib-drivestat.sh   (Laufwerk-Status)
                │   ├── lib-files.sh       (Dateinamen-Verwaltung)
                │   ├── lib-folders.sh     (Ordner-Verwaltung)
-               │   └── lib-logging.sh     (Logging + Sprachsystem)
+               │   ├── lib-logging.sh     (Logging + Sprachsystem)
+               │   ├── lib-api.sh         (JSON REST API)
+               │   └── lib-systeminfo.sh  (System-Informationen)
                │
                └── Optionale Module (bei Installation wählbar)
                    ├── lib-cd.sh         (Audio-CD Ripping)
@@ -206,4 +230,4 @@ disk2iso funktioniert auch mit minimaler Installation:
 
 ---
 
-**Version**: 1.2.0 | **Letzte Aktualisierung**: 06.01.2026
+**Version**: 1.3.0 | **Letzte Aktualisierung**: 11.01.2026

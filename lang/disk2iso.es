@@ -26,3 +26,16 @@ readonly MSG_ERROR_OUTPUT_DIR_NOT_EXIST_MAIN="ERROR: El directorio de salida no 
 readonly MSG_CONFIG_OUTPUT_DIR="Configure DEFAULT_OUTPUT_DIR en /opt/disk2iso/lib/config.sh"
 readonly MSG_ERROR_NO_WRITE_PERMISSION="ERROR: Sin permisos de escritura para:"
 readonly MSG_FIX_PERMISSIONS="Ejecute: sudo chmod -R 777"
+
+# ============================================================================
+# MÁQUINA DE ESTADOS
+# ============================================================================
+
+readonly MSG_STATE_MACHINE_STARTED="Máquina de estados iniciada"
+readonly MSG_ERROR_UNKNOWN_STATE="ERROR: Estado desconocido:"
+
+# ============================================================================
+# CONTROL DEL SERVICIO
+# ============================================================================
+
+readonly MSG_SERVICE_STOPPING="El servicio se está deteniendo"

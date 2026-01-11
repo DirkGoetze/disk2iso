@@ -57,7 +57,6 @@ readonly MSG_ATTEMPTS="tentatives"
 readonly MSG_DRIVE_NOT_AVAILABLE="Lecteur non disponible:"
 readonly MSG_COPY_SUCCESS_FINAL="Copie réussie:"
 readonly MSG_COPY_FAILED_FINAL="Copie échouée:"
-readonly MSG_SERVICE_STOPPING="Arrêt du service"
 
 # ============================================================================
 # ESPACE DISQUE
@@ -82,7 +81,6 @@ readonly MSG_INSTALL_GENISOIMAGE_GDDRESCUE="Installation: apt-get install geniso
 # ============================================================================
 
 readonly MSG_METHOD_DDRESCUE="Méthode: Copie robuste"
-readonly MSG_METHOD_DD="Méthode: Copie standard"
 
 # ============================================================================
 # PROCESSUS DE COPIE (DISQUE DE DONNÉES)
@@ -101,7 +99,6 @@ readonly MSG_ERROR_DDRESCUE_FAILED="ERREUR: ddrescue a échoué"
 readonly MSG_PROGRESS="Progression:"
 readonly MSG_PROGRESS_OF="Mo /"
 readonly MSG_PROGRESS_MB="Mo"
-readonly MSG_PROGRESS_PERCENT="%"
 
 # ============================================================================
 # FICHIERS TEMPORAIRES

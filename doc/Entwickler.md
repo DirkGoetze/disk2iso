@@ -5,13 +5,15 @@ Technische Dokumentation für Entwickler, die disk2iso erweitern oder anpassen m
 ## Inhaltsverzeichnis
 
 1. [Architektur](#architektur)
-2. [Modul-System](#modul-system)
-3. [Sprachsystem](#sprachsystem)
-4. [API-Referenz](#api-referenz)
-5. [Neue Module entwickeln](#neue-module-entwickeln)
-6. [Coding-Standards](#coding-standards)
-7. [Testing](#testing)
-8. [Debugging](#debugging)
+2. [State Machine](#state-machine)
+3. [Modul-System](#modul-system)
+4. [Sprachsystem](#sprachsystem)
+5. [REST API](#rest-api)
+6. [Web-Interface](#web-interface)
+7. [Neue Module entwickeln](#neue-module-entwickeln)
+8. [Coding-Standards](#coding-standards)
+9. [Testing](#testing)
+10. [Debugging](#debugging)
 
 ---
 
@@ -19,41 +21,157 @@ Technische Dokumentation für Entwickler, die disk2iso erweitern oder anpassen m
 
 ### Überblick
 
-disk2iso verwendet eine **modulare Plugin-Architektur** mit Kern-Modulen und optionalen Media-Modulen.
+disk2iso verwendet eine **modulare Plugin-Architektur** mit State Machine, Kern-Modulen und optionalen Media-Modulen.
 
 ```
-disk2iso.sh (Orchestrator)
+disk2iso.sh (Orchestrator + State Machine)
     │
     ├─► Kern-Module (immer geladen)
     │   ├─► lib-common.sh        (Basis-Funktionen, Daten-Discs)
     │   ├─► lib-logging.sh       (Logging + Sprachsystem)
+    │   ├─► lib-api.sh           (JSON REST API)
     │   ├─► lib-files.sh         (Dateinamen-Verwaltung)
     │   ├─► lib-folders.sh       (Ordner-Verwaltung)
     │   ├─► lib-diskinfos.sh     (Disc-Typ-Erkennung)
     │   ├─► lib-drivestat.sh     (Laufwerk-Status)
+    │   ├─► lib-systeminfo.sh    (System-Informationen)
     │   └─► lib-tools.sh         (Abhängigkeiten-Prüfung)
     │
     └─► Optionale Module (konditional geladen)
         ├─► lib-cd.sh            (Audio-CD, nur wenn MODULE_AUDIO_CD=true)
         ├─► lib-dvd.sh           (Video-DVD, nur wenn MODULE_VIDEO_DVD=true)
-        └─► lib-bluray.sh        (Blu-ray, nur wenn MODULE_BLURAY=true)
+        ├─► lib-bluray.sh        (Blu-ray, nur wenn MODULE_BLURAY=true)
+        └─► lib-mqtt.sh          (MQTT, nur wenn MQTT_ENABLED=true)
 ```
 
 ### Komponenten-Verantwortlichkeiten
 
 | Komponente | Verantwortung |
 |------------|---------------|
-| **disk2iso.sh** | Hauptschleife, Disc-Überwachung, Modul-Loading |
+| **disk2iso.sh** | State Machine, Hauptschleife, Disc-Überwachung, Modul-Loading |
 | **lib-logging.sh** | Logging, Sprachsystem, Farben |
+| **lib-api.sh** | JSON REST API Endpunkte (status, archive, logs, config, system) |
 | **lib-diskinfos.sh** | Disc-Typ-Erkennung (audio-cd, dvd-video, bd-video, etc.) |
 | **lib-drivestat.sh** | Laufwerk-Status (eingelegter →media, leer, offen) |
 | **lib-common.sh** | Daten-Disc-Kopie (dd, ddrescue), Basis-Kopiermethoden |
 | **lib-files.sh** | Datei-/Ordnernamen generieren, Sanitize |
 | **lib-folders.sh** | Verzeichnis-Erstellung (lazy initialization) |
 | **lib-tools.sh** | Abhängigkeiten prüfen, Tools installieren |
-| **lib-cd.sh** | Audio-CD Ripping (cdparanoia, lame, MusicBrainz) |
-| **lib-dvd.sh** | Video-DVD Backup (dvdbackup, genisoimage) |
+| **lib-cd.sh** | Audio-CD Ripping (cdparanoia, lame, MusicBrainz, CD-TEXT) |
+| **lib-dvd.sh** | Video-DVD Backup (dvdbackup, genisoimage, Retry-Mechanismus) |
 | **lib-bluray.sh** | Blu-ray Backup (ddrescue, dd) |
+| **lib-mqtt.sh** | MQTT-Publishing (Status, Fortschritt, Home Assistant) |
+| **lib-systeminfo.sh** | System-Informationen (OS, Hardware, Software) |
+
+---
+
+## State Machine
+
+### Übersicht
+
+disk2iso v1.3.0 implementiert eine **Finite State Machine** (FSM) für präzise Ablaufsteuerung und bessere Fehlerbehandlung.
+
+### Definierte Zustände
+
+```bash
+readonly STATE_INITIALIZING="initializing"           # Start, Module laden
+readonly STATE_WAITING_FOR_DRIVE="waiting_for_drive" # Laufwerk-Suche
+readonly STATE_DRIVE_DETECTED="drive_detected"       # Laufwerk gefunden
+readonly STATE_WAITING_FOR_MEDIA="waiting_for_media" # Warte auf Medium
+readonly STATE_MEDIA_DETECTED="media_detected"       # Medium eingelegt
+readonly STATE_ANALYZING="analyzing"                 # Disc-Typ ermitteln
+readonly STATE_COPYING="copying"                     # Kopiervorgang läuft
+readonly STATE_COMPLETED="completed"                 # Erfolgreich abgeschlossen
+readonly STATE_ERROR="error"                         # Fehler aufgetreten
+readonly STATE_WAITING_FOR_REMOVAL="waiting_for_removal" # Warte auf Entnahme
+readonly STATE_IDLE="idle"                           # Bereit für nächstes Medium
+```
+
+### Zustandsübergänge
+
+```
+[initializing]
+    ↓
+[waiting_for_drive] ──(Laufwerk erkannt)──► [drive_detected]
+    ↓                                              ↓
+    └───────────(Polling 20s)─────────────────────┘
+                                                   ↓
+                                        [waiting_for_media]
+                                                   ↓
+                                         (Medium eingelegt)
+                                                   ↓
+                                         [media_detected]
+                                                   ↓
+                                           [analyzing]
+                                                   ↓
+                                           [copying]
+                                          ↙        ↘
+                                  (Erfolg)         (Fehler)
+                                     ↓                ↓
+                               [completed]        [error]
+                                     ↓                ↓
+                          [waiting_for_removal]  [waiting_for_removal]
+                                     ↓
+                              (Medium entfernt)
+                                     ↓
+                                  [idle]
+                                     ↓
+                          [waiting_for_media]
+                                   (Loop)
+```
+
+### Polling-Intervalle
+
+```bash
+readonly POLL_DRIVE_INTERVAL=20    # Laufwerk-Suche: alle 20 Sekunden
+readonly POLL_MEDIA_INTERVAL=2     # Medium-Erkennung: alle 2 Sekunden
+readonly POLL_REMOVAL_INTERVAL=5   # Entnahme-Check: alle 5 Sekunden
+```
+
+### Implementierung
+
+**State-Übergänge** via `transition_to_state()`:
+
+```bash
+transition_to_state() {
+    local new_state="$1"
+    local reason="${2:-}"
+    
+    log_message "State: $CURRENT_STATE → $new_state${reason:+ ($reason)}"
+    CURRENT_STATE="$new_state"
+    
+    # API-Status aktualisieren
+    update_api_state "$new_state" "$reason"
+}
+```
+
+**State-Handler** in Hauptschleife:
+
+```bash
+while true; do
+    case "$CURRENT_STATE" in
+        "$STATE_WAITING_FOR_DRIVE")
+            check_drive_availability
+            ;;
+        "$STATE_WAITING_FOR_MEDIA")
+            check_media_inserted
+            ;;
+        "$STATE_COPYING")
+            # Kopiervorgang läuft asynchron
+            ;;
+        # ... weitere States
+    esac
+    sleep "$POLL_INTERVAL"
+done
+```
+
+### Vorteile
+
+- ✅ **Vorhersagbar**: Klare Zustandsübergänge
+- ✅ **Testbar**: Jeder State isoliert testbar
+- ✅ **Fehlertoleranz**: Definierte Error-States
+- ✅ **API-freundlich**: State via JSON abrufbar
+- ✅ **Web-UI**: Live-Anzeige des aktuellen Zustands
 
 ---
 
@@ -1018,4 +1136,4 @@ grep "/dev/sr0" strace.log
 
 ---
 
-**Version**: 2.0.0 | **Letzte Aktualisierung**: 01.01.2026
+**Version**: 1.3.0 | **Letzte Aktualisierung**: 11.01.2026

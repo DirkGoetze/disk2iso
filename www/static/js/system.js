@@ -14,7 +14,6 @@ function loadSystemInfo() {
                 displayOsInfo(data.os);
                 displayDisk2IsoInfo(data.disk2iso);
                 displaySoftwareVersions(data.software);
-                checkForUpdates(data.software);
             } else {
                 showError('Fehler beim Laden der Systeminformationen');
             }
@@ -76,70 +75,111 @@ function displayDisk2IsoInfo(info) {
             <span class="info-label">Installationspfad</span>
             <span class="info-value">${info.install_path || '/opt/disk2iso'}</span>
         </div>
-        <div class="info-item">
-            <span class="info-label">Python Version</span>
-            <span class="info-value">${info.python_version || 'Unbekannt'}</span>
-        </div>
     `;
 }
 
 function displaySoftwareVersions(software) {
     const container = document.getElementById('software-container');
     
-    // Gruppiere Software nach Kategorien
-    const categories = {
-        'Audio-CD Tools': software.filter(s => 
-            ['cdparanoia', 'abcde', 'lame', 'flac', 'vorbis-tools'].includes(s.name)),
-        'DVD/Blu-ray Tools': software.filter(s => 
-            ['makemkv', 'dvdbackup', 'libbluray', 'handbrake'].includes(s.name)),
-        'System Tools': software.filter(s => 
-            ['ddrescue', 'gddrescue', 'wodim', 'genisoimage', 'isoinfo'].includes(s.name)),
-        'Sonstige': software.filter(s => 
-            !['cdparanoia', 'abcde', 'lame', 'flac', 'vorbis-tools',
-              'makemkv', 'dvdbackup', 'libbluray', 'handbrake',
-              'ddrescue', 'gddrescue', 'wodim', 'genisoimage', 'isoinfo'].includes(s.name))
-    };
+    // Definiere Kategorien in gewünschter Reihenfolge mit Typ-Kennzeichnung
+    const categoryDefinitions = [
+        {
+            name: 'System Tools',
+            tools: ['ddrescue', 'genisoimage'],
+            optional: false
+        },
+        {
+            name: 'Audio-CD Tools',
+            tools: ['cdparanoia', 'lame'],
+            optional: false
+        },
+        {
+            name: 'DVD Tools',
+            tools: ['dvdbackup'],
+            optional: false
+        },
+        {
+            name: 'Blu-ray Tools',
+            tools: [],
+            optional: true
+        },
+        {
+            name: 'UI Tools',
+            tools: ['python', 'flask', 'mosquitto'],
+            optional: true
+        }
+    ];
     
     let html = '';
     
-    for (const [category, items] of Object.entries(categories)) {
-        if (items.length === 0) continue;
+    categoryDefinitions.forEach(categoryDef => {
+        const items = software.filter(s => categoryDef.tools.includes(s.name));
+        
+        // Prüfe ob mindestens ein Tool installiert ist
+        const hasInstalledTools = items.some(item => item.installed_version);
+        
+        // Für leere optionale Kategorien: Zeige nur eingeklappte Überschrift
+        if (items.length === 0 && categoryDef.optional) {
+            html += `
+                <div class="software-category category-collapsed">
+                    <h3 class="category-toggle category-header-inactive" onclick="toggleCategory(this)">
+                        <span class="toggle-icon">▶</span>
+                        ${categoryDef.name}
+                        <span style="color: #999; font-size: 0.9em; font-weight: normal;"> (Nicht installiert)</span>
+                    </h3>
+                    <div class="category-content" style="display: none;">
+                        <p style="padding: 15px; color: #999; text-align: center;">Keine Tools installiert</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        // Überspringe leere nicht-optionale Kategorien
+        if (items.length === 0) return;
+        
+        const categoryClass = (!hasInstalledTools && categoryDef.optional) ? 'category-collapsed' : '';
+        const headerClass = (!hasInstalledTools && categoryDef.optional) ? 'category-header-inactive' : '';
         
         html += `
-            <div class="software-category">
-                <h3>${category}</h3>
-                <table class="software-table">
-                    <thead>
-                        <tr>
-                            <th>Software</th>
-                            <th>Installiert</th>
-                            <th>Verfügbar</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            <div class="software-category ${categoryClass}">
+                <h3 class="category-toggle ${headerClass}" onclick="toggleCategory(this)">
+                    <span class="toggle-icon">${(!hasInstalledTools && categoryDef.optional) ? '▶' : '▼'}</span>
+                    ${categoryDef.name}
+                    ${(!hasInstalledTools && categoryDef.optional) ? '<span style="color: #999; font-size: 0.9em; font-weight: normal;"> (Nicht installiert)</span>' : ''}
+                </h3>
+                <div class="category-content" style="display: ${(!hasInstalledTools && categoryDef.optional) ? 'none' : 'block'};">
+                    <table class="software-table">
+                        <thead>
+                            <tr>
+                                <th>Software</th>
+                                <th>Version</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
         `;
         
         items.forEach(item => {
             const statusBadge = getStatusBadge(item);
-            const availableVersion = item.available_version || 'Prüfung läuft...';
+            const rowClass = !item.installed_version ? 'row-inactive' : '';
             
             html += `
-                <tr>
+                <tr class="${rowClass}">
                     <td><strong>${item.display_name || item.name}</strong></td>
                     <td>${item.installed_version || '<em>Nicht installiert</em>'}</td>
-                    <td>${availableVersion}</td>
                     <td>${statusBadge}</td>
                 </tr>
             `;
         });
         
         html += `
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
-    }
+    });
     
     if (html === '') {
         html = '<p style="text-align: center; padding: 40px; color: #666;">Keine Software-Informationen verfügbar</p>';
@@ -148,53 +188,28 @@ function displaySoftwareVersions(software) {
     container.innerHTML = html;
 }
 
+function toggleCategory(header) {
+    const category = header.parentElement;
+    const content = category.querySelector('.category-content');
+    const icon = header.querySelector('.toggle-icon');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.textContent = '▼';
+        category.classList.remove('category-collapsed');
+    } else {
+        content.style.display = 'none';
+        icon.textContent = '▶';
+        category.classList.add('category-collapsed');
+    }
+}
+
 function getStatusBadge(item) {
     if (!item.installed_version) {
         return '<span class="version-badge version-error">❌ Nicht installiert</span>';
     }
     
-    if (!item.available_version || item.available_version === 'Unbekannt') {
-        return '<span class="version-badge version-unavailable">❓ Unbekannt</span>';
-    }
-    
-    if (item.update_available) {
-        return '<span class="version-badge version-outdated">⚠️ Update verfügbar</span>';
-    }
-    
-    return '<span class="version-badge version-current">✅ Aktuell</span>';
-}
-
-function checkForUpdates(software) {
-    const outdated = software.filter(s => s.update_available);
-    const missing = software.filter(s => !s.installed_version);
-    
-    if (outdated.length === 0 && missing.length === 0) {
-        document.getElementById('update-notice').style.display = 'none';
-        return;
-    }
-    
-    let message = '';
-    
-    if (outdated.length > 0) {
-        message += `<strong>${outdated.length} Update(s) verfügbar:</strong><br>`;
-        message += '<ul style="margin: 10px 0;">';
-        outdated.forEach(s => {
-            message += `<li><strong>${s.display_name || s.name}:</strong> ${s.installed_version} → ${s.available_version}</li>`;
-        });
-        message += '</ul>';
-    }
-    
-    if (missing.length > 0) {
-        message += `<strong>${missing.length} fehlende Software:</strong><br>`;
-        message += '<ul style="margin: 10px 0;">';
-        missing.forEach(s => {
-            message += `<li>${s.display_name || s.name}</li>`;
-        });
-        message += '</ul>';
-    }
-    
-    document.getElementById('update-message').innerHTML = message;
-    document.getElementById('update-notice').style.display = 'block';
+    return '<span class="version-badge version-current">✅ Installiert</span>';
 }
 
 function refreshSystemInfo() {

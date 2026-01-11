@@ -15,7 +15,6 @@
 readonly MSG_BLURAY_SUPPORT_INFO="Support Blu-ray disponible avec:"
 readonly MSG_RECOMMENDED_INSTALLATION="Installation recommandée pour de meilleures performances:"
 readonly MSG_INSTALL_DDRESCUE_INFO="ddrescue: apt-get install gddrescue"
-readonly MSG_INSTALL_GENISOIMAGE="genisoimage: apt-get install genisoimage"
 readonly MSG_ERROR_NO_BLURAY_METHOD_AVAILABLE="ERREUR: Aucune méthode Blu-ray disponible"
 
 # ============================================================================

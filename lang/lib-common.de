@@ -57,7 +57,6 @@ readonly MSG_ATTEMPTS="Versuchen"
 readonly MSG_DRIVE_NOT_AVAILABLE="Laufwerk nicht verfügbar:"
 readonly MSG_COPY_SUCCESS_FINAL="Kopiervorgang erfolgreich:"
 readonly MSG_COPY_FAILED_FINAL="Kopiervorgang fehlgeschlagen:"
-readonly MSG_SERVICE_STOPPING="Service wird beendet"
 
 # ============================================================================
 # SPEICHERPLATZ
@@ -82,7 +81,6 @@ readonly MSG_INSTALL_GENISOIMAGE_GDDRESCUE="Installation: apt-get install geniso
 # ============================================================================
 
 readonly MSG_METHOD_DDRESCUE="Methode: Robustes Kopieren"
-readonly MSG_METHOD_DD="Methode: Standard-Kopieren"
 
 # ============================================================================
 # KOPIERVORGANG (DATEN-DISC)
@@ -101,7 +99,6 @@ readonly MSG_ERROR_DDRESCUE_FAILED="FEHLER: ddrescue fehlgeschlagen"
 readonly MSG_PROGRESS="Fortschritt:"
 readonly MSG_PROGRESS_OF="MB /"
 readonly MSG_PROGRESS_MB="MB"
-readonly MSG_PROGRESS_PERCENT="%"
 
 # ============================================================================
 # TEMPORÄRE DATEIEN

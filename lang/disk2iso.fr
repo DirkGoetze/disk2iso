@@ -26,3 +26,16 @@ readonly MSG_ERROR_OUTPUT_DIR_NOT_EXIST_MAIN="ERREUR: Le répertoire de sortie n
 readonly MSG_CONFIG_OUTPUT_DIR="Configurez DEFAULT_OUTPUT_DIR dans /opt/disk2iso/lib/config.sh"
 readonly MSG_ERROR_NO_WRITE_PERMISSION="ERREUR: Pas de droits d'écriture pour:"
 readonly MSG_FIX_PERMISSIONS="Exécutez: sudo chmod -R 777"
+
+# ============================================================================
+# MACHINE À ÉTATS
+# ============================================================================
+
+readonly MSG_STATE_MACHINE_STARTED="Machine à états démarrée"
+readonly MSG_ERROR_UNKNOWN_STATE="ERREUR: État inconnu:"
+
+# ============================================================================
+# CONTRÔLE DU SERVICE
+# ============================================================================
+
+readonly MSG_SERVICE_STOPPING="Le service s'arrête"

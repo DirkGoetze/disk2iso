@@ -33,6 +33,20 @@ get_path_log() {
 # LANGUAGE SYSTEM
 # ============================================================================
 
+# ============================================================================
+# LANGUAGE FALLBACK MESSAGES (Hardcoded - loaded before language files)
+# ============================================================================
+
+# Diese Meldungen müssen hardcoded sein, da sie vor dem Laden der Sprachdateien
+# verwendet werden können und das Sprachsystem selbst betreffen
+readonly MSG_LANG_FILE_LOADED="Sprachdatei geladen:"
+readonly MSG_LANG_FALLBACK_LOADED="Fallback: Sprachdatei geladen:"
+readonly MSG_WARNING_NO_LANG_FILE="WARNUNG: Keine Sprachdatei gefunden für:"
+
+# ============================================================================
+# LANGUAGE FILE LOADING
+# ============================================================================
+
 # Funktion: Lade modul-spezifische Sprachdatei
 # Parameter: $1 = Modul-Name (z.B. "common", "cd", "dvd", "bluray")
 # Lädt: lang/lib-[modul].[LANGUAGE]
@@ -53,7 +67,7 @@ load_module_language() {
         source "$lang_file"
         # Optional: Log-Nachricht nur wenn log_message bereits definiert
         if declare -f log_message >/dev/null 2>&1; then
-            log_message "Sprachdatei geladen: $(basename "$lang_file")"
+            log_message "$MSG_LANG_FILE_LOADED $(basename "$lang_file")"
         fi
     else
         # Fallback auf Englisch
@@ -67,12 +81,12 @@ load_module_language() {
         if [[ -f "$fallback_file" ]]; then
             source "$fallback_file"
             if declare -f log_message >/dev/null 2>&1; then
-                log_message "Fallback: Sprachdatei geladen: $(basename "$fallback_file")"
+                log_message "$MSG_LANG_FALLBACK_LOADED $(basename "$fallback_file")"
             fi
         else
             # Keine Sprachdatei gefunden - Module funktionieren trotzdem
             if declare -f log_message >/dev/null 2>&1; then
-                log_message "WARNUNG: Keine Sprachdatei gefunden für: ${module_name}.${LANGUAGE}"
+                log_message "$MSG_WARNING_NO_LANG_FILE ${module_name}.${LANGUAGE}"
             fi
         fi
     fi

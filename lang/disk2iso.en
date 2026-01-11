@@ -14,24 +14,9 @@
 
 readonly MSG_ABORT_CRITICAL_DEPENDENCIES="ABORT: Critical dependencies missing"
 readonly MSG_ABORT_SYSTEMINFO_DEPENDENCIES="ABORT: System-Info dependencies missing"
-readonly MSG_CORE_MODULES_LOADED="Core modules loaded"
 readonly MSG_MQTT_SUPPORT_ENABLED="MQTT support enabled"
 readonly MSG_MQTT_SUPPORT_DISABLED="MQTT support disabled or not available"
 readonly MSG_MQTT_MODULE_NOT_INSTALLED="MQTT module not installed"
-
-# ============================================================================
-# MODULE SUPPORT
-# ============================================================================
-
-readonly MSG_AUDIO_CD_SUPPORT_ENABLED="Audio CD support enabled"
-readonly MSG_AUDIO_CD_SUPPORT_DISABLED="Audio CD support disabled"
-readonly MSG_AUDIO_CD_NOT_INSTALLED="Audio CD module not installed"
-readonly MSG_VIDEO_DVD_SUPPORT_ENABLED="Video DVD support enabled"
-readonly MSG_VIDEO_DVD_SUPPORT_DISABLED="Video DVD support disabled"
-readonly MSG_VIDEO_DVD_NOT_INSTALLED="Video DVD module not installed"
-readonly MSG_BLURAY_SUPPORT_ENABLED="Blu-ray support enabled"
-readonly MSG_BLURAY_SUPPORT_DISABLED="Blu-ray support disabled"
-readonly MSG_BLURAY_NOT_INSTALLED="Blu-ray module not installed"
 
 # ============================================================================
 # OUTPUT DIRECTORY
@@ -41,44 +26,13 @@ readonly MSG_ERROR_OUTPUT_DIR_NOT_EXIST_MAIN="ERROR: Output directory does not e
 readonly MSG_CONFIG_OUTPUT_DIR="Configure DEFAULT_OUTPUT_DIR in /opt/disk2iso/lib/config.sh"
 readonly MSG_ERROR_NO_WRITE_PERMISSION="ERROR: No write permission for:"
 readonly MSG_FIX_PERMISSIONS="Run: sudo chmod -R 777"
-readonly MSG_DISK2ISO_STARTED="disk2iso service started"
-readonly MSG_OUTPUT_DIRECTORY="Output directory:"
 
 # ============================================================================
-# DRIVE DETECTION (State Machine)
+# STATE MACHINE
 # ============================================================================
 
-readonly MSG_DRIVE_DETECTED="Drive detected:"
-readonly MSG_DRIVE_MONITORING_STARTED="Drive monitoring started"
-readonly MSG_DRIVE_NOT_AVAILABLE="Drive not available:"
-readonly MSG_ERROR_NO_DRIVE_FOUND="ERROR: No optical drive found after"
-readonly MSG_ATTEMPTS="attempts"
-readonly MSG_SEARCHING_USB_DRIVE="Searching for USB drive (attempt"
-readonly MSG_OF_ATTEMPTS="of"
-
-# ============================================================================
-# MEDIA DETECTION (State Machine)
-# ============================================================================
-
-readonly MSG_MEDIUM_DETECTED="Media detected"
-readonly MSG_DISC_TYPE_DETECTED="Disc type detected:"
-readonly MSG_VOLUME_LABEL="Volume label:"
-readonly MSG_UNMOUNTING_DISC="Unmounting disc"
-readonly MSG_WAITING_FOR_MEDIUM="Waiting for media..."
-readonly MSG_WAITING_FOR_REMOVAL="Waiting for media removal..."
-
-# ============================================================================
-# COPY PROCESS
-# ============================================================================
-
-readonly MSG_START_COPY_PROCESS="Starting copy process:"
-readonly MSG_COPY_SUCCESS_FINAL="Copy process completed successfully:"
-readonly MSG_COPY_FAILED_FINAL="Copy process failed for:"
-readonly MSG_WARNING_AUDIO_CD_NO_SUPPORT="WARNING: Audio CD detected but support not available"
-readonly MSG_FALLBACK_DATA_DISC="Fallback: Copy as data disc"
-readonly MSG_ERROR_AUDIO_CD_NOT_AVAILABLE="ERROR: Audio CD function not available"
-readonly MSG_ERROR_VIDEO_DVD_NOT_AVAILABLE="ERROR: Video DVD function not available"
-readonly MSG_ERROR_BLURAY_NOT_AVAILABLE="ERROR: Blu-ray function not available"
+readonly MSG_STATE_MACHINE_STARTED="State machine started"
+readonly MSG_ERROR_UNKNOWN_STATE="ERROR: Unknown state:"
 
 # ============================================================================
 # SERVICE CONTROL

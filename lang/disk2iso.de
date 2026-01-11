@@ -14,24 +14,9 @@
 
 readonly MSG_ABORT_CRITICAL_DEPENDENCIES="ABBRUCH: Kritische Abhängigkeiten fehlen"
 readonly MSG_ABORT_SYSTEMINFO_DEPENDENCIES="ABBRUCH: System-Info Abhängigkeiten fehlen"
-readonly MSG_CORE_MODULES_LOADED="Kernmodule geladen"
 readonly MSG_MQTT_SUPPORT_ENABLED="MQTT Support aktiviert"
 readonly MSG_MQTT_SUPPORT_DISABLED="MQTT Support deaktiviert oder nicht verfügbar"
 readonly MSG_MQTT_MODULE_NOT_INSTALLED="MQTT Modul nicht installiert"
-
-# ============================================================================
-# MODULE SUPPORT
-# ============================================================================
-
-readonly MSG_AUDIO_CD_SUPPORT_ENABLED="Audio-CD Support aktiviert"
-readonly MSG_AUDIO_CD_SUPPORT_DISABLED="Audio-CD Support deaktiviert"
-readonly MSG_AUDIO_CD_NOT_INSTALLED="Audio-CD Modul nicht installiert"
-readonly MSG_VIDEO_DVD_SUPPORT_ENABLED="Video-DVD Support aktiviert"
-readonly MSG_VIDEO_DVD_SUPPORT_DISABLED="Video-DVD Support deaktiviert"
-readonly MSG_VIDEO_DVD_NOT_INSTALLED="Video-DVD Modul nicht installiert"
-readonly MSG_BLURAY_SUPPORT_ENABLED="Blu-ray Support aktiviert"
-readonly MSG_BLURAY_SUPPORT_DISABLED="Blu-ray Support deaktiviert"
-readonly MSG_BLURAY_NOT_INSTALLED="Blu-ray Modul nicht installiert"
 
 # ============================================================================
 # AUSGABEVERZEICHNIS
@@ -41,44 +26,13 @@ readonly MSG_ERROR_OUTPUT_DIR_NOT_EXIST_MAIN="FEHLER: Ausgabeverzeichnis existie
 readonly MSG_CONFIG_OUTPUT_DIR="Konfiguriere DEFAULT_OUTPUT_DIR in /opt/disk2iso/lib/config.sh"
 readonly MSG_ERROR_NO_WRITE_PERMISSION="FEHLER: Keine Schreibrechte für:"
 readonly MSG_FIX_PERMISSIONS="Führe aus: sudo chmod -R 777"
-readonly MSG_DISK2ISO_STARTED="disk2iso Service gestartet"
-readonly MSG_OUTPUT_DIRECTORY="Ausgabeverzeichnis:"
 
 # ============================================================================
-# LAUFWERK-ERKENNUNG (State Machine)
+# STATE MACHINE
 # ============================================================================
 
-readonly MSG_DRIVE_DETECTED="Laufwerk erkannt:"
-readonly MSG_DRIVE_MONITORING_STARTED="Laufwerksüberwachung gestartet"
-readonly MSG_DRIVE_NOT_AVAILABLE="Laufwerk nicht verfügbar:"
-readonly MSG_ERROR_NO_DRIVE_FOUND="FEHLER: Kein optisches Laufwerk gefunden nach"
-readonly MSG_ATTEMPTS="Versuchen"
-readonly MSG_SEARCHING_USB_DRIVE="Suche USB-Laufwerk (Versuch"
-readonly MSG_OF_ATTEMPTS="von"
-
-# ============================================================================
-# MEDIUM-ERKENNUNG (State Machine)
-# ============================================================================
-
-readonly MSG_MEDIUM_DETECTED="Medium erkannt"
-readonly MSG_DISC_TYPE_DETECTED="Disc-Typ erkannt:"
-readonly MSG_VOLUME_LABEL="Volume-Label:"
-readonly MSG_UNMOUNTING_DISC="Disc wird unmountet"
-readonly MSG_WAITING_FOR_MEDIUM="Warte auf Medium..."
-readonly MSG_WAITING_FOR_REMOVAL="Warte auf Medium-Entfernung..."
-
-# ============================================================================
-# KOPIERVORGANG
-# ============================================================================
-
-readonly MSG_START_COPY_PROCESS="Starte Kopiervorgang:"
-readonly MSG_COPY_SUCCESS_FINAL="Kopiervorgang erfolgreich abgeschlossen:"
-readonly MSG_COPY_FAILED_FINAL="Kopiervorgang fehlgeschlagen für:"
-readonly MSG_WARNING_AUDIO_CD_NO_SUPPORT="WARNUNG: Audio-CD erkannt aber Support nicht verfügbar"
-readonly MSG_FALLBACK_DATA_DISC="Fallback: Kopiere als Daten-Disc"
-readonly MSG_ERROR_AUDIO_CD_NOT_AVAILABLE="FEHLER: Audio-CD Funktion nicht verfügbar"
-readonly MSG_ERROR_VIDEO_DVD_NOT_AVAILABLE="FEHLER: Video-DVD Funktion nicht verfügbar"
-readonly MSG_ERROR_BLURAY_NOT_AVAILABLE="FEHLER: Blu-ray Funktion nicht verfügbar"
+readonly MSG_STATE_MACHINE_STARTED="State Machine gestartet"
+readonly MSG_ERROR_UNKNOWN_STATE="FEHLER: Unbekannter State:"
 
 # ============================================================================
 # SERVICE CONTROL

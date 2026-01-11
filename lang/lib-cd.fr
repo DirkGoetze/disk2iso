@@ -12,6 +12,9 @@
 # DÉPENDANCES
 # ============================================================================
 
+readonly MSG_CDTEXT_FALLBACK_AVAILABLE="Alternative CD-TEXT disponible"
+readonly MSG_CDTEXT_FALLBACK_INSTALL_HINT="Conseil: Pour l'alternative CD-TEXT installez: icedax ou libcdio-utils (cd-info)"
+
 readonly MSG_AUDIO_SUPPORT_NOT_AVAILABLE="Support Audio-CD NON disponible - outils manquants:"
 readonly MSG_INSTALL_AUDIO_TOOLS="Installation: apt-get install cdparanoia lame genisoimage"
 readonly MSG_AUDIO_OPTIONAL_LIMITED="Audio-CD: Fonctionnalités optionnelles limitées - outils manquants:"
@@ -21,6 +24,12 @@ readonly MSG_AUDIO_SUPPORT_AVAILABLE="Support Audio-CD disponible"
 # ============================================================================
 # MÉTADONNÉES
 # ============================================================================
+
+readonly MSG_TRY_CDTEXT="Tentative de lecture CD-TEXT..."
+readonly MSG_CDTEXT_FOUND="CD-TEXT trouvé:"
+readonly MSG_NO_CDTEXT_FOUND="CD-TEXT non trouvé ou outils non disponibles (icedax/cd-info/cdda2wav)"
+readonly MSG_USE_CDTEXT_METADATA="Utilisation des métadonnées CD-TEXT"
+readonly MSG_CONTINUE_NO_METADATA="Continuer sans métadonnées"
 
 readonly MSG_RETRIEVE_METADATA="Récupération des informations du CD..."
 readonly MSG_WARNING_CDISCID_MISSING="ATTENTION: cd-discid non installé - requête de métadonnées impossible"
@@ -72,7 +81,6 @@ readonly MSG_CONTINUE_WITHOUT_METADATA="Continuer sans métadonnées..."
 readonly MSG_INFO_EYED3_MISSING="INFO: eyeD3 non installé - intégration de pochette ignorée"
 
 readonly MSG_ALBUM_DIRECTORY="Répertoire de l'album:"
-readonly MSG_ALBUM_DIR="Répertoire de l'album:"
 readonly MSG_ERROR_NO_TRACKS="ERREUR: Aucune piste trouvée"
 readonly MSG_TRACKS_FOUND="Pistes trouvées:"
 

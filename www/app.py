@@ -159,9 +159,22 @@ def get_iso_files_by_type(path):
                         'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
                     }
                     
-                    # Determine type based on filename patterns
+                    # Determine type based on directory structure (primary) or filename pattern (fallback)
+                    # Normalisiere Pfad-Komponenten
+                    path_parts = os.path.normpath(root).split(os.sep)
                     filename_lower = filename.lower()
-                    if '_audio-cd_' in filename_lower or '_audiocd_' in filename_lower:
+                    
+                    # Prüfe zuerst Ordnerstruktur
+                    if 'audio' in path_parts:
+                        result['audio'].append(file_info)
+                    elif 'dvd' in path_parts:
+                        result['dvd'].append(file_info)
+                    elif 'bluray' in path_parts or 'blu-ray' in path_parts or 'bd' in path_parts:
+                        result['bluray'].append(file_info)
+                    elif 'data' in path_parts:
+                        result['data'].append(file_info)
+                    # Fallback: Dateiname-Pattern
+                    elif '_audio-cd_' in filename_lower or '_audiocd_' in filename_lower:
                         result['audio'].append(file_info)
                     elif '_bluray_' in filename_lower or '_bd_' in filename_lower or '_blu-ray_' in filename_lower:
                         result['bluray'].append(file_info)
@@ -273,12 +286,22 @@ def index():
     live_status = get_live_status()
     status_text = get_status_text(live_status, service_running)
     
+    # Archive nach Typen
+    archives = get_iso_files_by_type(config['output_dir'])
+    archive_counts = {
+        'data': len(archives['data']),
+        'audio': len(archives['audio']),
+        'dvd': len(archives['dvd']),
+        'bluray': len(archives['bluray'])
+    }
+    
     return render_template('index.html',
         version=version,
         service_running=service_running,
         config=config,
         disk_space=disk_space,
         iso_count=iso_count,
+        archive_counts=archive_counts,
         live_status=live_status,
         status_text=status_text,
         current_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -319,6 +342,15 @@ def system_page():
     version = get_version()
     
     return render_template('system.html',
+        version=version
+    )
+
+@app.route('/help')
+def help_page():
+    """Hilfe-Seite mit Markdown-Dokumentation"""
+    version = get_version()
+    
+    return render_template('help.html',
         version=version
     )
 
@@ -870,17 +902,69 @@ def get_disk2iso_info():
     
     return info
 
+def get_software_list_from_system_json(software_data):
+    """Konvertiert Software-Dict aus system.json zu Liste für Frontend"""
+    software_list = []
+    
+    # Mapping von internen Namen zu Display-Namen
+    software_mapping = {
+        'cdparanoia': {'name': 'cdparanoia', 'display_name': 'cdparanoia'},
+        'lame': {'name': 'lame', 'display_name': 'LAME MP3 Encoder'},
+        'dvdbackup': {'name': 'dvdbackup', 'display_name': 'dvdbackup'},
+        'ddrescue': {'name': 'ddrescue', 'display_name': 'GNU ddrescue'},
+        'genisoimage': {'name': 'genisoimage', 'display_name': 'genisoimage'},
+        'python': {'name': 'python', 'display_name': 'Python'},
+        'flask': {'name': 'flask', 'display_name': 'Flask'},
+        'mosquitto': {'name': 'mosquitto', 'display_name': 'Mosquitto'}
+    }
+    
+    for key, mapping in software_mapping.items():
+        version = software_data.get(key, 'Not installed')
+        installed = version != 'Not installed'
+        
+        software_list.append({
+            'name': mapping['name'],
+            'display_name': mapping['display_name'],
+            'installed_version': version if installed else None,
+            'available_version': 'Unbekannt',
+            'update_available': False
+        })
+    
+    return software_list
+
 @app.route('/api/system')
 def api_system():
     """API-Endpoint für System-Informationen"""
     try:
-        return jsonify({
-            'success': True,
-            'os': get_os_info(),
-            'disk2iso': get_disk2iso_info(),
-            'software': check_software_versions(),
-            'timestamp': datetime.now().isoformat()
-        })
+        # Versuche zuerst system.json zu lesen (von disk2iso Service generiert)
+        system_data = read_api_json('system.json')
+        
+        if system_data:
+            # Nutze cached Daten und ergänze sie
+            return jsonify({
+                'success': True,
+                'os': system_data.get('os', {}),
+                'disk2iso': {
+                    'version': get_version(),
+                    'service_status': 'active' if get_service_status() else 'inactive',
+                    'install_path': str(INSTALL_DIR),
+                    'python_version': sys.version.split()[0],
+                    'container': system_data.get('container', {})
+                },
+                'hardware': system_data.get('hardware', {}),
+                'storage': system_data.get('storage', {}),
+                'software': get_software_list_from_system_json(system_data.get('software', {})),
+                'timestamp': system_data.get('timestamp', datetime.now().isoformat())
+            })
+        else:
+            # Fallback: Sammle Daten live (wenn system.json nicht existiert)
+            return jsonify({
+                'success': True,
+                'os': get_os_info(),
+                'disk2iso': get_disk2iso_info(),
+                'software': check_software_versions(),
+                'timestamp': datetime.now().isoformat()
+            })
     except Exception as e:
         return jsonify({
             'success': False,

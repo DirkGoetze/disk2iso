@@ -72,13 +72,16 @@ sudo systemctl status disk2iso
 
 ## Web-Interface
 
-Das Web-Interface bietet eine komfortable Übersicht über den aktuellen Status von disk2iso.
+Das Web-Interface bietet eine umfassende grafische Oberfläche zur Überwachung und Verwaltung von disk2iso.
 
 ### Starten
 
 ```bash
 # Web-Service starten
 sudo systemctl start disk2iso-web
+
+# Automatischer Start beim Booten
+sudo systemctl enable disk2iso-web
 
 # Web-Service Status
 sudo systemctl status disk2iso-web
@@ -88,12 +91,66 @@ sudo systemctl status disk2iso-web
 
 Öffne in deinem Browser: `http://<server-ip>:5000`
 
-Das Dashboard zeigt:
-- **Live-Status**: Aktueller Kopiervorgang mit Fortschritt
-- **Service-Status**: disk2iso Service läuft/gestoppt
-- **Speicherplatz**: Verfügbarer Platz im Ausgabeverzeichnis
-- **ISO-Archive**: Anzahl gespeicherter ISOs
-- **MQTT-Status**: Wenn aktiviert
+### Funktionen
+
+**🏠 Home (Übersicht)**
+- **Live-Status**: State Machine Zustand in Echtzeit
+- **Fortschrittsanzeige**: Prozent, MB kopiert, Geschwindigkeit, ETA
+- **Speicherplatz**: Verfügbar/Gesamt im Ausgabeverzeichnis
+- **Letzte ISOs**: Kürzlich erstellte Archive
+- **Service-Status**: disk2iso & MQTT Status
+
+**📦 Archive**
+- **Kategorisierung**: Nach Typ (Audio, DVD, Blu-ray, Data)
+- **Dateigröße**: Anzeige für jedes ISO
+- **MD5-Checksummen**: Download-Links
+- **Schnellsuche**: Filter nach Namen
+
+**📋 Logs**
+- **Echtzeit-Logs**: Live-Anzeige der letzten 100 Zeilen
+- **Filter**: Nach Disc-Label oder Log-Datei
+- **Download**: Komplette Logs als Textdatei
+- **Auto-Refresh**: Aktualisierung alle 5 Sekunden
+
+**⚙️ Config (Konfiguration)**
+- **Anzeige**: Aktuelle disk2iso Konfiguration
+- **Module**: Status aller aktivierten Module
+- **MQTT**: Broker-Einstellungen (falls aktiviert)
+- **Nur-Lesen**: Keine Änderungen möglich (Schutz)
+
+**💻 System**
+- **System-Info**: OS, Kernel, Uptime
+- **Hardware**: CPU, RAM, USB-Laufwerk
+- **Software**: Installierte disk2iso-Version & Module
+- **Dependencies**: Status aller benötigten Tools
+
+**❓ Help (Hilfe)**
+- **Markdown-Rendering**: Integrierte Dokumentation
+- **Schnellzugriff**: Häufige Fragen & Tipps
+- **Verlinkung**: Zu vollständiger Dokumentation
+
+### REST API
+
+Das Web-Interface nutzt eine JSON REST API (lib-api.sh):
+
+```bash
+# Status abfragen
+curl http://localhost:5000/api/status
+
+# Archive auflisten
+curl http://localhost:5000/api/archive
+
+# System-Informationen
+curl http://localhost:5000/api/system
+
+# Konfiguration
+curl http://localhost:5000/api/config
+
+# Logs abrufen
+curl http://localhost:5000/api/logs
+```
+
+Alle Endpunkte liefern JSON-formatierte Daten.
 
 ### Automatische Updates
 
@@ -654,4 +711,4 @@ nano album.nfo
 
 ---
 
-**Version**: 1.2.0 | **Letzte Aktualisierung**: 06.01.2026
+**Version**: 1.3.0 | **Letzte Aktualisierung**: 11.01.2026
