@@ -305,6 +305,11 @@ get_musicbrainz_metadata() {
             api_write_json "musicbrainz_selection.json" "{\"status\":\"waiting_user_input\",\"selected_index\":$best_release_index,\"confidence\":\"medium\",\"message\":\"Mehrere Alben gefunden. Bitte wählen Sie das richtige Album aus.\"}"
         fi
         
+        # MQTT-Benachrichtigung: Benutzereingriff erforderlich
+        if declare -f mqtt_publish_state >/dev/null 2>&1; then
+            mqtt_publish_state "waiting" "MusicBrainz: $releases_count Alben gefunden" "CD"
+        fi
+        
         # Markiere, dass User-Input benötigt wird
         export MUSICBRAINZ_NEEDS_CONFIRMATION=true
     fi
