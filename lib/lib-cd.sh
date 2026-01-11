@@ -526,6 +526,17 @@ copy_audio_cd() {
         api_update_status "copying" "$display_label" "audio-cd"
     fi
     
+    # MQTT: Sende Update mit erkanntem Label
+    if [[ "$MQTT_SUPPORT" == "true" ]] && declare -f mqtt_publish_state >/dev/null 2>&1; then
+        local display_label=""
+        if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
+            display_label="${cd_artist} - ${cd_album}"
+        else
+            display_label="$disc_label"
+        fi
+        mqtt_publish_state "copying" "$display_label" "audio-cd"
+    fi
+    
     # Ermittle Anzahl der Tracks
     local track_info
     track_info=$(cdparanoia -Q 2>&1 | grep -E "^\s+[0-9]+\.")
@@ -624,6 +635,15 @@ copy_audio_cd() {
             local eta=$(printf "%02d:%02d:00" $((eta_minutes / 60)) $((eta_minutes % 60)))
             
             api_update_progress "$percent" "$processed_tracks" "$total_tracks" "$eta"
+        fi
+        
+        # MQTT: Fortschritt senden
+        if [[ "$MQTT_SUPPORT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
+            local remaining_tracks=$((total_tracks - processed_tracks))
+            local eta_minutes=$((remaining_tracks * 4))
+            local eta=$(printf "%02d:%02d:00" $((eta_minutes / 60)) $((eta_minutes % 60)))
+            
+            mqtt_publish_progress "$percent" 0 0 "$eta"
         fi
     done
     

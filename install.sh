@@ -2091,6 +2091,7 @@ main() {
     
     # Wizard Seite 8: MQTT-Integration
     wizard_page_mqtt_setup
+    configure_mqtt
     
     # Wizard Seite 9: Web-Server
     wizard_page_web_server
