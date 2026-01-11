@@ -11,7 +11,7 @@
 
 - 🎯 **Automatische Medien-Erkennung** - Unterscheidet 6 Disc-Typen (Audio-CD, DVD-Video, BD-Video, Data-CDs/DVDs/BDs)
 - 🔄 **State Machine** - 11 definierte Zustände für präzise Ablaufsteuerung
-- 🌐 **Web-Interface** - Modernes Dashboard mit Live-Updates (Flask, Port 5000)
+- 🌐 **Web-Interface** - Modernes Dashboard mit Live-Updates (Flask, Port 8080)
 - 🎵 **Audio-CD Ripping** - MP3-Encoding mit MusicBrainz-Metadaten, CD-TEXT Fallback und Album-Cover
 - 📀 **Video-DVD Support** - Entschlüsselung mit dvdbackup/libdvdcss2 & intelligenter Retry-Mechanismus
 - 🎬 **Blu-ray Support** - Robustes Kopieren mit ddrescue
@@ -41,6 +41,9 @@ sudo systemctl status disk2iso-web
 
 # Logs ansehen
 sudo journalctl -u disk2iso -f
+
+# Web-Interface öffnen
+# Browser: http://localhost:8080
 ```
 
 ## 💿 Unterstützte Medientypen
@@ -149,7 +152,7 @@ Im Service-Modus: Medium einlegen → automatische Archivierung → Auto-Eject
 # Web-Server starten
 sudo systemctl start disk2iso-web
 
-# Browser öffnen: http://localhost:5000
+# Browser öffnen: http://localhost:8080
 ```
 
 ## 🗂️ Projekt-Struktur
@@ -233,7 +236,7 @@ Contributions sind willkommen! Bitte:
 
 ---
 
-**Version:** 1.2.0 | **Status:** Production Ready | **Platform:** Debian Linux
+**Version:** 1.3.0 | **Status:** Production Ready | **Platform:** Debian Linux
 
 ## ✨ Features
 

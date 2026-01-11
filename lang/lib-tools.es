@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Archivo de idioma español para lib-tools.sh
-# Filepath: disk2iso-lib/lang/lib-tools.es
+# Filepath: lang/lib-tools.es
 #
 # Descripción:
 #   Mensajes para la detección y recomendaciones de herramientas

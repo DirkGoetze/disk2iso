@@ -97,7 +97,8 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 - **API-Integration**: JSON-API liefert aktuellen State in Echtzeit
 
 #### 🌐 Web-Interface & REST API
-- **Flask-basiertes Dashboard**: Modernes Web-UI auf Port 5000
+- **Flask-basiertes Dashboard**: Modernes Web-UI auf Port 8080
+- **Mehrsprachig**: Web-UI nutzt gleiche LANGUAGE-Einstellung wie Backend (de, en, es, fr)
 - **6 Hauptseiten**: Home, Archive, Logs, Config, System, Help
 - **Live-Updates**: Auto-Refresh alle 5 Sekunden
 - **JSON REST API** (lib-api.sh):

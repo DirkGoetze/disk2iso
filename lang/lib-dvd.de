@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Deutsche Sprachdatei für lib-dvd.sh
-# Filepath: disk2iso-lib/lang/lib-dvd.de
+# Filepath: lang/lib-dvd.de
 #
 # Beschreibung:
 #   Meldungstexte für Video-DVD Funktionen

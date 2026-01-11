@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Fichier de langue française pour lib-common.sh
-# Filepath: disk2iso-lib/lang/lib-common.fr
+# Filepath: lang/lib-common.fr
 #
 # Description:
 #   Messages pour les fonctions de base (copie de disques de données)
@@ -104,6 +104,7 @@ readonly MSG_PROGRESS_MB="Mo"
 # MESSAGES D'ÉTAT
 # ============================================================================
 
+readonly MSG_STATUS_WAITING_DRIVE="En attente du lecteur..."
 readonly MSG_STATUS_DRIVE_DETECTED="Lecteur détecté"
 readonly MSG_STATUS_WAITING_MEDIA="En attente du média..."
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Archivo de idioma español para lib-common.sh
-# Filepath: disk2iso-lib/lang/lib-common.es
+# Filepath: lang/lib-common.es
 #
 # Descripción:
 #   Mensajes para funciones básicas (copia de discos de datos)
@@ -104,6 +104,7 @@ readonly MSG_PROGRESS_MB="MB"
 # MENSAJES DE ESTADO
 # ============================================================================
 
+readonly MSG_STATUS_WAITING_DRIVE="Esperando unidad..."
 readonly MSG_STATUS_DRIVE_DETECTED="Unidad detectada"
 readonly MSG_STATUS_WAITING_MEDIA="Esperando medio..."
 

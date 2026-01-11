@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Fichier de langue française pour lib-bluray.sh
-# Filepath: disk2iso-lib/lang/lib-bluray.fr
+# Filepath: lang/lib-bluray.fr
 #
 # Description:
 #   Messages pour les fonctions Blu-ray

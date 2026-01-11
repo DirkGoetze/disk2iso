@@ -1,10 +1,10 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Archivo de idioma español para lib-systeminfo.sh
-# Filepath: disk2iso-lib/lang/lib-systeminfo.es
+# Filepath: lang/lib-systeminfo.es
 #
-# Versión: 1.2.0
-# Fecha: 06.01.2026
+# Versión: 1.3.0
+# Fecha: 11.01.2026
 ################################################################################
 
 # Detección de contenedor

@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Archivo de idioma español para lib-folders.sh
-# Filepath: disk2iso-lib/lang/lib-folders.es
+# Filepath: lang/lib-folders.es
 #
 # Descripción:
 #   Mensajes para la gestión de directorios

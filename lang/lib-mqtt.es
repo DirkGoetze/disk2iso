@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Archivo de idioma español para lib-mqtt.sh
-# Filepath: disk2iso-lib/lang/lib-mqtt.es
+# Filepath: lang/lib-mqtt.es
 #
 # Descripción:
 #   Mensajes para las funciones MQTT

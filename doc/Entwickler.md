@@ -779,6 +779,46 @@ fi
 
 ### Bash Style Guide
 
+#### Internationalisierung (i18n)
+
+**Backend-Sprachdateien:** `lang/lib-*.{de,en,es,fr}`
+- Jedes Modul hat eigene Sprachdatei (z.B. lib-cd.de, lib-cd.en, etc.)
+- 202 Konstanten pro Sprache, vollständig synchronisiert
+- Format: `readonly MSG_CONSTANT_NAME="Übersetzter Text"`
+- Automatisches Laden basierend auf LANGUAGE-Einstellung in lib/config.sh
+
+**Web-Interface Internationalisierung:**
+- **Sprachdateien:** `lang/lib-web.{de,en,es,fr}`
+- **133 web-spezifische Konstanten** (Navigation, Formulare, Status-Meldungen)
+- **Python-Modul:** `www/i18n.py` - Bash-Sprachdatei-Parser mit Regex
+- **Template-Integration:** Jinja2 nutzt `{{ t.CONSTANT }}` für Übersetzungen
+- **JavaScript-Integration:** `window.i18n` Objekt für dynamische Updates
+- **Automatisch:** Spracherkennung aus config.sh, keine manuelle Konfiguration
+
+**Beispiel Backend:**
+```bash
+# lang/lib-cd.de
+readonly MSG_CD_DETECTED="Audio-CD erkannt"
+readonly MSG_CD_TRACKS="Tracks gefunden: %d"
+
+# Verwendung im Code
+log_info "$MSG_CD_DETECTED"
+log_info "$(printf "$MSG_CD_TRACKS" "$track_count")"
+```
+
+**Beispiel Web-Interface:**
+```python
+# www/i18n.py lädt automatisch
+from i18n import get_translations
+t = get_translations()  # Liest LANGUAGE aus config.sh
+
+# Template (Jinja2)
+{{ t.NAV_HOME }}  # "Home" (en) oder "Inicio" (es)
+
+# JavaScript
+window.i18n.STATUS_COPYING  // "Copying..." (en) oder "Kopiere..." (de)
+```
+
 #### Shebang & Header
 
 ```bash

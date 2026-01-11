@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Deutsche Sprachdatei für lib-cd.sh
-# Filepath: disk2iso-lib/lang/lib-cd.de
+# Filepath: lang/lib-cd.de
 #
 # Beschreibung:
 #   Meldungstexte für Audio-CD Funktionen

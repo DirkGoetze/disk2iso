@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Archivo de idioma español para lib-bluray.sh
-# Filepath: disk2iso-lib/lang/lib-bluray.es
+# Filepath: lang/lib-bluray.es
 #
 # Descripción:
 #   Mensajes para las funciones de Blu-ray

@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Deutsche Sprachdatei für lib-tools.sh
-# Filepath: disk2iso-lib/lang/lib-tools.de
+# Filepath: lang/lib-tools.de
 #
 # Beschreibung:
 #   Meldungstexte für Tool-Erkennung und -Empfehlungen

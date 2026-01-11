@@ -89,7 +89,7 @@ sudo systemctl status disk2iso-web
 
 ### Zugriff
 
-Öffne in deinem Browser: `http://<server-ip>:5000`
+Öffne in deinem Browser: `http://<server-ip>:8080`
 
 ### Funktionen
 
@@ -128,6 +128,12 @@ sudo systemctl status disk2iso-web
 - **Markdown-Rendering**: Integrierte Dokumentation
 - **Schnellzugriff**: Häufige Fragen & Tipps
 - **Verlinkung**: Zu vollständiger Dokumentation
+
+**🌍 Sprachunterstützung**
+- **Automatische Spracherkennung**: Nutzt LANGUAGE-Einstellung aus lib/config.sh
+- **4 Sprachen**: Deutsch (de), English (en), Español (es), Français (fr)
+- **Dynamische Updates**: JavaScript-Texte passen sich automatisch an
+- **Ändern**: `readonly LANGUAGE="en"` in /opt/disk2iso/lib/config.sh setzen und Services neu starten
 
 ### REST API
 

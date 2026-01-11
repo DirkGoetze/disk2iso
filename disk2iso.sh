@@ -381,7 +381,7 @@ transition_to_state() {
     # Update API status for state
     case "$new_state" in
         "$STATE_WAITING_FOR_DRIVE")
-            api_update_status "waiting" "No Drive" "unknown"
+            api_update_status "waiting" "${MSG_STATUS_WAITING_DRIVE:-Waiting for drive...}" "unknown"
             ;;
         "$STATE_DRIVE_DETECTED")
             api_update_status "idle" "${MSG_STATUS_DRIVE_DETECTED:-Drive Ready}" "unknown"

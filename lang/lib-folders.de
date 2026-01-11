@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Deutsche Sprachdatei für lib-folders.sh
-# Filepath: disk2iso-lib/lang/lib-folders.de
+# Filepath: lang/lib-folders.de
 #
 # Beschreibung:
 #   Meldungstexte für Verzeichnisverwaltung

@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso - Archivo de idioma español para lib-dvd.sh
-# Filepath: disk2iso-lib/lang/lib-dvd.es
+# Filepath: lang/lib-dvd.es
 #
 # Descripción:
 #   Mensajes para las funciones de Vídeo-DVD
