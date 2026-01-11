@@ -354,18 +354,8 @@ mqtt_publish_progress() {
     local total_mb="${3:-0}"
     local eta="${4:-}"
     
-    # IMMER progress.json für API schreiben (unabhängig von MQTT)
-    local progress_json=$(cat <<EOF
-{
-  "percent": ${percent},
-  "copied_mb": ${copied_mb},
-  "total_mb": ${total_mb},
-  "eta": "${eta}",
-  "timestamp": "$(date '+%Y-%m-%dT%H:%M:%S')"
-}
-EOF
-)
-    api_write_json "progress.json" "${progress_json}"
+    # NICHT mehr progress.json schreiben - das macht api_update_progress!
+    # mqtt_publish_progress ist NUR für MQTT-Publishing zuständig
     
     # Ab hier: Nur MQTT-spezifische Logik
     if [[ "$MQTT_AVAILABLE" != "true" ]]; then

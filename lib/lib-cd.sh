@@ -657,6 +657,19 @@ copy_audio_cd() {
     mkdir -p "$album_dir"
     log_message "$MSG_ALBUM_DIRECTORY: $album_dir"
     
+    # Ermittle Anzahl der Tracks ZUERST (für korrekte Fortschrittsanzeige)
+    local track_info
+    track_info=$(cdparanoia -Q 2>&1 | grep -E "^\s+[0-9]+\.")
+    local track_count=$(echo "$track_info" | wc -l)
+    
+    if [[ $track_count -eq 0 ]]; then
+        log_message "$MSG_ERROR_NO_TRACKS"
+        rm -rf "$temp_pathname"
+        return 1
+    fi
+    
+    log_message "$MSG_TRACKS_FOUND: $track_count"
+    
     # API: Aktualisiere Attribute mit CD-Metadaten
     if declare -f api_update_status >/dev/null 2>&1; then
         # Erstelle readable Label für Anzeige
@@ -680,18 +693,19 @@ copy_audio_cd() {
         mqtt_publish_state "copying" "$display_label" "audio-cd"
     fi
     
-    # Ermittle Anzahl der Tracks
-    local track_info
-    track_info=$(cdparanoia -Q 2>&1 | grep -E "^\s+[0-9]+\.")
-    local track_count=$(echo "$track_info" | wc -l)
-    
-    if [[ $track_count -eq 0 ]]; then
-        log_message "$MSG_ERROR_NO_TRACKS"
-        rm -rf "$temp_pathname"
-        return 1
+    # Initialisiere Fortschritt mit korrekter Track-Anzahl (0/24 statt 0/0)
+    if declare -f api_update_progress >/dev/null 2>&1; then
+        api_update_progress "0" "0" "$track_count" ""
     fi
     
-    log_message "$MSG_TRACKS_FOUND: $track_count"
+    # Update attributes.json mit total_tracks für korrekte Anzeige
+    local api_dir="${INSTALL_DIR:-/opt/disk2iso}/api"
+    if [[ -f "${api_dir}/attributes.json" ]] && command -v jq >/dev/null 2>&1; then
+        local updated=$(jq --arg tracks "$track_count" '.total_tracks = ($tracks | tonumber)' "${api_dir}/attributes.json" 2>/dev/null)
+        if [[ -n "$updated" ]]; then
+            echo "$updated" > "${api_dir}/attributes.json"
+        fi
+    fi
     
     # Initialisiere Fortschritts-Tracking
     local total_tracks="$track_count"
@@ -770,6 +784,9 @@ copy_audio_cd() {
         processed_tracks=$((processed_tracks + 1))
         local percent=$((processed_tracks * 100 / total_tracks))
         
+        # DEBUG: Zeige aktuelle Werte
+        log_message "DEBUG: Track $processed_tracks/$total_tracks abgeschlossen ($percent%)"
+        
         # API: Fortschritt senden
         if declare -f api_update_progress >/dev/null 2>&1; then
             # Schätze verbleibende Zeit (ca. 4 Minuten pro Track als Durchschnitt)
@@ -777,6 +794,7 @@ copy_audio_cd() {
             local eta_minutes=$((remaining_tracks * 4))
             local eta=$(printf "%02d:%02d:00" $((eta_minutes / 60)) $((eta_minutes % 60)))
             
+            log_message "DEBUG: api_update_progress $percent $processed_tracks $total_tracks $eta"
             api_update_progress "$percent" "$processed_tracks" "$total_tracks" "$eta"
         fi
         
@@ -786,7 +804,8 @@ copy_audio_cd() {
             local eta_minutes=$((remaining_tracks * 4))
             local eta=$(printf "%02d:%02d:00" $((eta_minutes / 60)) $((eta_minutes % 60)))
             
-            mqtt_publish_progress "$percent" 0 0 "$eta"
+            # Für Audio-CDs: Sende Tracks statt MB
+            mqtt_publish_progress "$percent" "$processed_tracks" "$total_tracks" "$eta"
         fi
     done
     

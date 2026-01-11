@@ -100,6 +100,7 @@ EOF
   "progress_percent": 0,
   "progress_mb": 0,
   "total_mb": ${disc_size_mb},
+  "total_tracks": 0,
   "eta": "",
   "filename": "${iso_basename:-}",
   "method": "${method}",

@@ -275,15 +275,22 @@ def get_live_status():
         'timestamp': ''
     }
     
+    # Für Audio-CDs: total_tracks aus attributes verwenden
+    disc_type = attributes.get('disc_type', '')
+    if disc_type == 'audio-cd':
+        total_value = attributes.get('total_tracks', progress.get('total_mb', 0))
+    else:
+        total_value = progress.get('total_mb', 0)
+    
     return {
         'status': status.get('status', 'idle'),
         'timestamp': status.get('timestamp', ''),
         'disc_label': attributes.get('disc_label', ''),
-        'disc_type': attributes.get('disc_type', ''),
+        'disc_type': disc_type,
         'disc_size_mb': attributes.get('disc_size_mb', 0),
         'progress_percent': progress.get('percent', 0),
         'progress_mb': progress.get('copied_mb', 0),
-        'total_mb': progress.get('total_mb', 0),
+        'total_mb': total_value,
         'eta': progress.get('eta', ''),
         'filename': attributes.get('filename', ''),
         'method': attributes.get('method', 'unknown'),
