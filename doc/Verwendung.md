@@ -99,6 +99,7 @@ sudo systemctl status disk2iso-web
 - **Speicherplatz**: Verfügbar/Gesamt im Ausgabeverzeichnis
 - **Letzte ISOs**: Kürzlich erstellte Archive
 - **Service-Status**: disk2iso & MQTT Status
+- **MusicBrainz-Auswahl**: Automatisches Modal bei mehreren Album-Treffern (Audio-CDs)
 
 **📦 Archive**
 - **Kategorisierung**: Nach Typ (Audio, DVD, Blu-ray, Data)
@@ -418,6 +419,9 @@ temp/
 **Prozess**:
 1. Disc ID via cdparanoia
 2. MusicBrainz-Lookup (falls aktiviert)
+   - **Bei mehreren Treffern**: Automatische Pause → Benutzer-Auswahl im Web-Interface
+   - **Status in Home Assistant**: `waiting` - MusicBrainz: X Alben gefunden
+   - **Timeout**: 5 Minuten für Benutzer-Eingabe
 3. Track-Extraktion (cdparanoia)
 4. MP3-Encoding (lame)
 5. ID3-Tags (eyed3)
@@ -437,6 +441,75 @@ temp/
 [INFO] lame: VBR V2, 192 kbps average
 [INFO] Cover: 500x500 px (45 KB)
 [SUCCESS] 14 Tracks, 56:32 min, 108 MB
+```
+
+#### Interaktive MusicBrainz-Auswahl
+
+Wenn MusicBrainz **mehrere Alben** zur gleichen Disc-ID findet (z.B. verschiedene Länderpressungen, Reissues), wird automatisch ein **Auswahl-Dialog** im Web-Interface angezeigt:
+
+**Ablauf**:
+1. **MusicBrainz-Lookup** findet mehrere Releases (z.B. 7 verschiedene Pressungen)
+2. **Status wechselt** auf `waiting_user_input`
+3. **MQTT-Benachrichtigung**: Status `waiting` mit Label "MusicBrainz: X Alben gefunden"
+4. **Web-Interface** zeigt automatisch **Modal-Fenster** mit Release-Liste:
+   - Artist - Album (Jahr, Land)
+   - Anzahl Tracks
+   - Release-Typ
+   - Vorauswahl basierend auf Score (Track-Übereinstimmung + Jahr)
+5. **Benutzer wählt** korrekte Version aus oder gibt Metadaten manuell ein
+6. **System fährt fort** mit gewählten Metadaten
+
+**Beispiel-Szenario**:
+```
+Cat Stevens - Remember (Disc-ID: 76118c18, 24 Tracks)
+→ MusicBrainz findet 7 Releases:
+  • Cat Stevens - Remember (1999, GB)          ← Korrekt
+  • Cat Stevens - Remember (1999, AU)
+  • Cat Stevens - Remember (1999, NZ)
+  • Various Artists - なつかしのこどもヒットソング (2010, JP)
+  • Zarah Leander - Kann denn Liebe Sünde sein (1997)
+  • ...
+→ Web-Interface Modal erscheint
+→ Benutzer wählt GB-Version
+→ System erstellt: /audio/Cat Stevens/Remember (1999)/01 - Morning Has Broken.mp3
+```
+
+**Timeout-Verhalten**:
+- **5 Minuten** Zeit für Benutzer-Eingabe
+- **Nach Timeout**: Automatische Auswahl des vorgeschlagenen Release (höchster Score)
+- **Polling**: Web-Interface prüft alle 5 Sekunden auf neue Auswahl-Anforderung
+
+**Manuelle Eingabe**:
+Falls keines der gefundenen Alben passt, kann der Benutzer im Modal-Fenster **manuelle Metadaten** eingeben:
+- Artist
+- Album
+- Jahr
+- → System verwendet diese Daten statt MusicBrainz-Informationen
+
+**Technische Details**:
+- **API-Endpunkte**:
+  - `GET /api/musicbrainz/releases` - Liste aller gefundenen Releases
+  - `POST /api/musicbrainz/select` - Auswahl eines Release (Index)
+  - `POST /api/musicbrainz/manual` - Manuelle Metadaten-Eingabe
+- **JSON-Dateien** (in `/opt/disk2iso/api/`):
+  - `musicbrainz_releases.json` - Alle gefundenen Releases
+  - `musicbrainz_selection.json` - Benutzer-Auswahl oder Status `waiting_user_input`
+  - `musicbrainz_manual.json` - Manuell eingegebene Metadaten
+- **JavaScript**: Automatisches Polling und Modal-Anzeige in `musicbrainz.js`
+
+**Log-Beispiel bei Mehrfach-Treffern**:
+```
+[INFO] Disc-Typ: audio-cd
+[INFO] Tracks: 24
+[INFO] MusicBrainz ID: 76118c18
+[WARNUNG] 7 Releases gefunden - Benutzer-Auswahl erforderlich
+[INFO] Status: waiting_user_input
+[MQTT] Status → waiting: MusicBrainz: 7 Alben gefunden
+... (5 Min warten oder Benutzer wählt) ...
+[INFO] Benutzer hat Release #2 gewählt
+[INFO] Album: Cat Stevens - Remember (1999)
+[INFO] Track 1/24: Morning Has Broken
+...
 ```
 
 ### Video-DVD

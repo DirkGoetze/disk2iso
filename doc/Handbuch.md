@@ -45,6 +45,7 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 - **MP3-Encoding**: LAME VBR V2 (~190 kbps, fest kodiert)
 - **Intelligente Metadaten-Erfassung**:
   - **Primär**: MusicBrainz-API (Disc-ID → Album/Artist/Tracks/Cover)
+  - **Interaktive Auswahl**: Bei mehreren Album-Treffern automatisches Web-Interface Modal (v1.3.0+)
   - **Fallback**: CD-TEXT (icedax/cd-info/cdda2wav)
   - **Automatisch**: Cover-Download via Cover Art Archive
 - **ID3-Tags**: Vollständige Metadaten-Einbettung in MP3s
