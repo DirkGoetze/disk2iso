@@ -384,10 +384,10 @@ transition_to_state() {
             api_update_status "waiting" "No Drive" "unknown"
             ;;
         "$STATE_DRIVE_DETECTED")
-            api_update_status "idle" "Drive Ready" "unknown"
+            api_update_status "idle" "${MSG_STATUS_DRIVE_DETECTED:-Drive Ready}" "unknown"
             ;;
         "$STATE_WAITING_FOR_MEDIA")
-            api_update_status "idle" "Waiting for Media" "unknown"
+            api_update_status "idle" "${MSG_STATUS_WAITING_MEDIA:-Waiting for Media}" "unknown"
             ;;
         "$STATE_ANALYZING")
             api_update_status "analyzing" "$disc_label" "$disc_type"

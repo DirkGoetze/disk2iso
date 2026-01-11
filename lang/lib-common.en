@@ -103,6 +103,13 @@ readonly MSG_REMAINING="Remaining"
 readonly MSG_COPIED="copied"
 
 # ============================================================================
+# STATUS MESSAGES
+# ============================================================================
+
+readonly MSG_STATUS_DRIVE_DETECTED="Drive detected"
+readonly MSG_STATUS_WAITING_MEDIA="Waiting for media..."
+
+# ============================================================================
 # TEMPORARY FILES
 # ============================================================================
 

@@ -1,226 +1,161 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>disk2iso - Status</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <div class="app-container">
-        <!-- Header -->
-        <div class="header">
-            <h1><img src="{{ url_for('static', filename='img/control.svg') }}" alt="" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;">disk2iso</h1>
-        </div>
+{% extends "base.html" %}
 
-        <div class="main-wrapper">
-            <!-- Sidebar Navigation -->
-            <aside class="sidebar">
-                <nav>
-                    <ul class="nav-menu">
-                        <li>
-                            <a href="/" class="active">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="Home"></span>
-                                <span>Home</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/archive">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/archive.svg') }}" alt="Archiv"></span>
-                                <span>Archiv</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/logs">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/logs.svg') }}" alt="Logs"></span>
-                                <span>Logs</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/system">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/system.svg') }}" alt="System"></span>
-                                <span>System</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/help">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/help.svg') }}" alt="Hilfe"></span>
-                                <span>Hilfe</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/config">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/settings.svg') }}" alt="Konfiguration"></span>
-                                <span>Konfiguration</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </aside>
+{% block content %}
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <ul class="breadcrumb-list">
+            <li>
+                <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">{{ t.NAV_HOME }}</a>
+            </li>
+            <li class="breadcrumb-separator">></li>
+            <li class="current">{{ t.INDEX_HEADER }}</li>
+        </ul>
+    </nav>
 
-            <!-- Content Area -->
-            <main class="content">
-                <!-- Breadcrumb -->
-                <nav class="breadcrumb">
-                    <ul class="breadcrumb-list">
-                        <li>
-                            <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">Home</a>
-                        </li>
-                        <li class="breadcrumb-separator">></li>
-                        <li class="current">Dashboard</li>
-                    </ul>
-                </nav>
+    <div class="container">
 
-                <div class="container">
-        
-        <!-- Live Status (volle Breite) -->
-        <div class="live-status-wrapper">
-            <div class="card live-status-card" id="live-status-card">
-                <h2><img src="{{ url_for('static', filename='img/live.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">Live Status</h2>
+    <!-- Live Status (volle Breite) -->
+    <div class="live-status-wrapper">
+        <div class="card live-status-card" id="live-status-card">
+            <h2><img src="{{ url_for('static', filename='img/live.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">Live Status</h2>
+            <div class="info-row">
+                <span class="info-label">{{ t.INDEX_HEADER }}</span>
+                <span class="info-value" id="live-status-text">
+                    <span class="status-indicator {% if live_status.status == 'copying' %}copying{% elif service_running %}stopped{% else %}stopped{% endif %}" id="live-status-indicator"></span>
+                    <span id="live-status-label">{{ status_text }}</span>
+                </span>
+            </div>
+            <div class="info-row" id="disc-info-row" style="display: none;">
+                <span class="info-label">{{ t.INDEX_DISC_NAME }}</span>
+                <span class="info-value" id="disc-info">-</span>
+            </div>
+            <div id="progress-section" style="display: none;">
                 <div class="info-row">
-                    <span class="info-label">Aktueller Status</span>
-                    <span class="info-value" id="live-status-text">
-                        <span class="status-indicator {% if live_status.status == 'copying' %}copying{% elif service_running %}stopped{% else %}stopped{% endif %}" id="live-status-indicator"></span>
-                        <span id="live-status-label">{{ status_text }}</span>
-                    </span>
+                    <span class="info-label">{{ t.INDEX_PROGRESS }}</span>
+                    <span class="info-value"><span id="progress-percent">0</span>% (<span id="progress-mb">0</span> / <span id="total-mb">0</span> <span id="progress-unit">MB</span>)</span>
                 </div>
-                <div class="info-row" id="disc-info-row" style="display: none;">
-                    <span class="info-label">Medium</span>
-                    <span class="info-value" id="disc-info">-</span>
+                <div class="progress-bar" data-label="0%">
+                    <div class="progress-fill" id="progress-bar-fill" style="width: 0%"></div>
                 </div>
-                <div id="progress-section" style="display: none;">
-                    <div class="info-row">
-                        <span class="info-label">Fortschritt</span>
-                        <span class="info-value"><span id="progress-percent">0</span>% (<span id="progress-mb">0</span> / <span id="total-mb">0</span> <span id="progress-unit">MB</span>)</span>
-                    </div>
-                    <div class="progress-bar" data-label="0%">
-                        <div class="progress-fill" id="progress-bar-fill" style="width: 0%"></div>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Verbleibende Zeit</span>
-                        <span class="info-value" id="eta-text">-</span>
-                    </div>
+                <div class="info-row">
+                    <span class="info-label">{{ t.INDEX_TIME }}</span>
+                    <span class="info-value" id="eta-text">-</span>
                 </div>
             </div>
-        </div>
-        
-        <!-- Speicherplatz und ISO Archive (zweispaltig) -->
-        <div class="two-column-grid">
-            <!-- Speicherplatz -->
-            <div class="card">
-                <h2>Speicherplatz</h2>
-                <div class="info-row">
-                    <span class="info-label">Ausgabeverzeichnis</span>
-                    <span class="info-value">{{ config.output_dir }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Frei / Gesamt</span>
-                    <span class="info-value">{{ disk_space.free_gb }} GB / {{ disk_space.total_gb }} GB</span>
-                </div>
-                <div class="progress-bar" data-label="{{ disk_space.used_percent }}% belegt">
-                    <div class="progress-fill" style="width: {{ disk_space.used_percent }}%"></div>
-                </div>
-            </div>
-            
-            <!-- Archive -->
-            <div class="card">
-                <h2>Archive</h2>
-                <div class="info-row">
-                    <span class="info-label">Daten</span>
-                    <span class="info-value">{{ archive_counts.data }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Audio</span>
-                    <span class="info-value">{{ archive_counts.audio }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">DVD</span>
-                    <span class="info-value">{{ archive_counts.dvd }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Blu-ray</span>
-                    <span class="info-value">{{ archive_counts.bluray }}</span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Services (dreispaltig) -->
-        <div class="three-column-grid">
-            <!-- disk2iso Service -->
-            <div class="card">
-                <h2>disk2iso Service</h2>
-                <div class="info-row">
-                    <span class="info-label">Status</span>
-                    <span class="info-value">
-                        <span class="status-indicator {{ 'running' if service_running else 'stopped' }}" id="disk2iso-indicator"></span>
-                        <span id="disk2iso-status">{{ 'Running' if service_running else 'Stopped' }}</span>
-                    </span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Status</span>
-                    <span class="badge {{ 'success' if service_running else 'error' }}" id="disk2iso-badge">
-                        {{ 'Aktiv' if service_running else 'Inaktiv' }}
-                    </span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Aktualisiert</span>
-                    <span class="info-value" id="disk2iso-updated">{{ current_time }}</span>
-                </div>
-            </div>
-            
-            <!-- WEB-UI Service -->
-            <div class="card">
-                <h2>WEB-UI Service</h2>
-                <div class="info-row">
-                    <span class="info-label">Status</span>
-                    <span class="info-value">
-                        <span class="status-indicator running" id="webui-indicator"></span>
-                        <span id="webui-status">Running</span>
-                    </span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Status</span>
-                    <span class="badge success" id="webui-badge">Aktiv</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Aktualisiert</span>
-                    <span class="info-value" id="webui-updated">{{ current_time }}</span>
-                </div>
-            </div>
-            
-            <!-- MQTT Service -->
-            <div class="card">
-                <h2>MQTT Service</h2>
-                <div class="info-row">
-                    <span class="info-label">Status</span>
-                    <span class="info-value">
-                        <span class="status-indicator {{ 'running' if config.mqtt_enabled else 'stopped' }}" id="mqtt-indicator"></span>
-                        <span id="mqtt-status">{{ 'Running' if config.mqtt_enabled else 'Stopped' }}</span>
-                    </span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Status</span>
-                    <span class="badge {{ 'success' if config.mqtt_enabled else 'info' }}" id="mqtt-badge">
-                        {{ 'Aktiviert' if config.mqtt_enabled else 'Deaktiviert' }}
-                    </span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Aktualisiert</span>
-                    <span class="info-value" id="mqtt-updated">{{ current_time }}</span>
-                </div>
-            </div>
-        </div>
-        
-                <div class="footer">
-                    <p>disk2iso - Automatische ISO Erstellung von optischen Medien</p>
-                    <p style="margin-top: 5px; font-size: 0.9em;">© 2026 | Version {{ version }}</p>
-                </div>
-                </div>
-            </main>
         </div>
     </div>
     
-    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
-</body>
-</html>
+    <!-- Speicherplatz und ISO Archive (zweispaltig) -->
+    <div class="two-column-grid">
+        <!-- Speicherplatz -->
+        <div class="card">
+            <h2>{{ t.INDEX_TARGET }}</h2>
+            <div class="info-row">
+                <span class="info-label">{{ t.SYSTEM_OUTPUT_DIR }}</span>
+                <span class="info-value">{{ config.output_dir }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ t.INDEX_SIZE }}</span>
+                <span class="info-value">{{ disk_space.free_gb }} GB / {{ disk_space.total_gb }} GB</span>
+            </div>
+            <div class="progress-bar" data-label="{{ disk_space.used_percent }}% belegt">
+                <div class="progress-fill" style="width: {{ disk_space.used_percent }}%"></div>
+            </div>
+        </div>
+        
+        <!-- Archive -->
+        <div class="card">
+            <h2>{{ t.ARCHIVE_TITLE }}</h2>
+            <div class="info-row">
+                <span class="info-label">{{ t.ARCHIVE_FILTER_DATA }}</span>
+                <span class="info-value">{{ archive_counts.data }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ t.ARCHIVE_FILTER_CD }}</span>
+                <span class="info-value">{{ archive_counts.audio }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ t.ARCHIVE_FILTER_DVD }}</span>
+                <span class="info-value">{{ archive_counts.dvd }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ t.ARCHIVE_FILTER_BLURAY }}</span>
+                <span class="info-value">{{ archive_counts.bluray }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Services (dreispaltig) -->
+    <div class="three-column-grid">
+        <!-- disk2iso Service -->
+        <div class="card">
+            <h2>disk2iso Service</h2>
+            <div class="info-row">
+                <span class="info-label">{{ t.INDEX_STATE }}</span>
+                <span class="info-value">
+                    <span class="status-indicator {{ 'running' if service_running else 'stopped' }}" id="disk2iso-indicator"></span>
+                    <span id="disk2iso-status">{{ 'Running' if service_running else 'Stopped' }}</span>
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ t.SYSTEM_SERVICE_STATUS }}</span>
+                <span class="badge {{ 'success' if service_running else 'error' }}" id="disk2iso-badge">
+                    {{ t.COMMON_SUCCESS if service_running else t.COMMON_ERROR }}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ t.LOGS_TIMESTAMP }}</span>
+                <span class="info-value" id="disk2iso-updated">{{ current_time }}</span>
+            </div>
+        </div>
+        
+        <!-- WEB-UI Service -->
+        <div class="card">
+            <h2>WEB-UI Service</h2>
+            <div class="info-row">
+                <span class="info-label">{{ t.INDEX_STATE }}</span>
+                <span class="info-value">
+                    <span class="status-indicator running" id="webui-indicator"></span>
+                    <span id="webui-status">Running</span>
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ t.SYSTEM_SERVICE_STATUS }}</span>
+                <span class="badge success" id="webui-badge">{{ t.COMMON_SUCCESS }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ t.LOGS_TIMESTAMP }}</span>
+                <span class="info-value" id="webui-updated">{{ current_time }}</span>
+            </div>
+        </div>
+        
+        <!-- MQTT Service -->
+        <div class="card">
+            <h2>MQTT Service</h2>
+            <div class="info-row">
+                <span class="info-label">{{ t.INDEX_STATE }}</span>
+                <span class="info-value">
+                    <span class="status-indicator {{ 'running' if config.mqtt_enabled else 'stopped' }}" id="mqtt-indicator"></span>
+                    <span id="mqtt-status">{{ 'Running' if config.mqtt_enabled else 'Stopped' }}</span>
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ t.SYSTEM_SERVICE_STATUS }}</span>
+                <span class="badge {{ 'success' if config.mqtt_enabled else 'info' }}" id="mqtt-badge">
+                    {{ t.SYSTEM_MQTT_ENABLED if config.mqtt_enabled else 'Disabled' }}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">{{ t.LOGS_TIMESTAMP }}</span>
+                <span class="info-value" id="mqtt-updated">{{ current_time }}</span>
+            </div>
+        </div>
+    </div>
+    
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/index.js') }}?v=1768148211"></script>
+{% endblock %}
 

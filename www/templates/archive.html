@@ -1,146 +1,82 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>disk2iso - Archiv</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <div class="app-container">
-        <!-- Header -->
-        <div class="header">
-            <h1><img src="{{ url_for('static', filename='img/control.svg') }}" alt="" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;">disk2iso</h1>
-        </div>
+{% extends "base.html" %}
 
-        <div class="main-wrapper">
-            <!-- Sidebar Navigation -->
-            <aside class="sidebar">
-                <nav>
-                    <ul class="nav-menu">
-                        <li>
-                            <a href="/">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="Home"></span>
-                                <span>Home</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/archive" class="active">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/archive.svg') }}" alt="Archiv"></span>
-                                <span>Archiv</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/logs">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/logs.svg') }}" alt="Logs"></span>
-                                <span>Logs</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/system">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/system.svg') }}" alt="System"></span>
-                                <span>System</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/help">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/help.svg') }}" alt="Hilfe"></span>
-                                <span>Hilfe</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/config">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/settings.svg') }}" alt="Konfiguration"></span>
-                                <span>Konfiguration</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </aside>
+{% block content %}
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <ul class="breadcrumb-list">
+            <li>
+                <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">{{ t.NAV_HOME }}</a>
+            </li>
+            <li class="breadcrumb-separator">></li>
+            <li class="current">{{ t.ARCHIVE_TITLE }}</li>
+        </ul>
+    </nav>
 
-            <!-- Content Area -->
-            <main class="content">
-                <!-- Breadcrumb -->
-                <nav class="breadcrumb">
-                    <ul class="breadcrumb-list">
-                        <li>
-                            <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">Home</a>
-                        </li>
-                        <li class="breadcrumb-separator">></li>
-                        <li class="current">Archiv</li>
-                    </ul>
-                </nav>
+    <div class="container">
 
-                <div class="container">
-
-        <!-- Statistik-Übersicht -->
-        <div class="card" style="margin-bottom: 30px;">
-            <h2><img src="{{ url_for('static', filename='img/stats.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">Übersicht</h2>
-            <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-                <div class="info-row">
-                    <span class="info-label">Gesamt</span>
-                    <span class="info-value" id="total-count">0</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label"><img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">Audio CDs</span>
-                    <span class="info-value" id="audio-count">0</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label"><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">DVDs</span>
-                    <span class="info-value" id="dvd-count">0</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label"><img src="{{ url_for('static', filename='img/bluray.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">Blu-rays</span>
-                    <span class="info-value" id="bluray-count">0</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label"><img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">Daten</span>
-                    <span class="info-value" id="data-count">0</span>
-                </div>
+    <!-- Statistik-Übersicht -->
+    <div class="card" style="margin-bottom: 30px;">
+        <h2><img src="{{ url_for('static', filename='img/stats.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_HEADER }}</h2>
+        <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <div class="info-row">
+                <span class="info-label">{{ t.ARCHIVE_FILTER_ALL }}</span>
+                <span class="info-value" id="total-count">0</span>
             </div>
-        </div>
-
-        <!-- Audio CDs -->
-        <div class="card" id="audio-section" style="display: none;">
-            <h3><img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">Audio CDs</h3>
-            <div class="archive-list" id="audio-list">
-                <p class="loading">Lade...</p>
+            <div class="info-row">
+                <span class="info-label"><img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_CD }}</span>
+                <span class="info-value" id="audio-count">0</span>
             </div>
-        </div>
-
-        <!-- DVDs -->
-        <div class="card" id="dvd-section" style="display: none;">
-            <h3><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">DVDs</h3>
-            <div class="archive-list" id="dvd-list">
-                <p class="loading">Lade...</p>
+            <div class="info-row">
+                <span class="info-label"><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_DVD }}</span>
+                <span class="info-value" id="dvd-count">0</span>
             </div>
-        </div>
-
-        <!-- Blu-rays -->
-        <div class="card" id="bluray-section" style="display: none;">
-            <h3><img src="{{ url_for('static', filename='img/bluray.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">Blu-rays</h3>
-            <div class="archive-list" id="bluray-list">
-                <p class="loading">Lade...</p>
+            <div class="info-row">
+                <span class="info-label"><img src="{{ url_for('static', filename='img/bluray.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_BLURAY }}</span>
+                <span class="info-value" id="bluray-count">0</span>
             </div>
-        </div>
-
-        <!-- Daten -->
-        <div class="card" id="data-section" style="display: none;">
-            <h3><img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">Daten</h3>
-            <div class="archive-list" id="data-list">
-                <p class="loading">Lade...</p>
+            <div class="info-row">
+                <span class="info-label"><img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_DATA }}</span>
+                <span class="info-value" id="data-count">0</span>
             </div>
-        </div>
-
-                <div class="footer">
-                    <p>disk2iso © 2026 | Automatisches CD/DVD/BD Archivierungssystem</p>
-                </div>
-                </div>
-            </main>
         </div>
     </div>
 
+    <!-- Audio CDs -->
+    <div class="card" id="audio-section" style="display: none;">
+        <h3><img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_CD }}</h3>
+        <div class="archive-list" id="audio-list">
+            <p class="loading">{{ t.COMMON_LOADING }}</p>
+        </div>
+    </div>
+
+    <!-- DVDs -->
+    <div class="card" id="dvd-section" style="display: none;">
+        <h3><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_DVD }}</h3>
+        <div class="archive-list" id="dvd-list">
+            <p class="loading">{{ t.COMMON_LOADING }}</p>
+        </div>
+    </div>
+
+    <!-- Blu-rays -->
+    <div class="card" id="bluray-section" style="display: none;">
+        <h3><img src="{{ url_for('static', filename='img/bluray.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_BLURAY }}</h3>
+        <div class="archive-list" id="bluray-list">
+            <p class="loading">{{ t.COMMON_LOADING }}</p>
+        </div>
+    </div>
+
+    <!-- Daten -->
+    <div class="card" id="data-section" style="display: none;">
+        <h3><img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_DATA }}</h3>
+        <div class="archive-list" id="data-list">
+            <p class="loading">{{ t.COMMON_LOADING }}</p>
+        </div>
+    </div>
+
+    </div>
+{% endblock %}
+
+{% block scripts %}
     <script src="{{ url_for('static', filename='js/archive.js') }}"></script>
-</body>
-</html>
+{% endblock %}
 

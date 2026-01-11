@@ -39,34 +39,34 @@ function updateLiveStatus() {
             const serviceRunning = data.service_running;
             
             // Intelligente Status-Erkennung
-            let statusText = 'Unbekannt';
+            let statusText = window.i18n?.STATUS_UNKNOWN || 'Unknown';
             let statusClass = 'stopped';
             
             if (!serviceRunning) {
                 // Service läuft nicht
-                statusText = 'Service gestoppt';
+                statusText = window.i18n?.STATUS_SERVICE_STOPPED || 'Service stopped';
                 statusClass = 'stopped';
             } else if (live.status === 'idle') {
                 // Service läuft, aber idle
                 // Prüfe ob jemals ein Laufwerk erkannt wurde (anhand von method oder disc_type)
                 if (!live.method || live.method === 'unknown') {
-                    statusText = 'Kein Laufwerk erkannt';
+                    statusText = window.i18n?.STATUS_NO_DRIVE || 'No drive detected';
                     statusClass = 'stopped';
                 } else {
-                    statusText = 'Wartet auf Medium';
+                    statusText = window.i18n?.STATUS_WAITING_MEDIA || 'Waiting for media...';
                     statusClass = 'stopped';
                 }
             } else if (live.status === 'waiting') {
-                statusText = 'Medium wird geprüft...';
+                statusText = window.i18n?.STATUS_ANALYZING || 'Analyzing media...';
                 statusClass = 'stopped';
             } else if (live.status === 'copying') {
-                statusText = 'Kopiert Medium';
+                statusText = window.i18n?.STATUS_COPYING || 'Copying...';
                 statusClass = 'copying';
             } else if (live.status === 'completed') {
-                statusText = 'Abgeschlossen';
+                statusText = window.i18n?.STATUS_COMPLETED || 'Completed';
                 statusClass = 'running';
             } else if (live.status === 'error') {
-                statusText = 'Fehler aufgetreten';
+                statusText = window.i18n?.STATUS_ERROR || 'Error occurred';
                 statusClass = 'stopped';
             }
             

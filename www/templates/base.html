@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>disk2iso - {{ t.get(page_title, 'disk2iso') }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        // Übersetzungen für JavaScript verfügbar machen
+        window.i18n = {
+            STATUS_SERVICE_STOPPED: "{{ t.STATUS_SERVICE_STOPPED }}",
+            STATUS_NO_DRIVE: "{{ t.STATUS_NO_DRIVE }}",
+            STATUS_WAITING_MEDIA: "{{ t.STATUS_WAITING_MEDIA }}",
+            STATUS_ANALYZING: "{{ t.STATUS_ANALYZING }}",
+            STATUS_COPYING: "{{ t.STATUS_COPYING }}",
+            STATUS_COMPLETED: "{{ t.STATUS_COMPLETED }}",
+            STATUS_ERROR: "{{ t.STATUS_ERROR }}",
+            STATUS_UNKNOWN: "{{ t.STATUS_UNKNOWN }}"
+        };
+    </script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <h1><img src="{{ url_for('static', filename='img/control.svg') }}" alt="" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;">disk2iso</h1>
+        </div>
+
+        <div class="main-wrapper">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar">
+                <nav>
+                    <ul class="nav-menu">
+                        <li>
+                            <a href="/" class="{% if active_page == 'index' %}active{% endif %}">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/home.svg') }}" alt=""></span>
+                                <span>{{ t.NAV_HOME }}</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/archive" class="{% if active_page == 'archive' %}active{% endif %}">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/archive.svg') }}" alt=""></span>
+                                <span>{{ t.NAV_ARCHIVE }}</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/logs" class="{% if active_page == 'logs' %}active{% endif %}">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/logs.svg') }}" alt=""></span>
+                                <span>{{ t.NAV_LOGS }}</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/system" class="{% if active_page == 'system' %}active{% endif %}">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/system.svg') }}" alt=""></span>
+                                <span>{{ t.NAV_SYSTEM }}</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/help" class="{% if active_page == 'help' %}active{% endif %}">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/help.svg') }}" alt=""></span>
+                                <span>{{ t.NAV_HELP }}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <!-- Content Area -->
+            <main class="content">
+                {% block content %}{% endblock %}
+                
+                <div class="footer">
+                    <p>disk2iso - Automatische ISO Erstellung von optischen Medien</p>
+                    <p style="margin-top: 5px; font-size: 0.9em;">© 2026 | Version {{ version }}</p>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

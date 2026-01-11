@@ -1,111 +1,49 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>disk2iso - Hilfe</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% extends "base.html" %}
+
+{% block head %}
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
-</head>
-<body>
-    <div class="app-container">
-        <!-- Header -->
-        <div class="header">
-            <h1><img src="{{ url_for('static', filename='img/control.svg') }}" alt="" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;">disk2iso</h1>
-        </div>
+{% endblock %}
 
-        <div class="main-wrapper">
-            <!-- Sidebar Navigation -->
-            <aside class="sidebar">
-                <nav>
-                    <ul class="nav-menu">
-                        <li>
-                            <a href="/">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="Home"></span>
-                                <span>Home</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/archive">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/archive.svg') }}" alt="Archiv"></span>
-                                <span>Archiv</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/logs">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/logs.svg') }}" alt="Logs"></span>
-                                <span>Logs</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/system">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/system.svg') }}" alt="System"></span>
-                                <span>System</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/help" class="active">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/help.svg') }}" alt="Hilfe"></span>
-                                <span>Hilfe</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/config">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/settings.svg') }}" alt="Konfiguration"></span>
-                                <span>Konfiguration</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </aside>
+{% block content %}
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <ul class="breadcrumb-list">
+            <li>
+                <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">{{ t.NAV_HOME }}</a>
+            </li>
+            <li class="breadcrumb-separator">></li>
+            <li class="current">{{ t.HELP_TITLE }}</li>
+        </ul>
+    </nav>
 
-            <!-- Content Area -->
-            <main class="content">
-                <!-- Breadcrumb -->
-                <nav class="breadcrumb">
-                    <ul class="breadcrumb-list">
-                        <li>
-                            <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">Home</a>
-                        </li>
-                        <li class="breadcrumb-separator">></li>
-                        <li class="current">Hilfe</li>
-                    </ul>
-                </nav>
+    <div class="help-container">
+        <!-- Document Selection Sidebar -->
+        <aside class="docs-sidebar">
+            <h3>{{ t.HELP_HEADER }}</h3>
+            <ul class="docs-menu" id="docs-menu">
+                <li><a href="#" data-doc="Handbuch.md" class="active">📖 Handbuch</a></li>
+                <li><a href="#" data-doc="Verwendung.md">🎯 Verwendung</a></li>
+                <li><a href="#" data-doc="Installation-Script.md">⚙️ Installation (Script)</a></li>
+                <li><a href="#" data-doc="Installation-Service.md">🔧 Installation (Service)</a></li>
+                <li><a href="#" data-doc="MQTT-HomeAssistant.md">🏠 MQTT & Home Assistant</a></li>
+                <li><a href="#" data-doc="Deinstallation.md">🗑️ Deinstallation</a></li>
+                <li><a href="#" data-doc="Entwickler.md">👨‍💻 Entwickler</a></li>
+                <li><a href="#" data-doc="Fehler-Tracking.md">🐛 Fehler-Tracking</a></li>
+            </ul>
+        </aside>
 
-                <div class="help-container">
-                    <!-- Document Selection Sidebar -->
-                    <aside class="docs-sidebar">
-                        <h3>Dokumentation</h3>
-                        <ul class="docs-menu" id="docs-menu">
-                            <li><a href="#" data-doc="Handbuch.md" class="active">📖 Handbuch</a></li>
-                            <li><a href="#" data-doc="Verwendung.md">🎯 Verwendung</a></li>
-                            <li><a href="#" data-doc="Installation-Script.md">⚙️ Installation (Script)</a></li>
-                            <li><a href="#" data-doc="Installation-Service.md">🔧 Installation (Service)</a></li>
-                            <li><a href="#" data-doc="MQTT-HomeAssistant.md">🏠 MQTT & Home Assistant</a></li>
-                            <li><a href="#" data-doc="Deinstallation.md">🗑️ Deinstallation</a></li>
-                            <li><a href="#" data-doc="Entwickler.md">👨‍💻 Entwickler</a></li>
-                            <li><a href="#" data-doc="Fehler-Tracking.md">🐛 Fehler-Tracking</a></li>
-                        </ul>
-                    </aside>
-
-                    <!-- Document Content -->
-                    <div class="docs-content card">
-                        <div id="markdown-content">
-                            <p style="text-align: center; padding: 40px; color: #666;">
-                                Lade Dokumentation...
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="footer">
-                    <p>disk2iso - Automatische ISO Erstellung von optischen Medien</p>
-                    <p style="margin-top: 5px; font-size: 0.9em;">© 2026 | Version {{ version }}</p>
-                </div>
-            </main>
+        <!-- Document Content -->
+        <div class="docs-content card">
+            <div id="markdown-content">
+                <p style="text-align: center; padding: 40px; color: #666;">
+                    {{ t.COMMON_LOADING }}
+                </p>
+            </div>
         </div>
     </div>
-    
+{% endblock %}
+
+{% block scripts %}
     <script src="{{ url_for('static', filename='js/help.js') }}"></script>
-</body>
-</html>
+{% endblock %}
+

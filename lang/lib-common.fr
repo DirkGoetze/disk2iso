@@ -101,6 +101,13 @@ readonly MSG_PROGRESS_OF="Mo /"
 readonly MSG_PROGRESS_MB="Mo"
 
 # ============================================================================
+# MESSAGES D'ÉTAT
+# ============================================================================
+
+readonly MSG_STATUS_DRIVE_DETECTED="Lecteur détecté"
+readonly MSG_STATUS_WAITING_MEDIA="En attente du média..."
+
+# ============================================================================
 # FICHIERS TEMPORAIRES
 # ============================================================================
 

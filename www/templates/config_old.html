@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>disk2iso - Konfiguration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .config-form {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .form-section {
+            background: white;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .form-section h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 1.3em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #34495e;
+        }
+        
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+        
+        .form-group .help-text {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <h1><img src="{{ url_for('static', filename='img/control.svg') }}" alt="" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;">disk2iso</h1>
+        </div>
+
+        <div class="main-wrapper">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar">
+                <nav>
+                    <ul class="nav-menu">
+                        <li>
+                            <a href="/">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="Home"></span>
+                                <span>Home</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/archive">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/archive.svg') }}" alt="Archiv"></span>
+                                <span>Archiv</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/logs">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/logs.svg') }}" alt="Logs"></span>
+                                <span>Logs</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/system">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/system.svg') }}" alt="System"></span>
+                                <span>System</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/help">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/help.svg') }}" alt="Hilfe"></span>
+                                <span>Hilfe</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/config" class="active">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/settings.svg') }}" alt="Konfiguration"></span>
+                                <span>Konfiguration</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <!-- Content Area -->
+            <main class="content">
+                <!-- Breadcrumb -->
+                <nav class="breadcrumb">
+                    <ul class="breadcrumb-list">
+                        <li>
+                            <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">Home</a>
+                        </li>
+                        <li class="breadcrumb-separator">></li>
+                        <li class="current">Konfiguration</li>
+                    </ul>
+                </nav>
+
+                <div class="container">
+        
+        <div id="alert-container"></div>
+        
+        <form id="config-form" class="config-form">
+            <!-- System-Einstellungen -->
+            <div class="form-section">
+                <h2><img src="{{ url_for('static', filename='img/folder.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">System-Einstellungen</h2>
+                
+                <div class="form-group">
+                    <label for="output_dir">Ausgabeverzeichnis</label>
+                    <input type="text" id="output_dir" name="output_dir" value="{{ config.output_dir }}" required>
+                    <div class="help-text">Pfad zum Verzeichnis für ISO-Dateien (z.B. /media/iso)</div>
+                </div>
+            </div>
+            
+            <!-- Audio-CD Encoding -->
+            <div class="form-section">
+                <h2><img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">Audio-CD Encoding</h2>
+                
+                <div class="form-group">
+                    <label for="mp3_quality">MP3 Qualität</label>
+                    <select id="mp3_quality" name="mp3_quality">
+                        <option value="0" {{ 'selected' if config.mp3_quality == 0 else '' }}>0 - Beste Qualität (~245 kbps)</option>
+                        <option value="2" {{ 'selected' if config.mp3_quality == 2 else '' }}>2 - Hohe Qualität (~190 kbps)</option>
+                        <option value="4" {{ 'selected' if config.mp3_quality == 4 else '' }}>4 - Mittlere Qualität (~165 kbps)</option>
+                        <option value="6" {{ 'selected' if config.mp3_quality == 6 else '' }}>6 - Normale Qualität (~130 kbps)</option>
+                    </select>
+                    <div class="help-text">lame VBR -V Parameter für MP3 Encoding</div>
+                </div>
+            </div>
+            
+            <!-- Kopier-Parameter -->
+            <div class="form-section">
+                <h2><img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">Kopier-Parameter</h2>
+                
+                <div class="form-group">
+                    <label for="ddrescue_retries">ddrescue Wiederholungen</label>
+                    <input type="number" id="ddrescue_retries" name="ddrescue_retries" value="{{ config.ddrescue_retries }}" min="0" max="10">
+                    <div class="help-text">Anzahl Wiederholungen bei Lesefehlern (0-10, empfohlen: 1)</div>
+                </div>
+            </div>
+            
+            <!-- Hardware-Erkennung -->
+            <div class="form-section">
+                <h2><img src="{{ url_for('static', filename='img/plugin.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">Hardware-Erkennung</h2>
+                
+                <div class="form-group">
+                    <label for="usb_detection_attempts">USB-Laufwerk Erkennungsversuche</label>
+                    <input type="number" id="usb_detection_attempts" name="usb_detection_attempts" value="{{ config.usb_detection_attempts }}" min="1" max="20">
+                    <div class="help-text">Anzahl Versuche zum Erkennen eines USB-Laufwerks</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="usb_detection_delay">Verzögerung zwischen Versuchen (Sekunden)</label>
+                    <input type="number" id="usb_detection_delay" name="usb_detection_delay" value="{{ config.usb_detection_delay }}" min="1" max="60">
+                    <div class="help-text">Sekunden zwischen Erkennungsversuchen</div>
+                </div>
+            </div>
+            
+            <!-- MQTT Integration -->
+            <div class="form-section">
+                <h2><img src="{{ url_for('static', filename='img/mqtt.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">MQTT Integration</h2>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="mqtt_enabled" name="mqtt_enabled" {{ 'checked' if config.mqtt_enabled else '' }}>
+                        MQTT aktivieren
+                    </label>
+                    <div class="help-text">Aktiviert Home Assistant Integration via MQTT</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="mqtt_broker">MQTT Broker</label>
+                    <input type="text" id="mqtt_broker" name="mqtt_broker" value="{{ config.mqtt_broker }}" placeholder="192.168.20.10">
+                    <div class="help-text">IP-Adresse oder Hostname des MQTT Brokers</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="mqtt_port">MQTT Port</label>
+                    <input type="number" id="mqtt_port" name="mqtt_port" value="{{ config.mqtt_port }}" min="1" max="65535">
+                    <div class="help-text">Standard: 1883</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="mqtt_user">MQTT Benutzername (optional)</label>
+                    <input type="text" id="mqtt_user" name="mqtt_user" value="{{ config.mqtt_user }}" placeholder="">
+                    <div class="help-text">Leer lassen wenn keine Authentifizierung erforderlich</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="mqtt_password">MQTT Passwort (optional)</label>
+                    <input type="text" id="mqtt_password" name="mqtt_password" value="{{ config.mqtt_password }}" placeholder="">
+                    <div class="help-text">Leer lassen wenn keine Authentifizierung erforderlich</div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">Abbrechen</button>
+                <button type="submit" class="btn btn-primary">Speichern</button>
+            </div>
+        </form>
+        
+                <div class="footer">
+                    <p>disk2iso - Automatische ISO Erstellung von optischen Medien</p>
+                    <p style="margin-top: 5px; font-size: 0.9em;">© 2026 | Version {{ version }}</p>
+                </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/config.js') }}"></script>
+</body>
+</html>
+

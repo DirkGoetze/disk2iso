@@ -101,6 +101,13 @@ readonly MSG_PROGRESS_OF="MB /"
 readonly MSG_PROGRESS_MB="MB"
 
 # ============================================================================
+# STATUS-MELDUNGEN
+# ============================================================================
+
+readonly MSG_STATUS_DRIVE_DETECTED="Laufwerk erkannt"
+readonly MSG_STATUS_WAITING_MEDIA="Warte auf Medium..."
+
+# ============================================================================
 # TEMPORÄRE DATEIEN
 # ============================================================================
 

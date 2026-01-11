@@ -1,139 +1,73 @@
-﻿<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>disk2iso - Logs</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <div class="app-container">
-        <!-- Header -->
-        <div class="header">
-            <h1><img src="{{ url_for('static', filename='img/control.svg') }}" alt="" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;">disk2iso</h1>
+﻿{% extends "base.html" %}
+
+{% block content %}
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <ul class="breadcrumb-list">
+            <li>
+                <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">{{ t.NAV_HOME }}</a>
+            </li>
+            <li class="breadcrumb-separator">></li>
+            <li class="current">{{ t.LOGS_TITLE }}</li>
+        </ul>
+    </nav>
+
+    <!-- Log Controls -->
+    <div class="card">
+        <h2>{{ t.LOGS_HEADER }}</h2>
+        
+        <div class="log-controls">
+            <select id="log-type" onchange="loadLogs()">
+                <option value="current">{{ t.LOGS_FILTER_ALL }}</option>
+                <option value="system">System Log (journalctl)</option>
+                <option value="archived">Archivierte Logs</option>
+            </select>
+            
+            <select id="log-level">
+                <option value="all">{{ t.LOGS_FILTER_ALL }}</option>
+                <option value="error">{{ t.LOGS_FILTER_ERROR }}</option>
+                <option value="warning">{{ t.LOGS_FILTER_WARNING }}</option>
+                <option value="info">{{ t.LOGS_FILTER_INFO }}</option>
+            </select>
+            
+            <input type="text" id="log-search" class="log-filter" placeholder="{{ t.ARCHIVE_SEARCH }}" onkeyup="filterLogs()">
+            
+            <button onclick="loadLogs()"><img src="{{ url_for('static', filename='img/refresh.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.INDEX_REFRESH }}</button>
+            <button class="btn-secondary" onclick="clearLogView()"><img src="{{ url_for('static', filename='img/trash.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.LOGS_CLEAR }}</button>
+            <button class="btn-secondary" onclick="downloadLog()"><img src="{{ url_for('static', filename='img/save.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.LOGS_DOWNLOAD }}</button>
+            
+            <label class="auto-refresh-label">
+                <input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()">
+                <span>Auto-Refresh (5s)</span>
+            </label>
         </div>
-
-        <div class="main-wrapper">
-            <!-- Sidebar Navigation -->
-            <aside class="sidebar">
-                <nav>
-                    <ul class="nav-menu">
-                        <li>
-                            <a href="/">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="Home"></span>
-                                <span>Home</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/archive">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/archive.svg') }}" alt="Archiv"></span>
-                                <span>Archiv</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/logs" class="active">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/logs.svg') }}" alt="Logs"></span>
-                                <span>Logs</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/system">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/system.svg') }}" alt="System"></span>
-                                <span>System</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/help">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/help.svg') }}" alt="Hilfe"></span>
-                                <span>Hilfe</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/config">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/settings.svg') }}" alt="Konfiguration"></span>
-                                <span>Konfiguration</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </aside>
-
-            <!-- Content Area -->
-            <main class="content">
-                <!-- Breadcrumb -->
-                <nav class="breadcrumb">
-                    <ul class="breadcrumb-list">
-                        <li>
-                            <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">Home</a>
-                        </li>
-                        <li class="breadcrumb-separator">></li>
-                        <li class="current">Logs</li>
-                    </ul>
-                </nav>
-
-                <!-- Log Controls -->
-                <div class="card">
-                    <h2>Log Viewer</h2>
-                    
-                    <div class="log-controls">
-                        <select id="log-type" onchange="loadLogs()">
-                            <option value="current">Aktuelles Log</option>
-                            <option value="system">System Log (journalctl)</option>
-                            <option value="archived">Archivierte Logs</option>
-                        </select>
-                        
-                        <select id="log-level">
-                            <option value="all">Alle Level</option>
-                            <option value="error">Nur Fehler</option>
-                            <option value="warning">Warnungen + Fehler</option>
-                            <option value="info">Info + Warnungen + Fehler</option>
-                        </select>
-                        
-                        <input type="text" id="log-search" class="log-filter" placeholder="Logs filtern..." onkeyup="filterLogs()">
-                        
-                        <button onclick="loadLogs()"><img src="{{ url_for('static', filename='img/refresh.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">Aktualisieren</button>
-                        <button class="btn-secondary" onclick="clearLogView()"><img src="{{ url_for('static', filename='img/trash.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">Ansicht leeren</button>
-                        <button class="btn-secondary" onclick="downloadLog()"><img src="{{ url_for('static', filename='img/save.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">Download</button>
-                        
-                        <label class="auto-refresh-label">
-                            <input type="checkbox" id="auto-refresh" onchange="toggleAutoRefresh()">
-                            <span>Auto-Refresh (5s)</span>
-                        </label>
-                    </div>
-                    
-                    <div id="archived-logs-list" style="display: none;">
-                        <h3>VerfÃ¼gbare Log-Dateien:</h3>
-                        <div class="log-file-list" id="log-files"></div>
-                    </div>
-                    
-                    <div class="log-info" id="log-info">
-                        <div class="log-info-item">
-                            <span class="log-info-label">Log-Typ:</span>
-                            <span class="log-info-value" id="current-log-type">Aktuelles Log</span>
-                        </div>
-                        <div class="log-info-item">
-                            <span class="log-info-label">Zeilen:</span>
-                            <span class="log-info-value" id="log-lines">0</span>
-                        </div>
-                        <div class="log-info-item">
-                            <span class="log-info-label">Letzte Aktualisierung:</span>
-                            <span class="log-info-value" id="last-update">-</span>
-                        </div>
-                    </div>
-                    
-                    <div class="log-viewer" id="log-viewer">
-                        <pre id="log-content">Lade Logs...</pre>
-                    </div>
-                </div>
-
-                <div class="footer">
-                    <p>disk2iso - Automatische ISO Erstellung von optischen Medien</p>
-                    <p style="margin-top: 5px; font-size: 0.9em;">Â© 2026 | Version {{ version }}</p>
-                </div>
-            </main>
+        
+        <div id="archived-logs-list" style="display: none;">
+            <h3>Verfügbare Log-Dateien:</h3>
+            <div class="log-file-list" id="log-files"></div>
+        </div>
+        
+        <div class="log-info" id="log-info">
+            <div class="log-info-item">
+                <span class="log-info-label">Log-Typ:</span>
+                <span class="log-info-value" id="current-log-type">{{ t.LOGS_FILTER_ALL }}</span>
+            </div>
+            <div class="log-info-item">
+                <span class="log-info-label">{{ t.ARCHIVE_ITEMS }}:</span>
+                <span class="log-info-value" id="log-lines">0</span>
+            </div>
+            <div class="log-info-item">
+                <span class="log-info-label">{{ t.LOGS_TIMESTAMP }}:</span>
+                <span class="log-info-value" id="last-update">-</span>
+            </div>
+        </div>
+        
+        <div class="log-viewer" id="log-viewer">
+            <pre id="log-content">{{ t.COMMON_LOADING }}</pre>
         </div>
     </div>
-    
+{% endblock %}
+
+{% block scripts %}
     <script src="{{ url_for('static', filename='js/logs.js') }}"></script>
-</body>
-</html>
+{% endblock %}

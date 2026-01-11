@@ -101,6 +101,13 @@ readonly MSG_PROGRESS_OF="MB /"
 readonly MSG_PROGRESS_MB="MB"
 
 # ============================================================================
+# MENSAJES DE ESTADO
+# ============================================================================
+
+readonly MSG_STATUS_DRIVE_DETECTED="Unidad detectada"
+readonly MSG_STATUS_WAITING_MEDIA="Esperando medio..."
+
+# ============================================================================
 # ARCHIVOS TEMPORALES
 # ============================================================================
 

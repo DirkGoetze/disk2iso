@@ -1,126 +1,60 @@
-﻿<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>disk2iso - System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <div class="app-container">
-        <!-- Header -->
-        <div class="header">
-            <h1><img src="{{ url_for('static', filename='img/control.svg') }}" alt="" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;">disk2iso</h1>
+﻿{% extends "base.html" %}
+
+{% block content %}
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <ul class="breadcrumb-list">
+            <li>
+                <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">{{ t.NAV_HOME }}</a>
+            </li>
+            <li class="breadcrumb-separator">></li>
+            <li class="current">{{ t.SYSTEM_TITLE }}</li>
+        </ul>
+    </nav>
+
+    <!-- System Information Grid -->
+    <div class="system-grid">
+        <!-- OS Information -->
+        <div class="card">
+            <div class="category-header"><img src="{{ url_for('static', filename='img/linux.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">{{ t.SYSTEM_HEADER }}</div>
+            <div class="system-info-grid" id="os-info">
+                <div class="info-item">
+                    <span class="info-label">{{ t.COMMON_LOADING }}</span>
+                    <span class="info-value"></span>
+                </div>
+            </div>
         </div>
 
-        <div class="main-wrapper">
-            <!-- Sidebar Navigation -->
-            <aside class="sidebar">
-                <nav>
-                    <ul class="nav-menu">
-                        <li>
-                            <a href="/">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="Home"></span>
-                                <span>Home</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/archive">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/archive.svg') }}" alt="Archiv"></span>
-                                <span>Archiv</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/logs">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/logs.svg') }}" alt="Logs"></span>
-                                <span>Logs</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/system" class="active">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/system.svg') }}" alt="System"></span>
-                                <span>System</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/help">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/help.svg') }}" alt="Hilfe"></span>
-                                <span>Hilfe</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/config">
-                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/settings.svg') }}" alt="Konfiguration"></span>
-                                <span>Konfiguration</span>
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </aside>
-
-            <!-- Content Area -->
-            <main class="content">
-                <!-- Breadcrumb -->
-                <nav class="breadcrumb">
-                    <ul class="breadcrumb-list">
-                        <li>
-                            <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">Home</a>
-                        </li>
-                        <li class="breadcrumb-separator">></li>
-                        <li class="current">System</li>
-                    </ul>
-                </nav>
-
-                <!-- System Information Grid -->
-                <div class="system-grid">
-                    <!-- OS Information -->
-                    <div class="card">
-                        <div class="category-header"><img src="{{ url_for('static', filename='img/linux.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Betriebssystem</div>
-                        <div class="system-info-grid" id="os-info">
-                            <div class="info-item">
-                                <span class="info-label">Lade...</span>
-                                <span class="info-value"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- disk2iso Information -->
-                    <div class="card">
-                        <div class="category-header"><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">disk2iso</div>
-                        <div class="service-info-grid" id="disk2iso-info">
-                            <div class="info-item">
-                                <span class="info-label">Lade...</span>
-                                <span class="info-value"></span>
-                            </div>
-                        </div>
-                    </div>
+        <!-- disk2iso Information -->
+        <div class="card">
+            <div class="category-header"><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">disk2iso</div>
+            <div class="service-info-grid" id="disk2iso-info">
+                <div class="info-item">
+                    <span class="info-label">{{ t.COMMON_LOADING }}</span>
+                    <span class="info-value"></span>
                 </div>
-
-                <!-- Software Versions -->
-                <div class="card">
-                    <h2>
-                        <img src="{{ url_for('static', filename='img/package.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">Installierte Software
-                        <button class="refresh-btn" onclick="refreshSystemInfo()" style="float: right;">
-                            <span id="refresh-icon"><img src="{{ url_for('static', filename='img/refresh.svg') }}" alt="" style="width:20px;height:20px;"></span>
-                            <span>Aktualisieren</span>
-                        </button>
-                    </h2>
-                    
-                    <div id="software-container">
-                        <p style="text-align: center; padding: 40px; color: #666;">
-                            Lade Systeminformationen...
-                        </p>
-                    </div>
-                </div>
-
-                <div class="footer">
-                    <p>disk2iso - Automatische ISO Erstellung von optischen Medien</p>
-                    <p style="margin-top: 5px; font-size: 0.9em;">Â© 2026 | Version {{ version }}</p>
-                </div>
-            </main>
+            </div>
         </div>
     </div>
-    
+
+    <!-- Software Versions -->
+    <div class="card">
+        <h2>
+            <img src="{{ url_for('static', filename='img/package.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">{{ t.SYSTEM_CONFIG }}
+            <button class="refresh-btn" onclick="refreshSystemInfo()" style="float: right;">
+                <span id="refresh-icon"><img src="{{ url_for('static', filename='img/refresh.svg') }}" alt="" style="width:20px;height:20px;"></span>
+                <span>{{ t.INDEX_REFRESH }}</span>
+            </button>
+        </h2>
+        
+        <div id="software-container">
+            <p style="text-align: center; padding: 40px; color: #666;">
+                {{ t.COMMON_LOADING }}
+            </p>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
     <script src="{{ url_for('static', filename='js/system.js') }}"></script>
-</body>
-</html>
+{% endblock %}

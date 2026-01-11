@@ -5,13 +5,14 @@ Version: 1.3.0
 Description: Flask-basierte Web-Oberfläche für disk2iso Monitoring
 """
 
-from flask import Flask, render_template, jsonify, request, Response
+from flask import Flask, render_template, jsonify, request, Response, g
 import os
 import sys
 import json
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from i18n import get_translations
 
 app = Flask(__name__)
 
@@ -89,6 +90,16 @@ def get_config():
         print(f"Fehler beim Lesen der Konfiguration: {e}", file=sys.stderr)
     
     return config
+
+@app.before_request
+def before_request():
+    """Lädt Übersetzungen vor jedem Request"""
+    g.t = get_translations()
+
+@app.context_processor
+def inject_translations():
+    """Macht Übersetzungen in allen Templates verfügbar"""
+    return {'t': g.get('t', {})}
 
 def get_service_status():
     """Prüft Status des disk2iso Service"""
@@ -251,8 +262,10 @@ def get_history():
 
 def get_status_text(live_status, service_running):
     """Generiert lesbaren Status-Text basierend auf Live-Status und Service-Status"""
+    t = g.get('t', {})
+    
     if not service_running:
-        return 'Service gestoppt'
+        return t.get('STATUS_SERVICE_STOPPED', 'Service stopped')
     
     status = live_status.get('status', 'idle')
     method = live_status.get('method', 'unknown')
@@ -260,19 +273,19 @@ def get_status_text(live_status, service_running):
     if status == 'idle':
         # Prüfe ob jemals ein Laufwerk erkannt wurde
         if not method or method == 'unknown':
-            return 'Kein Laufwerk erkannt'
+            return t.get('STATUS_NO_DRIVE', 'No drive detected')
         else:
-            return 'Wartet auf Medium'
+            return t.get('STATUS_WAITING_MEDIA', 'Waiting for media...')
     elif status == 'waiting':
-        return 'Medium wird geprüft...'
+        return t.get('STATUS_ANALYZING', 'Analyzing media...')
     elif status == 'copying':
-        return 'Kopiert Medium'
+        return t.get('STATUS_COPYING', 'Copying...')
     elif status == 'completed':
-        return 'Abgeschlossen'
+        return t.get('STATUS_COMPLETED', 'Completed')
     elif status == 'error':
-        return 'Fehler aufgetreten'
+        return t.get('STATUS_ERROR', 'Error occurred')
     else:
-        return 'Unbekannt'
+        return t.get('STATUS_UNKNOWN', 'Unknown')
 
 # Routes
 @app.route('/')
@@ -304,7 +317,9 @@ def index():
         archive_counts=archive_counts,
         live_status=live_status,
         status_text=status_text,
-        current_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        current_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        active_page='index',
+        page_title='INDEX_TITLE'
     )
 
 @app.route('/config')
@@ -324,7 +339,9 @@ def archive_page():
     version = get_version()
     
     return render_template('archive.html',
-        version=version
+        version=version,
+        active_page='archive',
+        page_title='ARCHIVE_TITLE'
     )
 
 @app.route('/logs')
@@ -333,7 +350,9 @@ def logs_page():
     version = get_version()
     
     return render_template('logs.html',
-        version=version
+        version=version,
+        active_page='logs',
+        page_title='LOGS_TITLE'
     )
 
 @app.route('/system')
@@ -342,7 +361,9 @@ def system_page():
     version = get_version()
     
     return render_template('system.html',
-        version=version
+        version=version,
+        active_page='system',
+        page_title='SYSTEM_TITLE'
     )
 
 @app.route('/help')
@@ -351,7 +372,9 @@ def help_page():
     version = get_version()
     
     return render_template('help.html',
-        version=version
+        version=version,
+        active_page='help',
+        page_title='HELP_TITLE'
     )
 
 @app.route('/api/status')
