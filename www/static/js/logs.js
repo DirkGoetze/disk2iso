@@ -124,6 +124,9 @@ function displayLogs(logs, lineCount) {
         let className = '';
         const lowerLine = line.toLowerCase();
         
+        // MQTT-Zeilen markieren (zusätzlich zur Log-Level-Klasse)
+        const isMqtt = lowerLine.includes('mqtt');
+        
         if (lowerLine.includes('error') || lowerLine.includes('fehler') || lowerLine.includes('failed')) {
             className = 'log-line-error';
         } else if (lowerLine.includes('warning') || lowerLine.includes('warnung') || lowerLine.includes('warn')) {
@@ -132,6 +135,10 @@ function displayLogs(logs, lineCount) {
             className = 'log-line-success';
         } else if (lowerLine.includes('info') || lowerLine.includes('start')) {
             className = 'log-line-info';
+        }
+        
+        if (isMqtt) {
+            className += ' log-line-mqtt';
         }
         
         return `<div class="log-line ${className}">${escapeHtml(line)}</div>`;
@@ -172,12 +179,15 @@ function filterLogs() {
             const isError = line.classList.contains('log-line-error');
             const isWarning = line.classList.contains('log-line-warning');
             const isInfo = line.classList.contains('log-line-info');
+            const isMqtt = line.classList.contains('log-line-mqtt');
             
             if (logLevel === 'error' && !isError) {
                 showLine = false;
-            } else if (logLevel === 'warning' && !isError && !isWarning) {
+            } else if (logLevel === 'warning' && !isWarning) {
                 showLine = false;
-            } else if (logLevel === 'info' && !isError && !isWarning && !isInfo) {
+            } else if (logLevel === 'info' && !isInfo) {
+                showLine = false;
+            } else if (logLevel === 'mqtt' && !isMqtt) {
                 showLine = false;
             }
         }

@@ -7,12 +7,20 @@
 
 let currentReleases = [];
 let selectedIndex = 0;
+let mbCheckInterval = null;
 
 /**
  * Prüft ob MusicBrainz-Auswahl erforderlich ist
  */
 async function checkMusicBrainzStatus() {
     try {
+        // Prüfe ob Modal bereits geöffnet ist
+        const modal = document.getElementById('musicbrainz-modal');
+        if (modal && modal.style.display === 'flex') {
+            // Modal ist bereits offen - nicht neu rendern um Benutzerauswahl zu erhalten
+            return;
+        }
+        
         const response = await fetch('/api/musicbrainz/releases');
         
         if (response.status === 404) {
@@ -58,6 +66,23 @@ function showMusicBrainzModal(data) {
             releaseDiv.classList.add('selected');
         }
         
+        // Berechne Laufzeit in MM:SS Format
+        let durationStr = '';
+        if (release.duration) {
+            const totalSeconds = Math.floor(release.duration / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            if (hours > 0) {
+                durationStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                durationStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+        
+        // Verwende lokalen Cover-Endpoint (wird in .temp gecacht)
+        const coverUrl = release.id ? `/api/musicbrainz/cover/${release.id}` : null;
+        
         releaseDiv.innerHTML = `
             <input type="radio" 
                    name="release" 
@@ -65,13 +90,16 @@ function showMusicBrainzModal(data) {
                    value="${index}" 
                    ${index === selectedIndex ? 'checked' : ''}>
             <label for="release-${index}">
-                <div class="release-title">${escapeHtml(release.title || 'Unknown')}</div>
-                <div class="release-artist">${escapeHtml(release.artist || 'Unknown Artist')}</div>
-                <div class="release-details">
-                    ${release.date || 'Unknown'} · 
-                    ${release.country || 'Unknown'} · 
-                    ${release.tracks || 0} Tracks
-                    ${release.label && release.label !== 'Unknown' ? ' · ' + escapeHtml(release.label) : ''}
+                <div class="release-layout">
+                    ${coverUrl ? `<img src="${coverUrl}" alt="Cover" class="release-cover" onerror="this.style.display='none'">` : '<div class="release-cover-placeholder"></div>'}
+                    <div class="release-info">
+                        <div class="release-title">${escapeHtml(release.title || 'Unknown')}</div>
+                        <div class="release-artist">${escapeHtml(release.artist || 'Unknown Artist')}</div>
+                        <div class="release-details">
+                            <i>${release.date || 'Unknown'} ${release.country && release.country !== 'unknown' ? release.country : ''}</i> 
+                            (${release.tracks || 0} Tracks${durationStr ? ' / ' + durationStr : ''})
+                        </div>
+                    </div>
                 </div>
             </label>
         `;
@@ -104,6 +132,11 @@ function closeMusicBrainzModal() {
     const modal = document.getElementById('musicbrainz-modal');
     if (modal) {
         modal.style.display = 'none';
+    }
+    
+    // Starte Interval-Prüfung wieder (falls gestoppt)
+    if (!mbCheckInterval) {
+        mbCheckInterval = setInterval(checkMusicBrainzStatus, 5000);
     }
 }
 
@@ -224,7 +257,7 @@ function showNotification(message, type = 'info') {
 }
 
 // Prüfe alle 5 Sekunden ob MusicBrainz-Auswahl erforderlich ist
-setInterval(checkMusicBrainzStatus, 5000);
+mbCheckInterval = setInterval(checkMusicBrainzStatus, 5000);
 
 // Initiale Prüfung beim Laden
 document.addEventListener('DOMContentLoaded', () => {

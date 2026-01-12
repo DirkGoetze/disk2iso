@@ -245,14 +245,17 @@ get_musicbrainz_metadata() {
         
         # Speichere alle Releases in API-Datei für Web-Interface
         if declare -f api_write_json >/dev/null 2>&1; then
-            # Extrahiere Releases-Array direkt
+            # Extrahiere Releases-Array mit Release-ID, Cover-URL und Laufzeit
             local releases_array=$(echo "$mb_response" | jq -c '[.releases[] | {
+              id: .id,
               title: .title,
               artist: (."artist-credit"[0].name // "Unknown"),
               date: (.date // "unknown"),
               country: (.country // "unknown"),
               tracks: (.media[0].tracks | length),
-              label: (."label-info"[0]?.label?.name // "Unknown")
+              label: (."label-info"[0]?.label?.name // "Unknown"),
+              cover_url: (if (."cover-art-archive".front == true) then ("https://coverartarchive.org/release/" + .id + "/front-250") else null end),
+              duration: (.media[0].tracks | map(.length // 0) | add)
             }]')
             
             # Baue finale JSON-Struktur
@@ -412,10 +415,13 @@ get_track_title() {
         return 1
     fi
     
+    # Nutze gewählten Release-Index (nicht fest 0!)
+    local release_idx="${best_release_index:-0}"
+    
     # Extrahiere Track-Titel (track_num ist 1-basiert, Array ist 0-basiert)
     local track_index=$((track_num - 1))
     local track_title
-    track_title=$(echo "$mb_response" | jq -r ".releases[0].media[0].tracks[${track_index}].recording.title" 2>/dev/null)
+    track_title=$(echo "$mb_response" | jq -r ".releases[$release_idx].media[0].tracks[${track_index}].recording.title" 2>/dev/null)
     
     if [[ -n "$track_title" ]] && [[ "$track_title" != "null" ]]; then
         echo "$track_title"

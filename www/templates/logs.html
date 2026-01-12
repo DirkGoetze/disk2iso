@@ -23,11 +23,12 @@
                 <option value="archived">Archivierte Logs</option>
             </select>
             
-            <select id="log-level">
+            <select id="log-level" onchange="filterLogs()">
                 <option value="all">{{ t.LOGS_FILTER_ALL }}</option>
                 <option value="error">{{ t.LOGS_FILTER_ERROR }}</option>
                 <option value="warning">{{ t.LOGS_FILTER_WARNING }}</option>
                 <option value="info">{{ t.LOGS_FILTER_INFO }}</option>
+                <option value="mqtt">MQTT</option>
             </select>
             
             <input type="text" id="log-search" class="log-filter" placeholder="{{ t.ARCHIVE_SEARCH }}" onkeyup="filterLogs()">

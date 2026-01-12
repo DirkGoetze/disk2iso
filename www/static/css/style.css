@@ -716,6 +716,35 @@ body {
     margin: 0;
 }
 
+/* Release Layout mit Cover links */
+.release-layout {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+.release-cover {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.release-cover-placeholder {
+    width: 80px;
+    height: 80px;
+    background: #1a1f3a;
+    border: 2px dashed #444;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.release-info {
+    flex: 1;
+    min-width: 0;
+}
+
 .release-title {
     font-size: 1.1em;
     font-weight: 600;
@@ -732,6 +761,10 @@ body {
 .release-details {
     color: #999;
     font-size: 0.85em;
+}
+
+.release-details i {
+    font-style: italic;
 }
 
 .form-group {
@@ -805,6 +838,11 @@ body {
 .log-line-success {
     border-left-color: #28a745;
     background: rgba(40, 167, 69, 0.1);
+}
+
+.log-line-mqtt {
+    border-left-color: #9b59b6;
+    background: rgba(155, 89, 182, 0.1);
 }
 
 .no-logs {

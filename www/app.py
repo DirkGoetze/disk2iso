@@ -5,11 +5,12 @@ Version: 1.2.0
 Description: Flask-basierte Web-Oberfläche für disk2iso Monitoring
 """
 
-from flask import Flask, render_template, jsonify, request, Response, g
+from flask import Flask, render_template, jsonify, request, Response, g, send_file
 import os
 import sys
 import json
 import subprocess
+import requests
 from datetime import datetime
 from pathlib import Path
 from i18n import get_translations
@@ -76,16 +77,29 @@ def get_config():
                     elif line.startswith('MQTT_ENABLED='):
                         config['mqtt_enabled'] = 'true' in line.lower()
                     elif line.startswith('MQTT_BROKER='):
-                        config['mqtt_broker'] = line.split('=', 1)[1].strip('"')
+                        value = line.split('=', 1)[1]
+                        # Entferne Anführungszeichen und Kommentare
+                        if '#' in value:
+                            value = value.split('#')[0]
+                        value = value.strip().strip('"').strip()
+                        config['mqtt_broker'] = value
                     elif line.startswith('MQTT_PORT='):
                         try:
                             config['mqtt_port'] = int(line.split('=', 1)[1].strip())
                         except:
                             pass
                     elif line.startswith('MQTT_USER='):
-                        config['mqtt_user'] = line.split('=', 1)[1].strip('"')
+                        value = line.split('=', 1)[1]
+                        if '#' in value:
+                            value = value.split('#')[0]
+                        value = value.strip().strip('"').strip()
+                        config['mqtt_user'] = value
                     elif line.startswith('MQTT_PASSWORD='):
-                        config['mqtt_password'] = line.split('=', 1)[1].strip('"')
+                        value = line.split('=', 1)[1]
+                        if '#' in value:
+                            value = value.split('#')[0]
+                        value = value.strip().strip('"').strip()
+                        config['mqtt_password'] = value
     except Exception as e:
         print(f"Fehler beim Lesen der Konfiguration: {e}", file=sys.stderr)
     
@@ -447,11 +461,12 @@ def api_status():
     live_status = get_live_status()
     
     # Archive-Counts ermitteln
+    all_files = get_iso_files_by_type(config['output_dir'])
     archive_counts = {
-        'data': len(get_iso_files_by_type(config['output_dir'], 'data')),
-        'audio': len(get_iso_files_by_type(config['output_dir'], 'audio')),
-        'dvd': len(get_iso_files_by_type(config['output_dir'], 'dvd')),
-        'bluray': len(get_iso_files_by_type(config['output_dir'], 'bluray'))
+        'data': len(all_files.get('data', [])),
+        'audio': len(all_files.get('audio', [])),
+        'dvd': len(all_files.get('dvd', [])),
+        'bluray': len(all_files.get('bluray', []))
     }
     
     return jsonify({
@@ -490,6 +505,36 @@ def api_musicbrainz_releases():
         'confidence': selection.get('confidence', 'unknown') if selection else 'unknown',
         'message': selection.get('message', '') if selection else ''
     })
+
+@app.route('/api/musicbrainz/cover/<release_id>')
+def api_musicbrainz_cover(release_id):
+    """API-Endpoint zum Abrufen von Cover-Art (cached im .temp Verzeichnis)"""
+    try:
+        # Temp-Verzeichnis aus Config oder Standard
+        temp_dir = INSTALL_DIR / '.temp'
+        temp_dir.mkdir(exist_ok=True)
+        
+        # Cover-Datei-Pfad
+        cover_file = temp_dir / f'cover_{release_id}.jpg'
+        
+        # Wenn Cover bereits existiert, direkt zurückgeben
+        if cover_file.exists():
+            return send_file(str(cover_file), mimetype='image/jpeg')
+        
+        # Ansonsten: Von Cover Art Archive laden
+        cover_url = f'https://coverartarchive.org/release/{release_id}/front-250'
+        
+        response = requests.get(cover_url, timeout=5, allow_redirects=True)
+        
+        if response.status_code == 200:
+            # Cover speichern
+            cover_file.write_bytes(response.content)
+            return send_file(str(cover_file), mimetype='image/jpeg')
+        else:
+            return jsonify({'error': 'Cover nicht verfügbar'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/musicbrainz/select', methods=['POST'])
 def api_musicbrainz_select():
