@@ -117,6 +117,27 @@ function updateLiveStatus() {
                 progressSection.style.display = 'none';
             }
             
+            // Archive-Counts aktualisieren
+            if (data.archive_counts) {
+                const archiveLabels = {
+                    'Daten-Discs': 'data',
+                    'Audio CDs': 'audio',
+                    'DVDs': 'dvd',
+                    'Blu-rays': 'bluray'
+                };
+                
+                document.querySelectorAll('.info-row').forEach(row => {
+                    const label = row.querySelector('.info-label');
+                    const value = row.querySelector('.info-value');
+                    if (label && value) {
+                        const labelText = label.textContent.trim();
+                        if (archiveLabels[labelText]) {
+                            value.textContent = data.archive_counts[archiveLabels[labelText]];
+                        }
+                    }
+                });
+            }
+            
             // Timestamp aktualisieren
             const updateElement = document.querySelector('.info-row:has(.info-label:contains("Aktualisiert")) .info-value');
             if (updateElement) {

@@ -446,6 +446,14 @@ def api_status():
     config = get_config()
     live_status = get_live_status()
     
+    # Archive-Counts ermitteln
+    archive_counts = {
+        'data': len(get_iso_files_by_type(config['output_dir'], 'data')),
+        'audio': len(get_iso_files_by_type(config['output_dir'], 'audio')),
+        'dvd': len(get_iso_files_by_type(config['output_dir'], 'dvd')),
+        'bluray': len(get_iso_files_by_type(config['output_dir'], 'bluray'))
+    }
+    
     return jsonify({
         'version': get_version(),
         'service_running': get_service_status(),
@@ -454,6 +462,7 @@ def api_status():
         'mqtt_broker': config['mqtt_broker'],
         'disk_space': get_disk_space(config['output_dir']),
         'iso_count': count_iso_files(config['output_dir']),
+        'archive_counts': archive_counts,
         'live_status': live_status,
         'timestamp': datetime.now().isoformat()
     })
