@@ -156,7 +156,8 @@ copy_video_dvd() {
         # DVD ist bereits 1x fehlgeschlagen → Automatischer Fallback auf ddrescue
         log_message "$MSG_WARNING_DVD_FAILED_BEFORE"
         log_message "$MSG_FALLBACK_TO_DDRESCUE"
-        return copy_video_dvd_ddrescue
+        copy_video_dvd_ddrescue
+        return $?
     fi
     
     # Erste Versuch: Normale dvdbackup-Methode
@@ -284,8 +285,8 @@ copy_video_dvd() {
 copy_video_dvd_ddrescue() {
     log_message "$MSG_METHOD_DDRESCUE_ENCRYPTED"
     
-    # ddrescue benötigt Map-Datei
-    local mapfile="${iso_filename}.mapfile"
+    # ddrescue benötigt Map-Datei (im .temp Verzeichnis, wird auto-gelöscht)
+    local mapfile="${temp_pathname}/$(basename "${iso_filename}").mapfile"
     
     # Ermittle Disc-Größe mit isoinfo
     get_disc_size
@@ -298,7 +299,7 @@ copy_video_dvd_ddrescue() {
         local size_mb=$((total_bytes / 1024 / 1024))
         local required_mb=$((size_mb + size_mb * 5 / 100))
         if ! check_disk_space "$required_mb"; then
-            rm -f "$mapfile"
+            # Mapfile wird mit temp_pathname automatisch gelöscht
             return 1
         fi
     fi
@@ -348,7 +349,7 @@ copy_video_dvd_ddrescue() {
         local dvd_id=$(get_dvd_identifier)
         clear_dvd_failures "$dvd_id"
         
-        rm -f "$mapfile"
+        # Mapfile wird mit temp_pathname automatisch gelöscht
         return 0
     else
         log_message "$MSG_ERROR_DDRESCUE_FAILED"
@@ -358,7 +359,7 @@ copy_video_dvd_ddrescue() {
         register_dvd_failure "$dvd_id" "ddrescue"
         log_message "$MSG_DVD_FINAL_FAILURE"
         
-        rm -f "$mapfile"
+        # Mapfile wird mit temp_pathname automatisch gelöscht
         return 1
     fi
 }

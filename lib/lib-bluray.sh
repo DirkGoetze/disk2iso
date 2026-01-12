@@ -82,8 +82,8 @@ check_bluray_dependencies() {
 copy_bluray_ddrescue() {
     log_message "$MSG_METHOD_DDRESCUE_ENCRYPTED"
     
-    # ddrescue benötigt Map-Datei
-    local mapfile="${iso_filename}.mapfile"
+    # ddrescue benötigt Map-Datei (im .temp Verzeichnis, wird auto-gelöscht)
+    local mapfile="${temp_pathname}/$(basename "${iso_filename}").mapfile"
     
     # Ermittle Disc-Größe mit isoinfo (falls verfügbar)
     local volume_size=""
@@ -121,7 +121,7 @@ copy_bluray_ddrescue() {
         local size_mb=$((total_bytes / 1024 / 1024))
         local required_mb=$((size_mb + size_mb * 5 / 100))
         if ! check_disk_space "$required_mb"; then
-            rm -f "$mapfile"
+            # Mapfile wird mit temp_pathname automatisch gelöscht
             return 1
         fi
     fi
@@ -224,11 +224,11 @@ copy_bluray_ddrescue() {
     # Prüfe Ergebnis
     if [[ $ddrescue_exit -eq 0 ]]; then
         log_message "$MSG_BLURAY_DDRESCUE_SUCCESS"
-        rm -f "$mapfile"
+        # Mapfile wird mit temp_pathname automatisch gelöscht
         return 0
     else
         log_message "$MSG_ERROR_DDRESCUE_FAILED"
-        rm -f "$mapfile"
+        # Mapfile wird mit temp_pathname automatisch gelöscht
         return 1
     fi
 }

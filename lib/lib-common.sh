@@ -175,8 +175,8 @@ get_disc_size() {
 copy_data_disc_ddrescue() {
     log_message "$MSG_METHOD_DDRESCUE"
     
-    # ddrescue benötigt Map-Datei
-    local mapfile="${iso_filename}.mapfile"
+    # ddrescue benötigt Map-Datei (im .temp Verzeichnis, wird auto-gelöscht)
+    local mapfile="${temp_pathname}/$(basename "${iso_filename}").mapfile"
     
     # Ermittle Disc-Größe mit isoinfo
     get_disc_size
@@ -189,7 +189,7 @@ copy_data_disc_ddrescue() {
         local size_mb=$((total_bytes / 1024 / 1024))
         local required_mb=$((size_mb + size_mb * 5 / 100))
         if ! check_disk_space "$required_mb"; then
-            rm -f "$mapfile"
+            # Mapfile wird mit temp_pathname automatisch gelöscht
             return 1
         fi
     fi
@@ -237,11 +237,11 @@ copy_data_disc_ddrescue() {
     # Prüfe Ergebnis
     if [[ $ddrescue_exit -eq 0 ]]; then
         log_message "$MSG_DATA_DISC_SUCCESS_DDRESCUE"
-        rm -f "$mapfile"
+        # Mapfile wird mit temp_pathname automatisch gelöscht
         return 0
     else
         log_message "$MSG_ERROR_DDRESCUE_FAILED"
-        rm -f "$mapfile"
+        # Mapfile wird mit temp_pathname automatisch gelöscht
         return 1
     fi
 }
