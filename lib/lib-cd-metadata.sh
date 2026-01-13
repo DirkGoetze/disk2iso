@@ -123,8 +123,10 @@ remaster_audio_iso_with_metadata() {
         # Benenne ISO nach Artist - Album Schema um
         local clean_artist=$(echo "$artist" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g' | sed 's/__*/_/g' | sed 's/^_//;s/_$//')
         local clean_album=$(echo "$album" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g' | sed 's/__*/_/g' | sed 's/^_//;s/_$//')
-        local new_name="${clean_artist}_${clean_album}.iso"
-        local new_path="${iso_dir}/${new_name}"
+        local base_name="${clean_artist}_${clean_album}"
+        
+        # Nutze get_unique_iso_path für eindeutigen Namen (vermeidet Überschreiben)
+        local new_path=$(get_unique_iso_path "$iso_dir" "$base_name" "$iso_path")
         
         # Benenne um wenn Name anders ist
         if [[ "$iso_path" != "$new_path" ]]; then
@@ -144,6 +146,10 @@ remaster_audio_iso_with_metadata() {
                 local new_thumb="${new_path%.iso}-thumb.jpg"
                 [[ -f "$old_thumb" ]] && mv -f "$old_thumb" "$new_thumb"
                 
+                # Lösche .mbquery Datei (Query-Daten nicht mehr benötigt)
+                local old_mbquery="${iso_path%.iso}.mbquery"
+                [[ -f "$old_mbquery" ]] && rm -f "$old_mbquery"
+                
                 # MD5 neu berechnen für umbenannte ISO
                 if command -v md5sum >/dev/null 2>&1; then
                     md5sum "$new_path" | cut -d' ' -f1 > "$new_md5"
@@ -153,12 +159,16 @@ remaster_audio_iso_with_metadata() {
                 log_message "Audio-Remaster: Warnung - ISO-Umbenennung fehlgeschlagen"
             fi
         else
-            # Nur MD5 neu berechnen
+            # Nur MD5 neu berechnen und .mbquery löschen
             local md5_file="${iso_path%.iso}.md5"
             if command -v md5sum >/dev/null 2>&1; then
                 md5sum "$iso_path" | cut -d' ' -f1 > "$md5_file"
                 log_message "Audio-Remaster: MD5 aktualisiert"
             fi
+            
+            # Lösche .mbquery Datei
+            local mbquery_file="${iso_path%.iso}.mbquery"
+            [[ -f "$mbquery_file" ]] && rm -f "$mbquery_file"
         fi
         
         cleanup_remaster_temp "$temp_extract" "$temp_tagged"

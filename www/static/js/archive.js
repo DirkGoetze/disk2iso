@@ -237,9 +237,17 @@ function openMetadataModal(isoPath, type) {
     
     if (type === 'audio') {
         searchType.textContent = 'MusicBrainz-Suche';
+        
+        // Prüfe ob .mbquery existiert (zeige Hinweis)
+        const isoBase = isoPath.replace(/\.iso$/, '');
+        const mbqueryPath = isoBase + '.mbquery';
+        
         searchFields.innerHTML = `
-            <input type="text" id="search-artist" placeholder="Künstler" class="form-control">
-            <input type="text" id="search-album" placeholder="Album" class="form-control">
+            <div class="info-message" style="background: #e8f4f8; padding: 10px; border-radius: 4px; margin-bottom: 10px; display: none;" id="mbquery-hint">
+                ℹ️ Diese CD hatte mehrere Treffer beim Rippen. Die Suche nutzt die gespeicherten Daten für exakte Ergebnisse.
+            </div>
+            <input type="text" id="search-artist" placeholder="Künstler (optional bei gespeicherten Daten)" class="form-control">
+            <input type="text" id="search-album" placeholder="Album (optional bei gespeicherten Daten)" class="form-control">
         `;
     } else {
         searchType.textContent = 'TMDB-Suche';
@@ -270,19 +278,22 @@ function searchMetadata() {
         const artist = document.getElementById('search-artist').value.trim();
         const album = document.getElementById('search-album').value.trim();
         
-        if (!artist && !album) {
-            resultsDiv.innerHTML = '<p class="error">Bitte Künstler oder Album eingeben</p>';
-            return;
-        }
+        // Bei .mbquery sind Felder optional
+        // Prüfung erfolgt im Backend
         
         fetch('/api/metadata/musicbrainz/search', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({artist, album})
+            body: JSON.stringify({artist, album, iso_path: currentMetadataPath})
         })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
+                // Zeige Hinweis wenn .mbquery genutzt wurde
+                if (data.used_mbquery) {
+                    const hint = document.getElementById('mbquery-hint');
+                    if (hint) hint.style.display = 'block';
+                }
                 displayMusicBrainzResults(data.results);
             } else {
                 resultsDiv.innerHTML = `<p class="error">${data.message}</p>`;

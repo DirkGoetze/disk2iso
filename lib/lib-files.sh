@@ -35,25 +35,35 @@ sanitize_filename() {
 # Funktion zum Erstellen des ISO-Dateinamens
 # Erstellt eindeutigen Dateinamen basierend auf Disc-Typ
 # Setzt globale Variable: iso_filename
+# Funktion zum Finden eines eindeutigen Dateinamens
+# Args: Verzeichnis, Basis-Name (ohne .iso), [optionale existierende Datei]
+# Return: Eindeutiger Pfad (mit _1, _2 etc. falls nötig)
+get_unique_iso_path() {
+    local target_dir="$1"
+    local base_name="$2"
+    local existing_file="${3:-}"  # Optional: Existierende Datei die umbenannt wird
+    
+    local base_filename="${base_name}.iso"
+    local full_path="${target_dir}/${base_filename}"
+    
+    # Prüfe ob Datei bereits existiert und füge Nummer hinzu
+    local counter=1
+    while [[ -f "$full_path" ]] && [[ "$full_path" != "$existing_file" ]]; do
+        base_filename="${base_name}_${counter}.iso"
+        full_path="${target_dir}/${base_filename}"
+        ((counter++))
+    done
+    
+    echo "$full_path"
+}
+
 get_iso_filename() {
     # Erstelle Typ-spezifischen Unterordner
     local target_dir
     target_dir=$(get_type_subfolder "$disc_type")
     
-    # Erstelle eindeutigen Dateinamen (disc_label bereits bereinigt)
-    local base_filename="${disc_label}.iso"
-    local full_path="${target_dir}/${base_filename}"
-    
-    # Prüfe ob Datei bereits existiert und füge Nummer hinzu
-    local counter=1
-    while [[ -f "$full_path" ]]; do
-        base_filename="${disc_label}_${counter}.iso"
-        full_path="${target_dir}/${base_filename}"
-        ((counter++))
-    done
-    
-    # Setze globale Variable
-    iso_filename="$full_path"
+    # Nutze Hilfsfunktion für eindeutigen Dateinamen
+    iso_filename=$(get_unique_iso_path "$target_dir" "$disc_label")
 }
 
 # Funktion zum Erstellen des MD5-Dateinamens

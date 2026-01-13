@@ -159,7 +159,7 @@ get_cdtext_metadata() {
 
 # Funktion: MusicBrainz-Metadaten abrufen
 # Benötigt: cd-discid, curl, jq
-# Rückgabe: Setzt globale Variablen: cd_artist, cd_album, cd_year, cd_discid, mb_response, best_release_index
+# Rückgabe: Setzt globale Variablen: cd_artist, cd_album, cd_year, cd_discid, mb_response, best_release_index, toc, track_count
 get_musicbrainz_metadata() {
     cd_artist=""
     cd_album=""
@@ -167,6 +167,8 @@ get_musicbrainz_metadata() {
     cd_discid=""
     mb_response=""  # Speichere vollständige Antwort für Track-Infos
     best_release_index=0  # Index des gewählten Release (bei mehreren Treffern)
+    toc=""  # TOC-String für MusicBrainz
+    track_count=""  # Anzahl der Tracks
     
     log_message "$MSG_RETRIEVE_METADATA"
     
@@ -193,7 +195,7 @@ get_musicbrainz_metadata() {
     # Parse cd-discid output: discid tracks offset1 offset2 ... offsetN total_seconds
     local discid_parts=($discid_output)
     cd_discid="${discid_parts[0]}"
-    local track_count="${discid_parts[1]}"
+    track_count="${discid_parts[1]}"  # Global für spätere Verwendung
     
     log_message "$MSG_DISCID: $cd_discid ($MSG_TRACKS: $track_count)"
     
@@ -211,7 +213,7 @@ get_musicbrainz_metadata() {
     leadout=$((leadout + 150))
     
     # Baue TOC-String für MusicBrainz: 1+track_count+leadout+offset1+offset2+...
-    local toc="1+${track_count}+${leadout}"
+    toc="1+${track_count}+${leadout}"  # Global für spätere Verwendung
     for ((i=2; i<${#discid_parts[@]}-1; i++)); do
         toc="${toc}+${discid_parts[$i]}"
     done
@@ -524,6 +526,30 @@ EOF
 # Funktion: Erstelle Archiv-Metadaten für Web-Interface
 # Parameter: $1 = ISO-Pfad
 # Erstellt: <iso>.nfo und <iso>-thumb.jpg für Archiv-Anzeige
+# Speichere MusicBrainz Query-Daten für ISO (bei mehreren Treffern)
+# Args: iso_path, disc_id, toc, track_count
+save_mbquery_for_iso() {
+    local iso_path="$1"
+    local disc_id="$2"
+    local toc_str="$3"
+    local tracks="$4"
+    local iso_base="${iso_path%.iso}"
+    local mbquery_file="${iso_base}.mbquery"
+    
+    if [[ -z "$disc_id" ]] || [[ -z "$toc_str" ]]; then
+        return 1
+    fi
+    
+    # Speichere Query-Daten im einfachen Format
+    cat > "$mbquery_file" <<EOF
+DISC_ID=${disc_id}
+TOC=${toc_str}
+TRACK_COUNT=${tracks}
+EOF
+    
+    log_message "MusicBrainz Query-Daten gespeichert: $(basename "$mbquery_file")"
+}
+
 create_archive_metadata() {
     local iso_path="$1"
     local iso_base="${iso_path%.iso}"
@@ -627,6 +653,12 @@ copy_audio_cd() {
         # Lösche temporäre API-Dateien (kein Modal während Ripping)
         local api_dir="${INSTALL_DIR:-/opt/disk2iso}/api"
         rm -f "${api_dir}/musicbrainz_releases.json" "${api_dir}/musicbrainz_selection.json" 2>/dev/null || true
+        
+        # WICHTIG: Merke Query-Daten für spätere Browser-Suche
+        # Diese Daten werden später mit der ISO verknüpft (in save_mbquery_for_iso)
+        SAVED_DISCID="$cd_discid"
+        SAVED_TOC="$toc"
+        SAVED_TRACK_COUNT="$track_count"
         
         # Setze Variablen zurück
         cd_artist=""
@@ -918,6 +950,9 @@ copy_audio_cd() {
     # Erstelle Archiv-Metadaten (falls Metadaten verfügbar)
     if [[ "$skip_metadata" == "false" ]] && [[ -n "$mb_response" ]]; then
         create_archive_metadata "$iso_filename"
+    elif [[ "$skip_metadata" == "true" ]] && [[ -n "$SAVED_DISCID" ]]; then
+        # Mehrere Releases - speichere Query-Daten für Browser
+        save_mbquery_for_iso "$iso_filename" "$SAVED_DISCID" "$SAVED_TOC" "$SAVED_TRACK_COUNT"
     fi
     
     log_message "$MSG_AUDIO_CD_SUCCESS"

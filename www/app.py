@@ -1406,24 +1406,69 @@ def api_musicbrainz_search():
         data = request.get_json()
         artist = data.get('artist', '').strip()
         album = data.get('album', '').strip()
+        iso_path = data.get('iso_path', '').strip()
         
-        if not artist and not album:
-            return jsonify({'success': False, 'message': 'Artist oder Album erforderlich'}), 400
+        # Prüfe ob .mbquery Datei existiert (bei mehreren Treffern während Rip)
+        mbquery_file = None
+        used_mbquery = False
+        if iso_path:
+            # Entferne .iso Extension und füge .mbquery hinzu
+            iso_base = iso_path.rsplit('.', 1)[0] if iso_path.endswith('.iso') else iso_path
+            mbquery_file = f"{iso_base}.mbquery"
+            
+            if os.path.exists(mbquery_file):
+                # Lese gespeicherte Query-Daten
+                try:
+                    with open(mbquery_file, 'r') as f:
+                        query_data = {}
+                        for line in f:
+                            if '=' in line:
+                                key, value = line.strip().split('=', 1)
+                                query_data[key] = value
+                    
+                    disc_id = query_data.get('DISC_ID')
+                    toc = query_data.get('TOC')
+                    
+                    if disc_id and toc:
+                        # Nutze disc-id + TOC für exakte Suche (wie beim Rippen)
+                        url = f"https://musicbrainz.org/ws/2/discid/{disc_id}?toc={toc}&fmt=json&inc=artists+labels+recordings+media"
+                        
+                        response = requests.get(url, timeout=10, headers={'User-Agent': 'disk2iso/1.2.0'})
+                        response.raise_for_status()
+                        mb_data = response.json()
+                        
+                        # Formatiere releases aus discid-Antwort
+                        releases_data = mb_data.get('releases', [])
+                        
+                        # Verwende diese Daten statt normaler Suche
+                        data = {'releases': releases_data}
+                        used_mbquery = True
+                    else:
+                        # Fallback: Normale Suche
+                        mbquery_file = None
+                except Exception as e:
+                    print(f"Fehler beim Lesen von .mbquery: {e}", file=sys.stderr)
+                    mbquery_file = None
         
-        # MusicBrainz API-Anfrage
-        query_parts = []
-        if artist:
-            query_parts.append(f'artist:"{artist}"')
-        if album:
-            query_parts.append(f'release:"{album}"')
-        
-        query = ' AND '.join(query_parts)
-        # Erweiterte Abfrage mit recordings und labels für vollständige Metadaten
-        url = f"https://musicbrainz.org/ws/2/release/?query={query}&fmt=json&limit=10&inc=artists+labels+recordings+media"
-        
-        response = requests.get(url, timeout=10, headers={'User-Agent': 'disk2iso/1.2.0'})
-        response.raise_for_status()
-        data = response.json()
+        # Normale Suche wenn keine .mbquery oder Fehler
+        if not used_mbquery:
+            if not artist and not album:
+                return jsonify({'success': False, 'message': 'Artist oder Album erforderlich'}), 400
+            
+            # MusicBrainz API-Anfrage
+            query_parts = []
+            if artist:
+                query_parts.append(f'artist:"{artist}"')
+            if album:
+                query_parts.append(f'release:"{album}"')
+            
+            query = ' AND '.join(query_parts)
+            # Erweiterte Abfrage mit recordings und labels für vollständige Metadaten
+            url = f"https://musicbrainz.org/ws/2/release/?query={query}&fmt=json&limit=10&inc=artists+labels+recordings+media"
+            
+            response = requests.get(url, timeout=10, headers={'User-Agent': 'disk2iso/1.2.0'})
+            response.raise_for_status()
+            data = response.json()
         
         # Formatiere Ergebnisse (kompatibel mit Original-Format)
         results = []
@@ -1459,7 +1504,7 @@ def api_musicbrainz_search():
                 'cover_url': f"https://coverartarchive.org/release/{release['id']}/front-250" if release.get('id') else None
             })
         
-        return jsonify({'success': True, 'results': results})
+        return jsonify({'success': True, 'results': results, 'used_mbquery': used_mbquery})
         
     except Exception as e:
         return jsonify({'success': False, 'message': f'MusicBrainz-Suche fehlgeschlagen: {str(e)}'}), 500
