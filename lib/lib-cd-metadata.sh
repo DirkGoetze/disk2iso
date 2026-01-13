@@ -40,10 +40,16 @@ remaster_audio_iso_with_metadata() {
     
     log_message "Audio-Remaster: Starte ISO-Remaster für: $(basename "$iso_path")"
     
+    # Debug: Zeige ISO-Pfad
+    log_message "Audio-Remaster: Vollständiger ISO-Pfad: $iso_path"
+    
     # Erstelle temporäre Verzeichnisse in .temp (gleicher Parent wie ISO)
-    local iso_dir=$(dirname "$iso_path")
-    local iso_parent=$(dirname "$iso_dir")
+    # Verwende bash-interne String-Operationen statt dirname (robuster)
+    local iso_dir="${iso_path%/*}"  # Entfernt den Dateinamen
+    local iso_parent="${iso_dir%/*}"  # Entfernt das audio-Verzeichnis
     local temp_base="${iso_parent}/.temp"
+    
+    log_message "Audio-Remaster: iso_dir=$iso_dir, iso_parent=$iso_parent, temp_base=$temp_base"
     
     local temp_extract="${temp_base}/disk2iso_remaster_$$"
     local temp_tagged="${temp_base}/disk2iso_tagged_$$"
@@ -75,12 +81,12 @@ remaster_audio_iso_with_metadata() {
     
     log_message "Audio-Remaster: Album: $artist - $album ($year)"
     
-    # Lade Cover von Cover Art Archive
+    # Lade Cover von Cover Art Archive (mit redirect-follow)
     local cover_file=""
     local cover_url="https://coverartarchive.org/release/${mb_release_id}/front-500"
     
     cover_file="${temp_extract}/cover.jpg"
-    if curl -s -f "$cover_url" -o "$cover_file" 2>/dev/null; then
+    if curl -L -s -f "$cover_url" -o "$cover_file" 2>/dev/null; then
         log_message "Audio-Remaster: Cover heruntergeladen"
     else
         log_message "Audio-Remaster: Cover-Download fehlgeschlagen (kein Cover verfügbar)"
@@ -174,26 +180,41 @@ extract_iso_to_temp() {
     local iso_path="$1"
     local temp_dir="$2"
     
-    # Versuche 7z (bevorzugt, funktioniert ohne Mount)
-    if command -v 7z >/dev/null 2>&1; then
-        if 7z x "$iso_path" -o"$temp_dir" >/dev/null 2>&1; then
-            return 0
-        fi
-    fi
+    log_message "Audio-Remaster: Extrahiere nach: $temp_dir"
     
-    # Fallback: Loop-Mount
+    # Loop-Mount verwenden (Service läuft als root, mount sollte funktionieren)
     local mount_point="${temp_dir}_mount"
     mkdir -p "$mount_point"
     
-    if mount -o loop,ro "$iso_path" "$mount_point" 2>/dev/null; then
-        cp -r "$mount_point"/* "$temp_dir/" 2>/dev/null
-        umount "$mount_point"
-        rmdir "$mount_point"
-        return 0
-    fi
+    log_message "Audio-Remaster: Mounte ISO mit /bin/mount..."
     
-    log_message "Audio-Remaster: ISO-Extraktion fehlgeschlagen"
-    return 1
+    # Verwende absoluten Pfad zu mount und capture stderr
+    local mount_output=$(/bin/mount -o loop,ro "$iso_path" "$mount_point" 2>&1)
+    local mount_result=$?
+    
+    if [[ $mount_result -eq 0 ]]; then
+        log_message "Audio-Remaster: ISO erfolgreich gemountet, kopiere Dateien..."
+        
+        # Kopiere alle Dateien
+        local copy_output=$(cp -r "$mount_point"/* "$temp_dir/" 2>&1)
+        local copy_result=$?
+        
+        if [[ $copy_result -eq 0 ]]; then
+            /bin/umount "$mount_point"
+            rmdir "$mount_point"
+            log_message "Audio-Remaster: Extraktion erfolgreich ($(ls -1 "$temp_dir" | wc -l) Dateien kopiert)"
+            return 0
+        else
+            log_message "Audio-Remaster: Fehler beim Kopieren: $copy_output"
+            /bin/umount "$mount_point" 2>/dev/null
+            rmdir "$mount_point" 2>/dev/null
+            return 1
+        fi
+    else
+        log_message "Audio-Remaster: Mount fehlgeschlagen (Exit: $mount_result): $mount_output"
+        rmdir "$mount_point" 2>/dev/null
+        return 1
+    fi
 }
 
 # Funktion: Aktualisiere MP3-Tags aus MusicBrainz-Daten
@@ -244,15 +265,9 @@ update_mp3_tags_from_musicbrainz() {
     
     log_message "Audio-Remaster: Gefunden: $mp3_count MP3s, MusicBrainz: $track_count Tracks"
     
-    # Tagge jede MP3
+    # Tagge jede MP3 und benenne um
     local track_num=1
     for mp3_file in "${mp3_files[@]}"; do
-        local filename=$(basename "$mp3_file")
-        local target_file="$target_dir/$filename"
-        
-        # Kopiere MP3
-        cp "$mp3_file" "$target_file"
-        
         # Hole Track-Titel aus MusicBrainz
         local track_title=""
         if [[ $track_num -le $track_count ]]; then
@@ -261,10 +276,19 @@ update_mp3_tags_from_musicbrainz() {
             track_title="Track $track_num"
         fi
         
+        # Erstelle sauberen Dateinamen: "Artist - Title.mp3"
+        local clean_title=$(echo "$track_title" | sed 's/[^a-zA-Z0-9 ()!_-]/_/g' | sed 's/  */ /g')
+        local new_filename="${artist} - ${clean_title}.mp3"
+        local target_file="$target_dir/$new_filename"
+        
+        # Kopiere MP3
+        cp "$mp3_file" "$target_file"
+        
         # Tagge mit eyeD3 oder id3v2
         if [[ "$tag_tool" == "eyeD3" ]]; then
             eyeD3 --quiet \
                 --artist "$artist" \
+                --album-artist "$artist" \
                 --album "$album" \
                 --title "$track_title" \
                 --track "$track_num" \
@@ -277,17 +301,18 @@ update_mp3_tags_from_musicbrainz() {
                 eyeD3 --quiet --add-image "${cover_file}:FRONT_COVER" "$target_file" >/dev/null 2>&1
             fi
         else
-            # id3v2
+            # id3v2 (hat kein --album-artist, verwende --TPE2 für AlbumArtist)
             id3v2 \
                 --artist "$artist" \
                 --album "$album" \
                 --song "$track_title" \
                 --track "$track_num" \
+                --TPE2 "$artist" \
                 ${year:+--year "$year"} \
                 "$target_file" >/dev/null 2>&1
         fi
         
-        log_message "Audio-Remaster: Getaggt: $track_num. $track_title"
+        log_message "Audio-Remaster: Getaggt: $track_num. $track_title -> $new_filename"
         track_num=$((track_num + 1))
     done
     

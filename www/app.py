@@ -1472,14 +1472,20 @@ def api_musicbrainz_apply():
         iso_path = data.get('iso_path', '')
         release_id = data.get('release_id', '')
         
+        print(f"[DEBUG] Remaster-Request: iso_path={iso_path}, release_id={release_id}", file=sys.stderr)
+        
         if not iso_path or not os.path.exists(iso_path):
+            print(f"[ERROR] ISO nicht gefunden: {iso_path}", file=sys.stderr)
             return jsonify({'success': False, 'message': 'ISO-Datei nicht gefunden'}), 400
         
         if not release_id:
+            print(f"[ERROR] Keine Release-ID", file=sys.stderr)
             return jsonify({'success': False, 'message': 'MusicBrainz Release-ID erforderlich'}), 400
         
         # Starte Remaster-Prozess im Hintergrund
         script = f"""
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 source {INSTALL_DIR}/lib/config.sh
 source {INSTALL_DIR}/lib/lib-common.sh
 source {INSTALL_DIR}/lib/lib-logging.sh
@@ -1495,6 +1501,8 @@ else
 fi
 """
         
+        print(f"[DEBUG] Starte Remaster-Prozess...", file=sys.stderr)
+        
         # Timeout erhöhen (Remaster kann 5-10 Minuten dauern)
         result = subprocess.run(
             ['/bin/bash', '-c', script],
@@ -1503,24 +1511,34 @@ fi
             timeout=600  # 10 Minuten
         )
         
+        print(f"[DEBUG] Remaster beendet. Exit-Code: {result.returncode}", file=sys.stderr)
+        print(f"[DEBUG] STDOUT: {result.stdout[:500]}", file=sys.stderr)
+        print(f"[DEBUG] STDERR: {result.stderr[:500]}", file=sys.stderr)
+        
         if "SUCCESS" in result.stdout:
             return jsonify({
                 'success': True,
                 'message': 'Audio-ISO erfolgreich neu erstellt mit korrekten Tags'
             })
         else:
+            error_msg = result.stderr if result.stderr else "Unbekannter Fehler"
+            print(f"[ERROR] Remaster fehlgeschlagen: {error_msg}", file=sys.stderr)
             return jsonify({
                 'success': False,
                 'message': 'Fehler beim Remaster der Audio-ISO',
-                'error': result.stderr
+                'error': error_msg
             }), 500
             
     except subprocess.TimeoutExpired:
+        print(f"[ERROR] Remaster-Timeout", file=sys.stderr)
         return jsonify({
             'success': False,
             'message': 'Timeout: Remaster-Prozess dauert zu lange'
         }), 500
     except Exception as e:
+        print(f"[ERROR] Exception in api_musicbrainz_apply: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         return jsonify({'success': False, 'message': f'Fehler: {str(e)}'}), 500
 
 @app.route('/health')
