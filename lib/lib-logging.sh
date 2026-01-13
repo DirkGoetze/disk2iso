@@ -103,7 +103,6 @@ fi
 
 # ============================================================================
 # LOGGING FUNCTIONS
-# Quelle: functions.sh
 # ============================================================================
 
 # Funktion für Logging (verwendet aktuelles log_filename)

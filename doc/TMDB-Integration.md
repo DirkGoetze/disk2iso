@@ -10,10 +10,13 @@ Die TMDB (The Movie Database) API-Integration wurde erfolgreich implementiert un
 
 **lib/lib-dvd-metadata.sh** - Neue Bibliothek für TMDB-Integration:
 - `search_tmdb_movie()` - Film in TMDB API suchen
+- `search_tmdb_tv()` - TV-Serie in TMDB API suchen (v1.2.0+)
 - `get_tmdb_movie_details()` - Details inkl. Credits abrufen
+- `get_tmdb_tv_details()` - TV-Serien Details mit Creator abrufen (v1.2.0+)
 - `download_tmdb_poster()` - Poster von TMDB herunterladen
 - `create_movie_nfo()` - .nfo Datei für DVD/Blu-ray erstellen
 - `select_tmdb_movie()` - Interaktive Filmauswahl (wartet auf Web-UI)
+- `select_tmdb_content()` - Film/TV-Serie Auswahl mit Type-Selection Modal (v1.2.0+)
 - `create_dvd_archive_metadata()` - Hauptfunktion für Metadaten-Erstellung
 - `extract_movie_title()` - Filmtitel aus disc_label extrahieren
 
@@ -26,8 +29,9 @@ Die TMDB (The Movie Database) API-Integration wurde erfolgreich implementiert un
 ### 2. Frontend (Web-Interface)
 
 **www/app.py** - API-Endpoints:
-- `GET /api/tmdb/results` - TMDB-Suchergebnisse abrufen
-- `POST /api/tmdb/select` - Film auswählen
+- `GET /api/tmdb/results` - TMDB-Suchergebnisse abrufen (Filme + TV-Serien)
+- `POST /api/tmdb/select` - Film/TV-Serie auswählen
+- `POST /api/tmdb/type` - Content-Type festlegen (movie/tv) (v1.2.0+)
 - `POST /api/config` - TMDB_API_KEY speichern
 - `GET /api/config` - TMDB_API_KEY laden
 
@@ -35,14 +39,16 @@ Die TMDB (The Movie Database) API-Integration wurde erfolgreich implementiert un
 - TMDB API-Key Eingabefeld
 - Link zur Anleitung (TMDB-API-Key.md)
 
-**www/templates/base.html** - Modal:
-- TMDB Film-Auswahl Modal
+**www/templates/base.html** - Modals:
+- TMDB Film/TV-Serien-Auswahl Modal
+- TMDB Type-Selection Modal (Film vs. TV-Serie) (v1.2.0+)
 - Script-Import für tmdb.js
 
-**www/static/js/tmdb.js** - Film-Auswahl:
+**www/static/js/tmdb.js** - Film/TV-Auswahl:
 - Automatisches Polling für TMDB-Ergebnisse
-- Modal-Anzeige mit Movie-Cards
-- Filmauswahl per Klick
+- Type-Selection Modal (Film vs. TV-Serie) bei mehrdeutigem Content (v1.2.0+)
+- Modal-Anzeige mit Movie/TV-Cards
+- Film/TV-Serie Auswahl per Klick
 - Benachrichtigungen
 
 **www/static/js/archive.js** - Archiv-Ansicht:
@@ -114,7 +120,11 @@ OVERVIEW=Set in the 22nd century, The Matrix tells...
 
 2. **DVD mit mehrdeutigem Titel**:
    - Disc mit generischem Label (z.B. "matrix")
-   - Erwartung: TMDB-Modal erscheint, mehrere Auswahlmöglichkeiten
+   - Erwartung: Type-Selection Modal (Film vs. TV-Serie), dann TMDB-Modal mit Auswahlmöglichkeiten
+
+2a. **TV-Serien DVD**:
+   - Disc mit Serien-Label (z.B. "breaking_bad_s01")
+   - Erwartung: Type-Selection Modal → TV-Serie auswählen → TMDB-Modal mit Serien-Ergebnissen
 
 3. **Blu-ray Test**:
    - Blu-ray einlegen
@@ -137,26 +147,28 @@ OVERVIEW=Set in the 22nd century, The Matrix tells...
 ## Bekannte Einschränkungen
 
 1. **Sprache**: Aktuell hardcoded auf `de-DE` (deutsche Titel/Overviews)
-2. **Timeout**: Filmauswahl-Wartezeit 5 Minuten (konfigurierbar in lib-dvd-metadata.sh)
+2. **Timeout**: Film/TV-Auswahl-Wartezeit 5 Minuten (konfigurierbar in lib-dvd-metadata.sh)
 3. **Titel-Extraktion**: Funktioniert am besten mit sauberen Labels (Unterstriche, Jahr am Ende)
-4. **Keine Serien-Erkennung**: TV-Shows auf DVD werden als Filme behandelt
+4. **TV-Serien**: Kein automatisches Staffel/Episoden-Mapping (nur Serie als Ganzes)
 
 ## Zukünftige Erweiterungen
 
 - [ ] Multi-Language Support (Sprachauswahl in Config)
-- [ ] TV-Show Erkennung (TMDB /tv Endpoint)
+- [ ] TV-Serien Staffel/Episoden-Mapping (Season/Episode-Level Metadaten)
 - [ ] Backdrop-Images zusätzlich zu Postern
 - [ ] Cast-Informationen in .nfo
 - [ ] Metadaten-Nachbearbeitung (Edit-Funktion im Web-UI)
-- [ ] Batch-Metadaten-Regenerierung (wie bei Audio-CDs)
+- [ ] Batch-Metadaten-Regenerierung (nachträgliche Erfassung, wie bei Audio-CDs)
 
 ## Changelog
 
 **13.01.2026 - v1.2.0**
-- ✅ TMDB API-Integration für DVD/Blu-ray
+- ✅ TMDB API-Integration für DVD/Blu-ray (Filme + TV-Serien)
 - ✅ API-Key Eingabefeld in Einstellungen
 - ✅ Automatische Metadaten-Erstellung (.nfo + -thumb.jpg)
-- ✅ Film-Auswahl Modal im Web-Interface
+- ✅ Film/TV-Serien-Auswahl Modals im Web-Interface
+- ✅ Type-Selection Modal (Film vs. TV-Serie)
+- ✅ TV-Serien Support (TMDB /tv Endpoint, Creator statt Director)
 - ✅ Archiv-Ansicht für DVD/Blu-ray erweitert
 - ✅ DVD/Blu-ray Placeholder (Disc + Clapperboard)
 - ✅ Dokumentation (TMDB-API-Key.md)

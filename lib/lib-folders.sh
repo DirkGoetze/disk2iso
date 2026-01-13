@@ -59,13 +59,16 @@ ensure_subfolder() {
 
 # ============================================================================
 # TEMP FOLDER MANAGEMENT
-# Quelle: lib-diskinfos.sh
 # ============================================================================
 
 # Funktion zum Erstellen des Temp-Verzeichnisses
 # Prüft temp_base (wurde bei Installation angelegt), erstellt nur Unterordner
 # Setzt globale Variable: temp_pathname
 # Nutzt Lazy Initialization für temp_base und TEMP_DIR Konstante
+#
+# WICHTIG: Temp-Verzeichnis (.temp) hat 777 Permissions (siehe install.sh)!
+# Grund: Service (root) + manuelle User-Aufrufe benötigen Write-Zugriff.
+# Security: Akzeptabel für Trusted Environment (Home-Server)
 get_temp_pathname() {
     # Nutze ensure_subfolder für temp_base (Konstante aus lib-common.sh)
     local temp_base
@@ -118,6 +121,13 @@ get_tmp_mount() {
 # Funktion zum Prüfen des Log-Verzeichnisses
 # Prüft ob Log-Verzeichnis existiert (wurde bei Installation angelegt)
 # Nutzt Lazy Initialization - wird nur einmal pro Session geprüft
+#
+# WICHTIG: Log-Verzeichnis hat 777 Permissions (siehe install.sh)!
+# Grund: Manuelle CLI-Aufrufe von verschiedenen Usern müssen in .log 
+#        schreiben können. Service läuft als root, aber User A, B, C 
+#        rufen disk2iso.sh auch manuell auf und müssen loggen können.
+# Alternativen: Group-Management (höherer Setup-Aufwand)
+# Security: Akzeptabel für Trusted Environment (Home-Server)
 get_log_folder() {
     # Lazy Initialization: Log-Verzeichnis nur einmal prüfen
     if [[ "$_LOG_DIR_CREATED" == false ]]; then

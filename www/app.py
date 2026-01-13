@@ -554,7 +554,7 @@ def api_musicbrainz_cover(release_id):
         )
         
         if result.returncode != 0:
-            return jsonify({'error': 'Cover-Download fehlgeschlagen'}), 500
+            return jsonify({'error': g.t.get('API_ERROR_COVER_DOWNLOAD', 'Cover download failed')}), 500
         
         # Parse JSON-Output
         try:
@@ -565,15 +565,15 @@ def api_musicbrainz_cover(release_id):
                 if cover_path and os.path.exists(cover_path):
                     return send_file(cover_path, mimetype='image/jpeg')
                 else:
-                    return jsonify({'error': 'Cover-Datei nicht gefunden'}), 404
+                    return jsonify({'error': g.t.get('API_ERROR_COVER_NOT_FOUND', 'Cover file not found')}), 404
             else:
-                return jsonify({'error': response_data.get('message', 'Unknown error')}), 404
+                return jsonify({'error': response_data.get('message', g.t.get('API_ERROR_UNKNOWN', 'Unknown error'))}), 404
                 
         except json.JSONDecodeError as e:
             return jsonify({'error': f'Ungültige JSON-Antwort: {str(e)}'}), 500
             
     except subprocess.TimeoutExpired:
-        return jsonify({'error': 'Cover-Download: Zeitüberschreitung'}), 500
+        return jsonify({'error': g.t.get('API_ERROR_TIMEOUT', 'Timeout')}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -584,7 +584,7 @@ def api_musicbrainz_select():
         data = request.get_json()
         
         if not data or 'index' not in data:
-            return jsonify({'success': False, 'message': 'Index fehlt'}), 400
+            return jsonify({'success': False, 'message': g.t.get('API_ERROR_INDEX_MISSING', 'Index missing')}), 400
         
         selected_index = int(data['index'])
         
@@ -593,7 +593,7 @@ def api_musicbrainz_select():
             'status': 'confirmed',
             'selected_index': selected_index,
             'confidence': 'user_confirmed',
-            'message': 'Album vom Benutzer ausgewählt',
+            'message': g.t.get('API_SUCCESS_SELECTION', 'Selected by user'),
             'timestamp': datetime.now().isoformat()
         }
         
@@ -615,7 +615,7 @@ def api_musicbrainz_manual():
         
         required = ['artist', 'album', 'year']
         if not all(field in data for field in required):
-            return jsonify({'success': False, 'message': 'Fehlende Felder'}), 400
+            return jsonify({'success': False, 'message': g.t.get('API_ERROR_FIELDS_MISSING', 'Missing fields')}), 400
         
         # Speichere manuelle Metadaten
         manual_data = {
@@ -656,7 +656,7 @@ def api_tmdb_select():
         data = request.get_json()
         
         if not data or 'index' not in data:
-            return jsonify({'success': False, 'message': 'Index fehlt'}), 400
+            return jsonify({'success': False, 'message': g.t.get('API_ERROR_INDEX_MISSING', 'Index missing')}), 400
         
         selected_index = int(data['index'])
         
@@ -704,7 +704,7 @@ def api_archive_thumbnail(filename):
                 thumb_path = os.path.join(root, filename)
                 return send_file(thumb_path, mimetype='image/jpeg')
         
-        return jsonify({'error': 'Thumbnail nicht gefunden'}), 404
+        return jsonify({'error': g.t.get('API_ERROR_THUMBNAIL_NOT_FOUND', 'Thumbnail not found')}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -727,7 +727,7 @@ def api_config():
             )
             
             if result.returncode != 0:
-                return jsonify({'success': False, 'message': 'Fehler beim Lesen der Konfiguration'}), 500
+                return jsonify({'success': False, 'message': g.t.get('API_ERROR_CONFIG_READ', 'Error reading configuration')}), 500
             
             # Parse JSON-Output
             try:
@@ -739,10 +739,10 @@ def api_config():
                 else:
                     return jsonify({'error': config_data.get('message', 'Unknown error')}), 500
             except json.JSONDecodeError as e:
-                return jsonify({'error': f'Ungültige JSON-Antwort: {str(e)}'}), 500
+                return jsonify({'error': f"{g.t.get('API_ERROR_INVALID_JSON', 'Invalid JSON response')}: {str(e)}"}), 500
                 
         except subprocess.TimeoutExpired:
-            return jsonify({'error': 'Config-Read: Zeitüberschreitung'}), 500
+            return jsonify({'error': g.t.get('API_ERROR_TIMEOUT', 'Timeout')}), 500
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     
@@ -752,14 +752,14 @@ def api_config():
             data = request.get_json()
             
             if not data:
-                return jsonify({'success': False, 'message': 'Keine Daten empfangen'}), 400
+                return jsonify({'success': False, 'message': g.t.get('API_ERROR_NO_DATA', 'No data received')}), 400
             
             # Validierung
             required_fields = ['output_dir', 'mp3_quality', 'ddrescue_retries', 
                              'usb_detection_attempts', 'usb_detection_delay']
             for field in required_fields:
                 if field not in data:
-                    return jsonify({'success': False, 'message': f'Feld fehlt: {field}'}), 400
+                    return jsonify({'success': False, 'message': f"{g.t.get('API_ERROR_FIELD_MISSING', 'Field missing')}: {field}"}), 400
             
             # Mapping: JSON-Key -> Config-Key
             config_mapping = {
@@ -811,7 +811,7 @@ def api_config():
             if result.returncode != 0:
                 return jsonify({
                     'success': False,
-                    'message': 'Fehler beim Speichern der Konfiguration',
+                    'message': g.t.get('API_ERROR_CONFIG_SAVE', 'Error saving configuration'),
                     'error': result.stderr
                 }), 500
             
@@ -821,7 +821,7 @@ def api_config():
             })
             
         except subprocess.TimeoutExpired:
-            return jsonify({'success': False, 'message': 'Config-Write: Zeitüberschreitung'}), 500
+            return jsonify({'success': False, 'message': f"{g.t.get('API_ERROR_TIMEOUT', 'Timeout')}: Config-Write"}), 500
         except Exception as e:
             return jsonify({'success': False, 'message': f'Fehler beim Speichern: {str(e)}'}), 500
 
@@ -1526,7 +1526,7 @@ def api_musicbrainz_apply():
         
         if not release_id:
             print(f"[ERROR] Keine Release-ID", file=sys.stderr)
-            return jsonify({'success': False, 'message': 'MusicBrainz Release-ID erforderlich'}), 400
+            return jsonify({'success': False, 'message': g.t.get('API_ERROR_RELEASE_ID_REQUIRED', 'MusicBrainz Release ID required')}), 400
         
         # Starte Remaster-Prozess im Hintergrund
         script = f"""
@@ -1564,14 +1564,14 @@ fi
         if "SUCCESS" in result.stdout:
             return jsonify({
                 'success': True,
-                'message': 'Audio-ISO erfolgreich neu erstellt mit korrekten Tags'
+                'message': g.t.get('API_SUCCESS_REMASTER', 'Audio ISO successfully recreated with correct tags')
             })
         else:
             error_msg = result.stderr if result.stderr else "Unbekannter Fehler"
             print(f"[ERROR] Remaster fehlgeschlagen: {error_msg}", file=sys.stderr)
             return jsonify({
                 'success': False,
-                'message': 'Fehler beim Remaster der Audio-ISO',
+                'message': g.t.get('API_ERROR_REMASTER_FAILED', 'Error remastering audio ISO'),
                 'error': error_msg
             }), 500
             
@@ -1579,7 +1579,7 @@ fi
         print(f"[ERROR] Remaster-Timeout", file=sys.stderr)
         return jsonify({
             'success': False,
-            'message': 'Timeout: Remaster-Prozess dauert zu lange'
+            'message': g.t.get('API_ERROR_REMASTER_TIMEOUT', 'Timeout: Remaster process takes too long')
         }), 500
     except Exception as e:
         print(f"[ERROR] Exception in api_musicbrainz_apply: {str(e)}", file=sys.stderr)

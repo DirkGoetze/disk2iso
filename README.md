@@ -28,6 +28,29 @@ git clone <repository-url>
 cd disk2iso
 sudo ./install.sh
 
+# Interaktiver Wizard installiert automatisch alle Abhängigkeiten
+```
+
+**Manuelle Abhängigkeiten-Installation:**
+```bash
+# Kern-Pakete (immer erforderlich)
+sudo apt install -y coreutils util-linux genisoimage gddrescue eject mount
+
+# Audio-CD Support (optional)
+sudo apt install -y cdparanoia lame eyed3 curl jq cd-discid wodim libcdio-utils
+
+# Video-DVD Support (optional)
+sudo apt install -y dvdbackup libdvd-pkg
+
+# Web-Interface (optional)
+sudo apt install -y python3 python3-pip python3-venv
+
+# MQTT-Integration (optional)
+sudo apt install -y mosquitto-clients
+```
+
+**Weitere Details:** [Installation-Script](doc/Installation-Script.md) | [Installation-Service](doc/Installation-Service.md)
+
 # Service starten
 sudo systemctl start disk2iso
 sudo systemctl start disk2iso-web
@@ -68,11 +91,18 @@ sudo systemctl start disk2iso-web
 - Album-Cover Download und Einbettung
 - CD-TEXT Fallback
 - Jellyfin-kompatible Ausgabe
+- **Nachträgliche Metadaten-Erfassung** (v1.2.0+)
+  - ISO-Remastering mit korrekten Tags über Web-Interface
+  - MusicBrainz-Suche für bereits erstellte ISOs
 
 ### 🌐 Web-Interface
 - Live-Status Dashboard
 - Fortschrittsanzeige (Prozent, MB, ETA)
 - Archiv-Verwaltung mit Kategorisierung
+- **Nachträgliche Metadaten-Erfassung** (v1.2.0+)
+  - MusicBrainz-Suche für Audio-CDs
+  - TMDB-Suche für DVDs/Blu-rays (Filme & TV-Serien)
+  - ISO-Remastering mit korrekten Tags
 - Logs und Systeminfos
 - 4 Sprachen (de, en, es, fr)
 

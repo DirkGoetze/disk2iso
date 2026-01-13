@@ -88,11 +88,11 @@
     <div id="tmdbModal" class="modal">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>Film auswählen</h2>
+                <h2>{{ t.MODAL_TMDB_TITLE }}</h2>
                 <span class="modal-close" onclick="closeTmdbModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <p>Bitte wählen Sie den richtigen Film aus den TMDB-Suchergebnissen:</p>
+                <p>{{ t.MODAL_TMDB_MESSAGE }}</p>
                 <div id="tmdbResultsList" class="tmdb-results-list"></div>
             </div>
         </div>

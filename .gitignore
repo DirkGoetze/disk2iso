@@ -27,3 +27,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Exclude deployment helper scripts
+todo/deploy.sh
+todo/validate_deployment.sh

@@ -279,7 +279,10 @@ Falls der Wizard nicht funktioniert (z.B. kein whiptail/dialog), manuelle Instal
 ```bash
 # Kern-Pakete (immer erforderlich)
 sudo apt update
-sudo apt install -y coreutils util-linux genisoimage whiptail
+sudo apt install -y coreutils util-linux genisoimage eject mount
+
+# Optional: Installer-Wizard (empfohlen)
+sudo apt install -y whiptail
 
 # Optional: Audio-CD Modul
 sudo apt install -y cdparanoia lame eyed3 curl jq cd-discid wodim libcdio-utils
@@ -289,7 +292,7 @@ sudo apt install -y dvdbackup libdvd-pkg
 sudo dpkg-reconfigure libdvd-pkg  # libdvdcss2 installieren
 
 # Optional: Blu-ray Modul
-sudo apt install -y ddrescue
+sudo apt install -y gddrescue
 ```
 
 ### 2. Dateien kopieren
@@ -414,8 +417,8 @@ sudo journalctl -u disk2iso -f
 - Große Medien (25/50/100 GB)
 
 **Abhängigkeiten**:
-- `ddrescue` - Robustes Kopieren (primär)
-- `dd` - Fallback-Methode
+- `gddrescue` (ddrescue) - Robustes Kopieren (primär)
+- `dd` - Fallback-Methode (coreutils, immer verfügbar)
 
 **Speicherplatz**: 25-100 GB pro Blu-ray
 

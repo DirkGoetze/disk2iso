@@ -103,6 +103,12 @@ sudo systemctl status disk2iso-web
 
 **📦 Archive**
 - **Kategorisierung**: Nach Typ (Audio, DVD, Blu-ray, Data)
+- **Metadaten-Anzeige**: Cover, Künstler/Regisseur, Album/Titel, Jahr, Genre (falls vorhanden)
+- **Nachträgliche Metadaten-Erfassung** (v1.2.0+):
+  - **"Add Metadata" Button**: Für bereits erstellte ISOs ohne Metadaten
+  - **MusicBrainz-Suche**: Audio-CDs - Album-Auswahl über Web-Interface
+  - **TMDB-Suche**: DVDs/Blu-rays - Film/TV-Serien-Auswahl über Web-Interface
+  - **Automatisches Remastering**: Neue ISO mit korrekten Tags/Metadaten erstellen
 - **Dateigröße**: Anzeige für jedes ISO
 - **MD5-Checksummen**: Download-Links
 - **Schnellsuche**: Filter nach Namen

@@ -16,7 +16,6 @@
 
 # ============================================================================
 # FILENAME SANITIZATION
-# Quelle: functions.sh
 # ============================================================================
 
 # Funktion zur Bereinigung des Dateinamens
@@ -29,7 +28,6 @@ sanitize_filename() {
 
 # ============================================================================
 # FILENAME GENERATION
-# Quelle: lib-diskinfos.sh
 # ============================================================================
 
 # Funktion zum Erstellen des ISO-Dateinamens

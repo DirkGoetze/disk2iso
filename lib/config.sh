@@ -54,7 +54,8 @@ MQTT_RETAIN=true            # Retain-Flag (true/false)
 
 # TMDB API-Key von themoviedb.org
 # Wird für automatische Film-Metadaten und Cover-Download benötigt
-TMDB_API_KEY="4697d7d1e71f7d51c612062bd6336687"
+# Siehe doc/TMDB-API-Key.md für Anleitung zur API-Key Registrierung
+TMDB_API_KEY=""
 
 # ============================================================================
 # AUDIO-CD ENCODING EINSTELLUNGEN

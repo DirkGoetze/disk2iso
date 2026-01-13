@@ -53,6 +53,11 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
   - **Automatisch**: Cover-Download via Cover Art Archive
 - **ID3-Tags**: Vollständige Metadaten-Einbettung in MP3s
 - **Jellyfin-Support**: NFO-Dateien für Media-Server
+- **Nachträgliche Metadaten-Erfassung** (Modul: lib-cd-metadata.sh, v1.2.0+):
+  - **ISO-Remastering**: Bereits erstellte Audio-ISOs mit neuen Tags versehen
+  - **Web-Interface**: "Add Metadata" Button im Archiv
+  - **MusicBrainz-Suche**: Manuelle Album-Auswahl über Web-UI
+  - **Automatisches Remastering**: MP3s extrahieren → Tags aktualisieren → Neue ISO erstellen
 
 #### 📀 Video-DVD Support (Modul: lib-dvd.sh)
 - **Entschlüsselung**: dvdbackup mit libdvdcss2
@@ -61,6 +66,13 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 - **Automatisches Reject**: DVDs nach 2 Fehlversuchen
 - **Priorität**: Entschlüsselt vor verschlüsselt
 - **Struktur**: VIDEO_TS → ISO-Konvertierung
+- **TMDB-Metadaten** (Modul: lib-dvd-metadata.sh, v1.2.0+):
+  - **Automatische Film-Suche**: Titel-Extraktion aus disc_label
+  - **TV-Serien Support**: Automatische Erkennung von TV-Shows mit Staffel/Disc-Nummer
+  - **Interaktive Auswahl**: Web-Interface Modal bei mehreren Treffern
+  - **Metadaten**: .nfo Datei (Titel, Jahr, Regisseur, Genre, Laufzeit, Rating)
+  - **Poster-Download**: -thumb.jpg (w500 von TMDB)
+  - **Nachträgliche Erfassung**: "Add Metadata" Button im Web-Interface Archiv
 
 #### 🎬 Blu-ray Support (Modul: lib-bluray.sh)
 - **Robustes Kopieren**: ddrescue (primär), dd (fallback)
@@ -105,12 +117,16 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 - **Mehrsprachig**: Web-UI nutzt gleiche LANGUAGE-Einstellung wie Backend (de, en, es, fr)
 - **6 Hauptseiten**: Home, Archive, Logs, Config, System, Help
 - **Live-Updates**: Auto-Refresh alle 5 Sekunden
-- **JSON REST API** (lib-api.sh):
+- **JSON REST API** (lib-api.sh + app.py):
   - `/api/status` - Aktueller State und Fortschritt
   - `/api/archive` - Liste aller ISOs
   - `/api/logs` - Log-Dateien
   - `/api/config` - Konfiguration
   - `/api/system` - System-Informationen
+  - `/api/metadata/musicbrainz/search` - MusicBrainz Album-Suche (v1.2.0+)
+  - `/api/metadata/musicbrainz/apply` - Audio-ISO Remastering (v1.2.0+)
+  - `/api/metadata/tmdb/search` - TMDB Film/TV-Suche (v1.2.0+)
+  - `/api/metadata/tmdb/apply` - DVD/Blu-ray Metadaten hinzufügen (v1.2.0+)
 - **Markdown-Rendering**: Integrierte Hilfe-Dokumentation
 
 ### Systemarchitektur

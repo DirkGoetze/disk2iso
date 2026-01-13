@@ -42,15 +42,6 @@ readonly POLL_REMOVAL_INTERVAL=5
 
 # Globale State-Variable
 CURRENT_STATE="$STATE_INITIALIZING"
-#
-# Version: 1.2.0
-# Datum: 06.01.2026
-#
-# Abhängigkeiten:
-#   Pflicht: dd, md5sum, lsblk, isoinfo
-#   Optional: ddrescue, dvdbackup, mkisofs/genisoimage, pv
-#
-################################################################################
 
 # ============================================================================
 # DEBUG-MODUS
