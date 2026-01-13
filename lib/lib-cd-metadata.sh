@@ -40,9 +40,13 @@ remaster_audio_iso_with_metadata() {
     
     log_message "Audio-Remaster: Starte ISO-Remaster für: $(basename "$iso_path")"
     
-    # Erstelle temporäre Verzeichnisse
-    local temp_extract="/tmp/disk2iso_remaster_$$"
-    local temp_tagged="/tmp/disk2iso_tagged_$$"
+    # Erstelle temporäre Verzeichnisse in .temp (gleicher Parent wie ISO)
+    local iso_dir=$(dirname "$iso_path")
+    local iso_parent=$(dirname "$iso_dir")
+    local temp_base="${iso_parent}/.temp"
+    
+    local temp_extract="${temp_base}/disk2iso_remaster_$$"
+    local temp_tagged="${temp_base}/disk2iso_tagged_$$"
     
     mkdir -p "$temp_extract" "$temp_tagged"
     
@@ -71,14 +75,16 @@ remaster_audio_iso_with_metadata() {
     
     log_message "Audio-Remaster: Album: $artist - $album ($year)"
     
-    # Lade Cover
+    # Lade Cover von Cover Art Archive
     local cover_file=""
-    if [[ -n "$cover_url" ]]; then
-        cover_file="${temp_tagged}/cover.jpg"
-        if ! curl -s -f "$cover_url" -o "$cover_file"; then
-            log_message "Audio-Remaster: Cover-Download fehlgeschlagen"
-            cover_file=""
-        fi
+    local cover_url="https://coverartarchive.org/release/${mb_release_id}/front-500"
+    
+    cover_file="${temp_extract}/cover.jpg"
+    if curl -s -f "$cover_url" -o "$cover_file" 2>/dev/null; then
+        log_message "Audio-Remaster: Cover heruntergeladen"
+    else
+        log_message "Audio-Remaster: Cover-Download fehlgeschlagen (kein Cover verfügbar)"
+        cover_file=""
     fi
     
     # Schritt 3: MP3-Tags aktualisieren
@@ -90,31 +96,70 @@ remaster_audio_iso_with_metadata() {
     
     # Schritt 4: Neue ISO erstellen
     log_message "Audio-Remaster: [4/4] Erstelle neue ISO..."
-    local new_iso_path="${iso_path%.iso}_remastered.iso"
     
-    if ! rebuild_audio_iso "$temp_tagged" "$new_iso_path"; then
+    # Nutze .temp Verzeichnis im gleichen Parent wie die ISO
+    local iso_dir=$(dirname "$iso_path")
+    local iso_parent=$(dirname "$iso_dir")
+    local temp_iso="${iso_parent}/.temp/disk2iso_new_$$.iso"
+    
+    if ! rebuild_audio_iso "$temp_tagged" "$temp_iso"; then
         cleanup_remaster_temp "$temp_extract" "$temp_tagged"
         return 1
     fi
     
     # Ersetze alte ISO
-    if mv "$new_iso_path" "$iso_path"; then
+    if mv -f "$temp_iso" "$iso_path"; then
         log_message "Audio-Remaster: ISO erfolgreich aktualisiert"
-        
-        # MD5 neu berechnen
-        local md5_file="${iso_path%.iso}.md5"
-        if command -v md5sum >/dev/null 2>&1; then
-            md5sum "$iso_path" | cut -d' ' -f1 > "$md5_file"
-            log_message "Audio-Remaster: MD5 aktualisiert"
-        fi
         
         # Erstelle .nfo mit Metadaten
         create_audio_nfo "$iso_path" "$artist" "$album" "$year" "$cover_file"
+        
+        # Benenne ISO nach Artist - Album Schema um
+        local clean_artist=$(echo "$artist" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g' | sed 's/__*/_/g' | sed 's/^_//;s/_$//')
+        local clean_album=$(echo "$album" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g' | sed 's/__*/_/g' | sed 's/^_//;s/_$//')
+        local new_name="${clean_artist}_${clean_album}.iso"
+        local new_path="${iso_dir}/${new_name}"
+        
+        # Benenne um wenn Name anders ist
+        if [[ "$iso_path" != "$new_path" ]]; then
+            if mv -f "$iso_path" "$new_path"; then
+                log_message "Audio-Remaster: ISO umbenannt: $(basename "$new_path")"
+                
+                # Benenne auch .md5 und .nfo um
+                local old_md5="${iso_path%.iso}.md5"
+                local new_md5="${new_path%.iso}.md5"
+                [[ -f "$old_md5" ]] && mv -f "$old_md5" "$new_md5"
+                
+                local old_nfo="${iso_path%.iso}.nfo"
+                local new_nfo="${new_path%.iso}.nfo"
+                [[ -f "$old_nfo" ]] && mv -f "$old_nfo" "$new_nfo"
+                
+                local old_thumb="${iso_path%.iso}-thumb.jpg"
+                local new_thumb="${new_path%.iso}-thumb.jpg"
+                [[ -f "$old_thumb" ]] && mv -f "$old_thumb" "$new_thumb"
+                
+                # MD5 neu berechnen für umbenannte ISO
+                if command -v md5sum >/dev/null 2>&1; then
+                    md5sum "$new_path" | cut -d' ' -f1 > "$new_md5"
+                    log_message "Audio-Remaster: MD5 aktualisiert"
+                fi
+            else
+                log_message "Audio-Remaster: Warnung - ISO-Umbenennung fehlgeschlagen"
+            fi
+        else
+            # Nur MD5 neu berechnen
+            local md5_file="${iso_path%.iso}.md5"
+            if command -v md5sum >/dev/null 2>&1; then
+                md5sum "$iso_path" | cut -d' ' -f1 > "$md5_file"
+                log_message "Audio-Remaster: MD5 aktualisiert"
+            fi
+        fi
         
         cleanup_remaster_temp "$temp_extract" "$temp_tagged"
         return 0
     else
         log_message "Audio-Remaster: Fehler beim Ersetzen der ISO"
+        rm -f "$temp_iso"
         cleanup_remaster_temp "$temp_extract" "$temp_tagged"
         return 1
     fi
@@ -184,8 +229,12 @@ update_mp3_tags_from_musicbrainz() {
     local tracks=$(echo "$mb_data" | jq -r '.media[0].tracks')
     local track_count=$(echo "$tracks" | jq 'length')
     
-    # Finde alle MP3s (sortiert)
-    local mp3_files=($(find "$source_dir" -name "*.mp3" -type f | sort))
+    # Finde alle MP3s (sortiert) - nutze readarray für korrekte Handhabung von Leerzeichen
+    local mp3_files=()
+    while IFS= read -r -d '' file; do
+        mp3_files+=("$file")
+    done < <(find "$source_dir" -name "*.mp3" -type f -print0 | sort -z)
+    
     local mp3_count=${#mp3_files[@]}
     
     if [[ $mp3_count -eq 0 ]]; then
@@ -270,12 +319,21 @@ rebuild_audio_iso() {
         return 1
     fi
     
+    # Prüfe ob Quellverzeichnis Dateien enthält
+    if [[ -z "$(ls -A "$source_dir" 2>/dev/null)" ]]; then
+        log_message "Audio-Remaster: Quellverzeichnis ist leer: $source_dir"
+        return 1
+    fi
+    
     # Erstelle ISO mit UDF + Joliet (maximale Kompatibilität)
-    if $iso_tool -r -J -o "$output_iso" "$source_dir" >/dev/null 2>&1; then
+    local iso_errors=$(mktemp)
+    if $iso_tool -r -J -o "$output_iso" "$source_dir" 2>"$iso_errors"; then
         log_message "Audio-Remaster: ISO erfolgreich erstellt: $(basename "$output_iso")"
+        rm -f "$iso_errors"
         return 0
     else
-        log_message "Audio-Remaster: ISO-Erstellung fehlgeschlagen"
+        log_message "Audio-Remaster: ISO-Erstellung fehlgeschlagen: $(cat "$iso_errors")"
+        rm -f "$iso_errors"
         return 1
     fi
 }
@@ -297,10 +355,12 @@ create_audio_nfo() {
     local nfo_file="${iso_path%.iso}.nfo"
     local thumb_file="${iso_path%.iso}-thumb.jpg"
     
-    # Erstelle .nfo
+    # Erstelle .nfo (mit Feldern die das Frontend erwartet)
     cat > "$nfo_file" <<EOF
 ARTIST=$artist
 ALBUM=$album
+TITLE=$album
+DATE=$year
 YEAR=$year
 TYPE=audio-cd
 EOF

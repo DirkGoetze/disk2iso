@@ -333,12 +333,41 @@ function displayMusicBrainzResults(results) {
     results.forEach(item => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'metadata-result-item';
+        
+        // Berechne Laufzeit in MM:SS Format
+        let durationStr = '';
+        if (item.duration && item.duration > 0) {
+            const totalSeconds = Math.floor(item.duration / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            if (hours > 0) {
+                durationStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                durationStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+        
+        const coverUrl = item.cover_url || '/static/img/audio-cd-placeholder.png';
+        
         itemDiv.innerHTML = `
-            <div class="result-info">
-                <div class="result-title">${escapeHtml(item.title)}</div>
-                <div class="result-details">${escapeHtml(item.artist)} • ${item.date || 'Unknown'} • ${item.track_count} Tracks</div>
+            <div class="result-layout">
+                <img src="${coverUrl}" alt="Cover" class="result-cover" onerror="this.src='/static/img/audio-cd-placeholder.png'">
+                <div class="result-info">
+                    <div class="result-title">${escapeHtml(item.title)}</div>
+                    <div class="result-artist">${escapeHtml(item.artist)}</div>
+                    <div class="result-details">
+                        ${item.date && item.date !== 'unknown' ? `<span class="detail-date">${item.date}</span>` : ''}
+                        ${item.country && item.country !== 'unknown' ? `<span class="detail-country">${item.country}</span>` : ''}
+                        ${item.label && item.label !== 'Unknown' ? `<span class="detail-label">${escapeHtml(item.label)}</span>` : ''}
+                    </div>
+                    <div class="result-stats">
+                        ${item.tracks ? `<span class="detail-tracks">${item.tracks} Tracks</span>` : ''}
+                        ${durationStr ? `<span class="detail-duration">${durationStr}</span>` : ''}
+                    </div>
+                </div>
+                <button class="btn-select-metadata" data-id="${item.id}">Auswählen</button>
             </div>
-            <button class="btn-select-metadata" data-id="${item.id}">Auswählen</button>
         `;
         
         itemDiv.querySelector('.btn-select-metadata').addEventListener('click', () => {

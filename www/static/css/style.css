@@ -826,6 +826,48 @@ body {
 .release-details {
     color: #999;
     font-size: 0.85em;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.release-date,
+.release-country,
+.release-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.release-date::before {
+    content: "📅";
+}
+
+.release-country::before {
+    content: "🌍";
+}
+
+.release-label::before {
+    content: "🏷️";
+}
+
+.release-stats {
+    color: #999;
+    font-size: 0.85em;
+    display: flex;
+    gap: 12px;
+    margin-top: 5px;
+}
+
+.release-tracks::before {
+    content: "🎵";
+    margin-right: 4px;
+}
+
+.release-duration::before {
+    content: "⏱️";
+    margin-right: 4px;
 }
 
 .release-details i {
@@ -1468,9 +1510,6 @@ body {
 }
 
 .metadata-result-item {
-    display: flex;
-    align-items: center;
-    gap: 15px;
     padding: 15px;
     margin-bottom: 10px;
     background: #34495e;
@@ -1482,27 +1521,96 @@ body {
     background: #3d566e;
 }
 
+.result-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.result-cover {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
 .result-poster {
     width: 60px;
     height: 90px;
     object-fit: cover;
     border-radius: 4px;
+    flex-shrink: 0;
 }
 
 .result-info {
     flex: 1;
+    min-width: 0;
 }
 
 .result-title {
     font-weight: bold;
     font-size: 1.1em;
     margin-bottom: 5px;
+    color: white;
+}
+
+.result-artist {
+    color: #667eea;
+    margin-bottom: 8px;
+    font-size: 0.95em;
 }
 
 .result-details {
-    color: #95a5a6;
-    font-size: 0.9em;
+    color: #999;
+    font-size: 0.85em;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     margin-bottom: 5px;
+}
+
+.result-stats {
+    color: #999;
+    font-size: 0.85em;
+    display: flex;
+    gap: 12px;
+}
+
+.detail-date::before {
+    content: "📅 ";
+}
+
+.detail-country::before {
+    content: "🌍 ";
+}
+
+.detail-label::before {
+    content: "🏷️ ";
+}
+
+.detail-tracks::before {
+    content: "🎵 ";
+}
+
+.detail-duration::before {
+    content: "⏱️ ";
+}
+
+.btn-select-metadata {
+    padding: 8px 16px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    white-space: nowrap;
+    align-self: flex-start;
+}
+
+.btn-select-metadata:hover {
+    background: #5568d3;
 }
 
 .result-overview {

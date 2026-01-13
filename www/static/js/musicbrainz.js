@@ -96,8 +96,13 @@ function showMusicBrainzModal(data) {
                         <div class="release-title">${escapeHtml(release.title || 'Unknown')}</div>
                         <div class="release-artist">${escapeHtml(release.artist || 'Unknown Artist')}</div>
                         <div class="release-details">
-                            <i>${release.date || 'Unknown'} ${release.country && release.country !== 'unknown' ? release.country : ''}</i> 
-                            (${release.tracks || 0} Tracks${durationStr ? ' / ' + durationStr : ''})
+                            ${release.date && release.date !== 'unknown' ? `<span class="release-date">${release.date}</span>` : ''}
+                            ${release.country && release.country !== 'unknown' ? `<span class="release-country">${release.country}</span>` : ''}
+                            ${release.label && release.label !== 'Unknown' ? `<span class="release-label">${escapeHtml(release.label)}</span>` : ''}
+                        </div>
+                        <div class="release-stats">
+                            <span class="release-tracks">${release.tracks || 0} Tracks</span>
+                            ${durationStr ? `<span class="release-duration">${durationStr}</span>` : ''}
                         </div>
                     </div>
                 </div>

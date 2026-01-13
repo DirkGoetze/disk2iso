@@ -1418,23 +1418,44 @@ def api_musicbrainz_search():
             query_parts.append(f'release:"{album}"')
         
         query = ' AND '.join(query_parts)
-        url = f"https://musicbrainz.org/ws/2/release/?query={query}&fmt=json&limit=10"
+        # Erweiterte Abfrage mit recordings und labels für vollständige Metadaten
+        url = f"https://musicbrainz.org/ws/2/release/?query={query}&fmt=json&limit=10&inc=artists+labels+recordings+media"
         
         response = requests.get(url, timeout=10, headers={'User-Agent': 'disk2iso/1.2.0'})
         response.raise_for_status()
         data = response.json()
         
-        # Formatiere Ergebnisse
+        # Formatiere Ergebnisse (kompatibel mit Original-Format)
         results = []
         for release in data.get('releases', []):
             artist_name = release.get('artist-credit', [{}])[0].get('name', 'Unknown')
+            
+            # Extrahiere Label
+            label_info = release.get('label-info', [])
+            label_name = label_info[0].get('label', {}).get('name', 'Unknown') if label_info else 'Unknown'
+            
+            # Berechne Gesamtdauer (in Millisekunden)
+            total_duration = 0
+            media = release.get('media', [])
+            if media and len(media) > 0:
+                tracks = media[0].get('tracks', [])
+                for track in tracks:
+                    track_length = track.get('length', 0)
+                    if track_length:
+                        total_duration += track_length
+            
+            # Track-Anzahl
+            track_count = media[0].get('track-count', 0) if media else release.get('track-count', 0)
+            
             results.append({
                 'id': release.get('id'),
                 'title': release.get('title', 'Unknown Album'),
                 'artist': artist_name,
-                'date': release.get('date', '')[:4] if release.get('date') else '',
-                'country': release.get('country', ''),
-                'track_count': release.get('track-count', 0),
+                'date': release.get('date', 'unknown'),
+                'country': release.get('country', 'unknown'),
+                'tracks': track_count,
+                'label': label_name,
+                'duration': total_duration,
                 'cover_url': f"https://coverartarchive.org/release/{release['id']}/front-250" if release.get('id') else None
             })
         
@@ -1476,7 +1497,7 @@ fi
         
         # Timeout erhöhen (Remaster kann 5-10 Minuten dauern)
         result = subprocess.run(
-            ['bash', '-c', script],
+            ['/bin/bash', '-c', script],
             capture_output=True,
             text=True,
             timeout=600  # 10 Minuten
