@@ -1,0 +1,345 @@
+/* ============================================================================
+   disk2iso v1.2.0 - Formular Styles
+   Filepath: www/static/css/formular.css
+   
+   Zentrale Formular-Styles mit CSS-Variablen für konsistentes Design
+   ============================================================================ */
+
+:root {
+    /* Formular Farbschema */
+    --form-bg-primary: #2c3e50;
+    --form-bg-secondary: #34495e;
+    --form-bg-hover: #3a4f63;
+    --form-bg-focus: #34495e;
+    
+    --form-border-default: #34495e;
+    --form-border-hover: #4a5f7e;
+    --form-border-focus: #667eea;
+    --form-border-error: #e74c3c;
+    --form-border-success: #27ae60;
+    
+    --form-text-primary: #ecf0f1;
+    --form-text-secondary: #bdc3c7;
+    --form-text-placeholder: #7f8c8d;
+    --form-text-monospace: 'Courier New', monospace;
+    
+    --form-shadow-focus: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    --form-shadow-error: 0 0 0 3px rgba(231, 76, 60, 0.2);
+    
+    /* Button Farben */
+    --btn-primary-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --btn-primary-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+    --btn-secondary-bg: #7f8c8d;
+    --btn-secondary-hover: #95a5a6;
+    
+    /* Abstände & Größen */
+    --form-input-padding: 14px 16px;
+    --form-input-radius: 10px;
+    --form-input-border-width: 2px;
+    --form-label-margin: 8px;
+    --form-group-margin: 20px;
+    
+    /* Transitions */
+    --form-transition: all 0.3s ease;
+}
+
+/* ============================================================================
+   Form Groups & Labels
+   ============================================================================ */
+
+.form-group {
+    margin-bottom: var(--form-group-margin);
+}
+
+.form-group label {
+    display: block;
+    color: var(--form-text-primary);
+    font-weight: 600;
+    margin-bottom: var(--form-label-margin);
+    font-size: 0.95em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================================================
+   Standard Input Fields
+   ============================================================================ */
+
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="email"],
+input[type="url"],
+select,
+textarea {
+    width: 100%;
+    padding: var(--form-input-padding);
+    border: var(--form-input-border-width) solid var(--form-border-default);
+    border-radius: var(--form-input-radius);
+    background: var(--form-bg-primary);
+    color: var(--form-text-primary);
+    font-size: 1em;
+    transition: var(--form-transition);
+    font-family: inherit;
+}
+
+input[type="text"]:hover,
+input[type="number"]:hover,
+input[type="password"]:hover,
+input[type="email"]:hover,
+input[type="url"]:hover,
+select:hover,
+textarea:hover {
+    border-color: var(--form-border-hover);
+    background: var(--form-bg-hover);
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="url"]:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--form-border-focus);
+    background: var(--form-bg-focus);
+    box-shadow: var(--form-shadow-focus);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--form-text-placeholder);
+}
+
+/* ============================================================================
+   Directory Input (Spezial-Design mit integriertem Button)
+   ============================================================================ */
+
+.directory-input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.directory-input {
+    width: 100%;
+    padding: 14px 54px 14px 16px; /* Extra padding rechts für Button */
+    border: var(--form-input-border-width) solid var(--form-border-default);
+    border-radius: var(--form-input-radius);
+    background: var(--form-bg-primary);
+    color: var(--form-text-primary);
+    font-size: 1em;
+    font-family: var(--form-text-monospace);
+    transition: var(--form-transition);
+}
+
+.directory-input:hover {
+    border-color: var(--form-border-hover);
+    background: var(--form-bg-hover);
+}
+
+.directory-input:focus {
+    outline: none;
+    border-color: var(--form-border-focus);
+    background: var(--form-bg-focus);
+    box-shadow: var(--form-shadow-focus);
+}
+
+.directory-browse-btn {
+    position: absolute;
+    right: 1px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--btn-primary-bg);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--form-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0.9;
+}
+
+.directory-browse-btn:hover {
+    transform: translateY(-50%) scale(1.08);
+    box-shadow: var(--btn-primary-shadow);
+    opacity: 1;
+}
+
+.directory-browse-btn:active {
+    transform: translateY(-50%) scale(0.98);
+}
+
+.browse-icon {
+    font-size: 1.3em;
+    line-height: 1;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* ============================================================================
+   Checkboxes & Radio Buttons
+   ============================================================================ */
+
+input[type="checkbox"],
+input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    cursor: pointer;
+    accent-color: #667eea;
+}
+
+/* ============================================================================
+   Select Dropdowns
+   ============================================================================ */
+
+select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ecf0f1' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+}
+
+/* ============================================================================
+   Textarea
+   ============================================================================ */
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+    font-family: var(--form-text-monospace);
+}
+
+/* ============================================================================
+   Help Text
+   ============================================================================ */
+
+.help-text {
+    font-size: 0.85em;
+    color: var(--form-text-secondary);
+    margin-top: 5px;
+    line-height: 1.4;
+}
+
+.help-text.error {
+    color: var(--form-border-error);
+}
+
+.help-text.success {
+    color: var(--form-border-success);
+}
+
+/* ============================================================================
+   Form Actions (Button Container)
+   ============================================================================ */
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    justify-content: flex-end;
+}
+
+/* ============================================================================
+   Buttons
+   ============================================================================ */
+
+.btn {
+    padding: 14px 28px;
+    border: none;
+    border-radius: var(--form-input-radius);
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--form-transition);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-primary {
+    background: var(--btn-primary-bg);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--btn-primary-shadow);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: var(--btn-secondary-bg);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: var(--btn-secondary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(127, 140, 141, 0.4);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+}
+
+/* ============================================================================
+   Form Sections
+   ============================================================================ */
+
+.form-section {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-section h2 {
+    color: var(--form-text-primary);
+    margin-bottom: 20px;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+/* ============================================================================
+   Disabled State
+   ============================================================================ */
+
+input:disabled,
+select:disabled,
+textarea:disabled,
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ============================================================================
+   Validation States
+   ============================================================================ */
+
+.form-group.has-error input,
+.form-group.has-error select,
+.form-group.has-error textarea {
+    border-color: var(--form-border-error);
+}
+
+.form-group.has-error input:focus,
+.form-group.has-error select:focus,
+.form-group.has-error textarea:focus {
+    box-shadow: var(--form-shadow-error);
+}
+
+.form-group.has-success input,
+.form-group.has-success select,
+.form-group.has-success textarea {
+    border-color: var(--form-border-success);
+}

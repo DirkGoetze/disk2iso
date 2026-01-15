@@ -139,3 +139,107 @@ document.addEventListener('DOMContentLoaded', function() {
         saveConfig();
     });
 });
+
+// ============================================================================
+// Directory Browser Functions
+// ============================================================================
+
+let currentBrowserPath = '/';
+
+function openDirectoryBrowser() {
+    const currentOutputDir = document.getElementById('output_dir').value || '/';
+    currentBrowserPath = currentOutputDir;
+    
+    document.getElementById('directoryBrowserModal').style.display = 'block';
+    loadDirectories(currentBrowserPath);
+}
+
+function closeDirectoryBrowser() {
+    document.getElementById('directoryBrowserModal').style.display = 'none';
+}
+
+function loadDirectories(path) {
+    const listElement = document.getElementById('directoryList');
+    const pathElement = document.getElementById('currentPath');
+    
+    listElement.innerHTML = '<div class="loading">Lade Verzeichnisse...</div>';
+    pathElement.textContent = path;
+    
+    fetch('/api/browse_directories', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ path: path })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentBrowserPath = data.current_path;
+            pathElement.textContent = data.current_path;
+            renderDirectoryList(data.directories, data.writable);
+        } else {
+            listElement.innerHTML = `<div class="error">❌ ${data.message}</div>`;
+        }
+    })
+    .catch(error => {
+        console.error('Fehler beim Laden der Verzeichnisse:', error);
+        listElement.innerHTML = '<div class="error">❌ Fehler beim Laden der Verzeichnisse</div>';
+    });
+}
+
+function renderDirectoryList(directories, currentDirWritable) {
+    const listElement = document.getElementById('directoryList');
+    
+    if (directories.length === 0) {
+        listElement.innerHTML = '<div class="empty">Keine Unterverzeichnisse vorhanden</div>';
+        return;
+    }
+    
+    let html = '<ul class="dir-list">';
+    
+    directories.forEach(dir => {
+        const icon = dir.is_parent ? '⬆️' : '📁';
+        const writableIcon = dir.writable ? '✓' : '🔒';
+        const writableClass = dir.writable ? 'writable' : 'readonly';
+        const writableTitle = dir.writable ? 'Beschreibbar' : 'Nur Lesezugriff';
+        
+        html += `
+            <li class="dir-item ${writableClass}" onclick="loadDirectories('${dir.path}')" title="${writableTitle}">
+                <span class="dir-icon">${icon}</span>
+                <span class="dir-name">${escapeHtml(dir.name)}</span>
+                <span class="dir-writable" title="${writableTitle}">${writableIcon}</span>
+            </li>
+        `;
+    });
+    
+    html += '</ul>';
+    listElement.innerHTML = html;
+}
+
+function selectCurrentDirectory() {
+    const pathElement = document.getElementById('currentPath');
+    const selectedPath = pathElement.textContent;
+    
+    // Pfad ins Input-Feld übernehmen
+    document.getElementById('output_dir').value = selectedPath;
+    
+    // Modal schließen
+    closeDirectoryBrowser();
+    
+    console.log('Verzeichnis ausgewählt:', selectedPath);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Modal schließen bei Klick außerhalb
+window.onclick = function(event) {
+    const modal = document.getElementById('directoryBrowserModal');
+    if (event.target === modal) {
+        closeDirectoryBrowser();
+    }
+}

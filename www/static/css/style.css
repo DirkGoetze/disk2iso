@@ -874,32 +874,7 @@ body {
     font-style: italic;
 }
 
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    color: #bbb;
-    font-weight: 500;
-}
-
-.form-input {
-    width: 100%;
-    padding: 10px 15px;
-    background: #252a45;
-    border: 1px solid #444;
-    border-radius: 4px;
-    color: white;
-    font-size: 14px;
-    transition: border-color 0.2s;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: #667eea;
-}
+/* Form Groups und Inputs sind jetzt in formular.css definiert */
 
 .btn {
     padding: 12px 24px;
@@ -1652,4 +1627,197 @@ body {
 #metadata-search-fields select:focus {
     outline: none;
     border-color: #3498db;
+}
+
+/* ============================================================================
+   Directory Browser Modal
+   ============================================================================ */
+
+.btn-browse {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-browse:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* ============================================================================
+   Directory Input with Integrated Browse Button
+}
+
+/* Directory Input und Browser sind jetzt in formular.css definiert */
+
+/* ============================================================================
+   Directory Browser Modal
+   ============================================================================ */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+}
+
+
+.modal-content.directory-browser {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    margin: 5% auto;
+    padding: 0;
+    border: none;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 700px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    background: rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px 15px 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.5em;
+}
+
+.close {
+    color: white;
+    font-size: 35px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.3s;
+    line-height: 1;
+}
+
+.close:hover,
+.close:focus {
+    color: #e74c3c;
+}
+
+.modal-body {
+    padding: 25px 30px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.current-path {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    color: white;
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+}
+
+.current-path strong {
+    color: #3498db;
+    margin-right: 10px;
+}
+
+.directory-list {
+    min-height: 200px;
+}
+
+.dir-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.dir-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dir-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(5px);
+}
+
+.dir-item.readonly {
+    opacity: 0.6;
+}
+
+.dir-icon {
+    font-size: 1.3em;
+    margin-right: 12px;
+}
+
+.dir-name {
+    flex: 1;
+    color: white;
+    font-weight: 500;
+}
+
+.dir-writable {
+    margin-left: 10px;
+    font-size: 1.1em;
+}
+
+.loading,
+.empty,
+.error {
+    text-align: center;
+    padding: 40px;
+    color: white;
+    font-size: 1.1em;
+}
+
+.error {
+    color: #e74c3c;
+}
+
+.modal-footer {
+    padding: 20px 30px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0 0 15px 15px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+}
+
+.modal-footer .btn {
+    padding: 12px 25px;
+    font-size: 1em;
 }

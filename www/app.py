@@ -747,66 +747,45 @@ def api_config():
             return jsonify({'error': str(e)}), 500
     
     elif request.method == 'POST':
-        # Konfiguration speichern via Bash
+        # Konfiguration speichern via Bash (inkl. Service-Neustart)
         try:
             data = request.get_json()
             
             if not data:
                 return jsonify({'success': False, 'message': g.t.get('API_ERROR_NO_DATA', 'No data received')}), 400
             
-            # Validierung
+            # Validierung der Pflichtfelder
             required_fields = ['output_dir', 'mp3_quality', 'ddrescue_retries', 
                              'usb_detection_attempts', 'usb_detection_delay']
             for field in required_fields:
                 if field not in data:
                     return jsonify({'success': False, 'message': f"{g.t.get('API_ERROR_FIELD_MISSING', 'Field missing')}: {field}"}), 400
             
-            # Mapping: JSON-Key -> Config-Key
-            config_mapping = {
-                'output_dir': 'DEFAULT_OUTPUT_DIR',
-                'mp3_quality': 'MP3_QUALITY',
-                'ddrescue_retries': 'DDRESCUE_RETRIES',
-                'usb_detection_attempts': 'USB_DRIVE_DETECTION_ATTEMPTS',
-                'usb_detection_delay': 'USB_DRIVE_DETECTION_DELAY',
-                'mqtt_enabled': 'MQTT_ENABLED',
-                'mqtt_broker': 'MQTT_BROKER',
-                'mqtt_port': 'MQTT_PORT',
-                'mqtt_user': 'MQTT_USER',
-                'mqtt_password': 'MQTT_PASSWORD',
-                'tmdb_api_key': 'TMDB_API_KEY'
-            }
+            # Konvertiere Python-Objekt zu JSON-String für Bash
+            # Spezialbehandlung für mqtt_enabled (boolean -> string)
+            bash_data = data.copy()
+            if 'mqtt_enabled' in bash_data:
+                bash_data['mqtt_enabled'] = bash_data['mqtt_enabled']  # bleibt boolean für json.dumps
             
-            # Baue Bash-Script mit allen Updates
-            update_commands = []
-            for json_key, config_key in config_mapping.items():
-                if json_key in data:
-                    value = data[json_key]
-                    
-                    # Spezialbehandlung für mqtt_enabled (boolean -> string)
-                    if json_key == 'mqtt_enabled':
-                        value = 'true' if value else 'false'
-                    
-                    # Escape für Bash
-                    value_str = str(value).replace('"', '\\"')
-                    update_commands.append(f'update_config_value "{config_key}" "{value_str}"')
+            json_string = json.dumps(bash_data)
+            # Escape für Bash (einfache Quotes verwenden)
+            json_escaped = json_string.replace("'", "'\\''")
             
-            # Erstelle Update-Script
-            updates_script = '\n        '.join(update_commands)
+            # Rufe Bash-Funktion save_config_and_restart auf
+            # Diese Funktion macht:
+            # 1. Validierung (Pfad existiert, beschreibbar)
+            # 2. Config-Update (alle Werte)
+            # 3. Service-Neustart
             script = f"""
-        source {INSTALL_DIR}/lib/lib-config.sh
-        
-        # Führe alle Updates durch
-        {updates_script}
-        
-        # Finale Bestätigung
-        echo '{{"success": true}}'
-        """
+            source {INSTALL_DIR}/lib/lib-config.sh
+            save_config_and_restart '{json_escaped}'
+            """
             
             result = subprocess.run(
                 ['/bin/bash', '-c', script],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=15  # Timeout erhöht wegen Service-Restart
             )
             
             if result.returncode != 0:
@@ -816,15 +795,104 @@ def api_config():
                     'error': result.stderr
                 }), 500
             
-            return jsonify({
-                'success': True, 
-                'message': 'Konfiguration gespeichert. Service wird neu gestartet...'
-            })
+            # Parse JSON-Response von Bash
+            try:
+                response_data = json.loads(result.stdout)
+                if response_data.get('success'):
+                    return jsonify(response_data)
+                else:
+                    return jsonify(response_data), 400
+            except json.JSONDecodeError as e:
+                return jsonify({
+                    'success': False,
+                    'message': f"{g.t.get('API_ERROR_INVALID_JSON', 'Invalid JSON response')}: {str(e)}",
+                    'stdout': result.stdout
+                }), 500
             
         except subprocess.TimeoutExpired:
             return jsonify({'success': False, 'message': f"{g.t.get('API_ERROR_TIMEOUT', 'Timeout')}: Config-Write"}), 500
         except Exception as e:
             return jsonify({'success': False, 'message': f'Fehler beim Speichern: {str(e)}'}), 500
+
+@app.route('/api/browse_directories', methods=['POST'])
+def browse_directories():
+    """
+    Listet Verzeichnisse für Directory Browser auf
+    POST body: { "path": "/mnt" }
+    Returns: { "success": true, "directories": [...], "current_path": "/mnt" }
+    """
+    try:
+        data = request.get_json()
+        path = data.get('path', '/')
+        
+        # Sicherheit: Nur absolute Pfade
+        if not path.startswith('/'):
+            path = '/'
+        
+        # Path object erstellen
+        dir_path = Path(path)
+        
+        # Prüfen ob Verzeichnis existiert
+        if not dir_path.exists():
+            return jsonify({
+                'success': False, 
+                'message': f'Verzeichnis nicht gefunden: {path}'
+            }), 404
+        
+        if not dir_path.is_dir():
+            return jsonify({
+                'success': False, 
+                'message': f'Kein Verzeichnis: {path}'
+            }), 400
+        
+        # Verzeichnisse sammeln
+        directories = []
+        
+        # Parent Directory (..)
+        if path != '/':
+            parent = str(dir_path.parent)
+            directories.append({
+                'name': '..',
+                'path': parent,
+                'is_parent': True,
+                'writable': False
+            })
+        
+        # Unterverzeichnisse
+        try:
+            for item in sorted(dir_path.iterdir()):
+                if item.is_dir():
+                    # Versteckte Ordner überspringen (optional)
+                    if item.name.startswith('.'):
+                        continue
+                    
+                    # Schreibrechte prüfen
+                    writable = os.access(str(item), os.W_OK)
+                    
+                    directories.append({
+                        'name': item.name,
+                        'path': str(item),
+                        'is_parent': False,
+                        'writable': writable
+                    })
+        except PermissionError:
+            return jsonify({
+                'success': False,
+                'message': f'Keine Berechtigung für: {path}'
+            }), 403
+        
+        return jsonify({
+            'success': True,
+            'current_path': str(dir_path),
+            'directories': directories,
+            'writable': os.access(str(dir_path), os.W_OK)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Fehler: {str(e)}'
+        }), 500
 
 @app.route('/api/logs/current')
 def api_logs_current():

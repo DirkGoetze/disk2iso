@@ -158,3 +158,84 @@ get_all_config_values() {
     echo "{\"success\": true, ${output}}"
     return 0
 }
+
+# ============================================================================
+# HIGH-LEVEL CONFIG UPDATE FUNKTIONEN
+# ============================================================================
+
+# Funktion: Speichere komplette Konfiguration und starte Service neu
+# Parameter: JSON-String mit allen Config-Werten
+#           { "output_dir": "/media/iso", "mp3_quality": 2, ... }
+# Rückgabe: JSON mit {"success": true} oder {"success": false, "message": "..."}
+save_config_and_restart() {
+    local json_input="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    if [[ -z "$json_input" ]]; then
+        echo '{"success": false, "message": "Keine Konfigurationsdaten empfangen"}'
+        return 1
+    fi
+    
+    # Validiere output_dir falls vorhanden
+    local output_dir=$(echo "$json_input" | grep -o '"output_dir"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4)
+    if [[ -n "$output_dir" ]]; then
+        if [[ ! -d "$output_dir" ]]; then
+            echo "{\"success\": false, \"message\": \"Ausgabeverzeichnis existiert nicht: ${output_dir}\"}"
+            return 1
+        fi
+        if [[ ! -w "$output_dir" ]]; then
+            echo "{\"success\": false, \"message\": \"Ausgabeverzeichnis ist nicht beschreibbar: ${output_dir}\"}"
+            return 1
+        fi
+    fi
+    
+    # Mapping: JSON-Key -> Config-Key
+    declare -A config_mapping=(
+        ["output_dir"]="DEFAULT_OUTPUT_DIR"
+        ["mp3_quality"]="MP3_QUALITY"
+        ["ddrescue_retries"]="DDRESCUE_RETRIES"
+        ["usb_detection_attempts"]="USB_DRIVE_DETECTION_ATTEMPTS"
+        ["usb_detection_delay"]="USB_DRIVE_DETECTION_DELAY"
+        ["mqtt_enabled"]="MQTT_ENABLED"
+        ["mqtt_broker"]="MQTT_BROKER"
+        ["mqtt_port"]="MQTT_PORT"
+        ["mqtt_user"]="MQTT_USER"
+        ["mqtt_password"]="MQTT_PASSWORD"
+        ["tmdb_api_key"]="TMDB_API_KEY"
+    )
+    
+    # Aktualisiere alle Werte
+    local failed=0
+    for json_key in "${!config_mapping[@]}"; do
+        local config_key="${config_mapping[$json_key]}"
+        
+        # Extrahiere Wert aus JSON
+        local value
+        if [[ "$json_key" == "mqtt_enabled" ]]; then
+            # Boolean: true/false ohne Quotes
+            value=$(echo "$json_input" | grep -o "\"${json_key}\"[[:space:]]*:[[:space:]]*[^,}]*" | /usr/bin/awk -F':' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}')
+        else
+            # String oder Number
+            value=$(echo "$json_input" | grep -o "\"${json_key}\"[[:space:]]*:[[:space:]]*[^,}]*" | /usr/bin/awk -F':' '{gsub(/^[ \t"]+|[ \t"]+$/, "", $2); print $2}')
+        fi
+        
+        # Nur updaten wenn Wert vorhanden
+        if [[ -n "$value" ]]; then
+            local result=$(update_config_value "$config_key" "$value")
+            if ! echo "$result" | grep -q '"success": true'; then
+                failed=1
+                echo "$result"
+                return 1
+            fi
+        fi
+    done
+    
+    # Starte disk2iso Service neu
+    if /usr/bin/systemctl restart disk2iso 2>/dev/null; then
+        echo '{"success": true, "message": "Konfiguration gespeichert. Service wurde neu gestartet."}'
+        return 0
+    else
+        echo '{"success": true, "message": "Konfiguration gespeichert, aber Service-Neustart fehlgeschlagen.", "restart_failed": true}'
+        return 0  # Config wurde gespeichert, daher success=true
+    fi
+}
