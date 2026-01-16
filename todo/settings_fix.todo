@@ -1,0 +1,584 @@
+# Settings Fix - Granulare Config-Updates mit Service-Restart-Kontrolle
+
+## Problem
+Die aktuelle Lösung zum Speichern von Einstellungen in der WebUI speichert nicht die Einstellungen in der neuen Form.
+Alle Einstellen gehen sofort nach Verlassen oder Neuladen der Seite verloren.
+Außerdem werden bei jeder Änderung alle Services neu gestartet, was ineffizient und störend ist.
+
+## Lösung
+Granulare Updates: Nur geänderte Werte werden geschrieben, Service-Neustarts nur bei Bedarf.
+
+## Architektur
+
+### Datenfluss
+```
+User ändert Feld → onBlur speichert in JS-Array → Button sendet Array → 
+Python ruft Bash-Main → Bash ruft Setter → Setter setzen Restart-Flags → 
+Bash führt Neustarts aus → Erfolg zurück an Frontend
+```
+
+### Verantwortlichkeiten
+- **Frontend (JS)**: Sammelt nur geänderte Werte in Array
+- **Python (app.py)**: Bote - leitet JSON an Bash weiter
+- **Bash (lib-config.sh)**: Controller - verarbeitet alle Änderungen in EINEM Prozess, kontrolliert Service-Neustarts
+
+## Implementierungsschritte
+
+### 1. Config-Metadaten-Struktur in lib-config.sh definieren
+**Datei:** lib/lib-config.sh
+**Was:** Assoziatives Array mit Mapping: Key → Setter-Funktion → Service-Neustart
+
+```bash
+# Config-Metadaten: Key → Handler:RestartService
+declare -A CONFIG_HANDLERS=(
+    ["DEFAULT_OUTPUT_DIR"]="set_default_output_dir:disk2iso"
+    ["MP3_QUALITY"]="set_mp3_quality:none"
+    ["DDRESCUE_RETRIES"]="set_ddrescue_retries:none"
+    ["USB_DRIVE_DETECTION_ATTEMPTS"]="set_usb_detection_attempts:none"
+    ["USB_DRIVE_DETECTION_DELAY"]="set_usb_detection_delay:none"
+    ["MQTT_ENABLED"]="set_mqtt_enabled:disk2iso"
+    ["MQTT_BROKER"]="set_mqtt_broker:disk2iso"
+    ["MQTT_PORT"]="set_mqtt_port:disk2iso"
+    ["MQTT_USER"]="set_mqtt_user:disk2iso"
+    ["MQTT_PASSWORD"]="set_mqtt_password:disk2iso"
+    ["TMDB_API_KEY"]="set_tmdb_api_key:disk2iso-web"
+)
+```
+
+### 2. Globale Restart-Flags in lib-config.sh deklarieren
+**Datei:** lib/lib-config.sh
+**Was:** Zwei globale Flags für Service-Neustarts
+
+```bash
+# Globale Service-Restart-Flags
+disk2iso_restart_required=false
+disk2iso_web_restart_required=false
+```
+
+**Position:** Direkt nach den GLOBALEN LAUFZEIT-VARIABLEN (Zeile ~30)
+
+### 3. Einzelne Setter-Funktionen in lib-config.sh erstellen
+**Datei:** lib/lib-config.sh
+**Was:** Eine Setter-Funktion pro Config-Wert
+
+```bash
+# Setter: Default Output Directory
+set_default_output_dir() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    # Validierung: Verzeichnis muss existieren und beschreibbar sein
+    if [[ ! -d "$value" ]]; then
+        echo '{"success": false, "message": "Verzeichnis existiert nicht"}' >&2
+        return 1
+    fi
+    if [[ ! -w "$value" ]]; then
+        echo '{"success": false, "message": "Verzeichnis nicht beschreibbar"}' >&2
+        return 1
+    fi
+    
+    # Schreibe in Config
+    /usr/bin/sed -i "s|^DEFAULT_OUTPUT_DIR=.*|DEFAULT_OUTPUT_DIR=\"${value}\"|" "$config_file" 2>/dev/null
+    return $?
+}
+
+# Setter: MP3 Quality
+set_mp3_quality() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    # Validierung: Muss Integer zwischen 0-9 sein
+    if ! [[ "$value" =~ ^[0-9]$ ]]; then
+        echo '{"success": false, "message": "Ungültiger Wert (0-9 erlaubt)"}' >&2
+        return 1
+    fi
+    
+    /usr/bin/sed -i "s|^MP3_QUALITY=.*|MP3_QUALITY=${value}|" "$config_file" 2>/dev/null
+    return $?
+}
+
+# Setter: MQTT Enabled
+set_mqtt_enabled() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    # Validierung: true/false
+    if [[ "$value" != "true" && "$value" != "false" ]]; then
+        echo '{"success": false, "message": "Ungültiger Wert (true/false)"}' >&2
+        return 1
+    fi
+    
+    /usr/bin/sed -i "s|^MQTT_ENABLED=.*|MQTT_ENABLED=${value}|" "$config_file" 2>/dev/null
+    return $?
+}
+
+# Setter: MQTT Broker
+set_mqtt_broker() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    /usr/bin/sed -i "s|^MQTT_BROKER=.*|MQTT_BROKER=\"${value}\"|" "$config_file" 2>/dev/null
+    return $?
+}
+
+# Setter: MQTT Port
+set_mqtt_port() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    # Validierung: Port 1-65535
+    if ! [[ "$value" =~ ^[0-9]+$ ]] || [ "$value" -lt 1 ] || [ "$value" -gt 65535 ]; then
+        echo '{"success": false, "message": "Ungültiger Port (1-65535)"}' >&2
+        return 1
+    fi
+    
+    /usr/bin/sed -i "s|^MQTT_PORT=.*|MQTT_PORT=${value}|" "$config_file" 2>/dev/null
+    return $?
+}
+
+# Setter: MQTT User
+set_mqtt_user() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    /usr/bin/sed -i "s|^MQTT_USER=.*|MQTT_USER=\"${value}\"|" "$config_file" 2>/dev/null
+    return $?
+}
+
+# Setter: MQTT Password
+set_mqtt_password() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    /usr/bin/sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=\"${value}\"|" "$config_file" 2>/dev/null
+    return $?
+}
+
+# Setter: TMDB API Key
+set_tmdb_api_key() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    /usr/bin/sed -i "s|^TMDB_API_KEY=.*|TMDB_API_KEY=\"${value}\"|" "$config_file" 2>/dev/null
+    return $?
+}
+
+# Setter: DDRescue Retries
+set_ddrescue_retries() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    # Validierung: Positive Integer
+    if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+        echo '{"success": false, "message": "Ungültiger Wert (Zahl erwartet)"}' >&2
+        return 1
+    fi
+    
+    /usr/bin/sed -i "s|^DDRESCUE_RETRIES=.*|DDRESCUE_RETRIES=${value}|" "$config_file" 2>/dev/null
+    return $?
+}
+
+# Setter: USB Detection Attempts
+set_usb_detection_attempts() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+        echo '{"success": false, "message": "Ungültiger Wert (Zahl erwartet)"}' >&2
+        return 1
+    fi
+    
+    /usr/bin/sed -i "s|^USB_DRIVE_DETECTION_ATTEMPTS=.*|USB_DRIVE_DETECTION_ATTEMPTS=${value}|" "$config_file" 2>/dev/null
+    return $?
+}
+
+# Setter: USB Detection Delay
+set_usb_detection_delay() {
+    local value="$1"
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+        echo '{"success": false, "message": "Ungültiger Wert (Zahl erwartet)"}' >&2
+        return 1
+    fi
+    
+    /usr/bin/sed -i "s|^USB_DRIVE_DETECTION_DELAY=.*|USB_DRIVE_DETECTION_DELAY=${value}|" "$config_file" 2>/dev/null
+    return $?
+}
+```
+
+### 4. Main-Funktion apply_config_changes() implementieren
+**Datei:** lib/lib-config.sh
+**Was:** Nimmt JSON entgegen, iteriert über Keys, ruft Setter auf, sammelt Restart-Flags
+
+```bash
+# Main-Funktion: Wendet alle Config-Änderungen an
+# Parameter: $1 = JSON-String mit Änderungen: {"KEY": "value", ...}
+# Rückgabe: JSON mit Success-Status und Details
+apply_config_changes() {
+    local json_input="$1"
+    
+    if [[ -z "$json_input" ]]; then
+        echo '{"success": false, "message": "Keine Änderungen übergeben"}'
+        return 1
+    fi
+    
+    # Setze Restart-Flags zurück
+    disk2iso_restart_required=false
+    disk2iso_web_restart_required=false
+    
+    local errors=()
+    local processed=0
+    
+    # Iteriere über alle definierten Config-Handler
+    for config_key in "${!CONFIG_HANDLERS[@]}"; do
+        # Extrahiere Wert aus JSON (falls vorhanden)
+        local value=$(echo "$json_input" | jq -r ".${config_key} // empty" 2>/dev/null)
+        
+        if [[ -n "$value" ]]; then
+            # Parse Handler und Service
+            local handler=$(echo "${CONFIG_HANDLERS[$config_key]}" | cut -d: -f1)
+            local restart_service=$(echo "${CONFIG_HANDLERS[$config_key]}" | cut -d: -f2)
+            
+            # Rufe Setter auf
+            if $handler "$value" 2>&1; then
+                ((processed++))
+                
+                # Setze entsprechendes Restart-Flag
+                case "$restart_service" in
+                    disk2iso) disk2iso_restart_required=true ;;
+                    disk2iso-web) disk2iso_web_restart_required=true ;;
+                esac
+            else
+                errors+=("${config_key}: Setter fehlgeschlagen")
+            fi
+        fi
+    done
+    
+    # Führe Service-Neustarts durch
+    local restart_result=$(perform_service_restarts)
+    
+    # Erstelle Response
+    if [ ${#errors[@]} -eq 0 ]; then
+        echo "{\"success\": true, \"processed\": $processed, \"restart_info\": $restart_result}"
+        return 0
+    else
+        local error_json=$(printf '%s\n' "${errors[@]}" | jq -R . | jq -s .)
+        echo "{\"success\": false, \"processed\": $processed, \"errors\": $error_json}"
+        return 1
+    fi
+}
+```
+
+### 5. Service-Restart-Funktion perform_service_restarts() erstellen
+**Datei:** lib/lib-config.sh
+**Was:** Prüft Flags und startet Services neu
+
+```bash
+# Funktion: Führt Service-Neustarts basierend auf Flags durch
+# Rückgabe: JSON mit Restart-Informationen
+perform_service_restarts() {
+    local disk2iso_restarted=false
+    local disk2iso_web_restarted=false
+    local disk2iso_error=""
+    local disk2iso_web_error=""
+    
+    # Starte disk2iso Service neu
+    if [ "$disk2iso_restart_required" = true ]; then
+        if /usr/bin/systemctl restart disk2iso 2>/dev/null; then
+            disk2iso_restarted=true
+        else
+            disk2iso_error="Service-Neustart fehlgeschlagen"
+        fi
+    fi
+    
+    # Starte disk2iso-web Service neu
+    if [ "$disk2iso_web_restart_required" = true ]; then
+        if /usr/bin/systemctl restart disk2iso-web 2>/dev/null; then
+            disk2iso_web_restarted=true
+        else
+            disk2iso_web_error="Service-Neustart fehlgeschlagen"
+        fi
+    fi
+    
+    # JSON-Response
+    echo "{"
+    echo "  \"disk2iso_restarted\": $disk2iso_restarted,"
+    echo "  \"disk2iso_web_restarted\": $disk2iso_web_restarted"
+    [[ -n "$disk2iso_error" ]] && echo ", \"disk2iso_error\": \"$disk2iso_error\""
+    [[ -n "$disk2iso_web_error" ]] && echo ", \"disk2iso_web_error\": \"$disk2iso_web_error\""
+    echo "}"
+}
+```
+
+### 6. Python API-Endpoint für Config-Update anpassen
+**Datei:** www/app.py
+**Was:** Endpoint ändert sich zu: Nimmt JSON entgegen, ruft Bash-Main auf, gibt Response zurück
+
+```python
+@app.route('/api/config', methods=['POST'])
+def update_config():
+    """
+    Aktualisiert Config-Werte und startet Services neu
+    Body: JSON mit geänderten Werten: {"DEFAULT_OUTPUT_DIR": "/media/iso", ...}
+    """
+    try:
+        changes = request.get_json()
+        
+        if not changes or not isinstance(changes, dict):
+            return jsonify({"success": False, "message": "Ungültige Daten"}), 400
+        
+        # Konvertiere zu JSON-String für Bash
+        changes_json = json.dumps(changes)
+        
+        # Rufe Bash-Main-Funktion auf
+        result = subprocess.run(
+            ['bash', '-c', f'source {INSTALL_DIR}/lib/lib-config.sh; apply_config_changes \'{changes_json}\''],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        # Parse Response
+        if result.returncode == 0:
+            response_data = json.loads(result.stdout)
+            return jsonify(response_data), 200
+        else:
+            error_msg = result.stderr if result.stderr else "Unbekannter Fehler"
+            return jsonify({"success": False, "message": error_msg}), 500
+            
+    except json.JSONDecodeError:
+        return jsonify({"success": False, "message": "JSON-Parsing-Fehler"}), 400
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "message": "Timeout beim Config-Update"}), 500
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+```
+
+### 7. Frontend: onBlur-Logik für Formularfelder implementieren
+**Datei:** www/static/js/config.js
+**Was:** Bei Feldverlassen: Vergleiche Original vs. Neu → speichere in Array
+
+```javascript
+// Globales Array für Änderungen
+const changedValues = {};
+
+// Speichere Original-Werte beim Laden
+const originalValues = {};
+
+// Beim Seitenload: Speichere alle Original-Werte
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[data-config-key], select[data-config-key]').forEach(field => {
+        const key = field.getAttribute('data-config-key');
+        originalValues[key] = field.value;
+        
+        // Registriere onBlur-Handler
+        field.addEventListener('blur', handleFieldChange);
+    });
+});
+
+// Handler für Feld-Änderungen
+function handleFieldChange(event) {
+    const field = event.target;
+    const key = field.getAttribute('data-config-key');
+    const newValue = field.value;
+    const originalValue = originalValues[key];
+    
+    // Vergleiche: Wurde geändert?
+    if (newValue !== originalValue) {
+        changedValues[key] = newValue;
+        
+        // Visuelles Feedback: Gelber Rahmen
+        field.classList.add('changed');
+    } else {
+        // Zurückgesetzt auf Original: Entferne aus Array
+        delete changedValues[key];
+        field.classList.remove('changed');
+    }
+    
+    // Update Button-Status
+    updateSaveButtonState();
+}
+
+// Update Save-Button (aktivieren/deaktivieren)
+function updateSaveButtonState() {
+    const saveButton = document.getElementById('save-config-button');
+    const hasChanges = Object.keys(changedValues).length > 0;
+    
+    saveButton.disabled = !hasChanges;
+    saveButton.textContent = hasChanges 
+        ? `Speichern (${Object.keys(changedValues).length} Änderung(en))` 
+        : 'Speichern';
+}
+```
+
+**CSS-Ergänzung für visuelles Feedback:**
+```css
+/* www/static/css/formular.css */
+input.changed, select.changed {
+    border-color: #ffc107;
+    background-color: #fff9e6;
+}
+```
+
+### 8. Frontend: Änderungs-Array und Speicher-Button-Logik
+**Datei:** www/static/js/config.js
+**Was:** Button prüft Array, sendet nur Änderungen an API
+
+```javascript
+// Save-Button Click-Handler
+document.getElementById('save-config-button').addEventListener('click', async function() {
+    const saveButton = this;
+    
+    // Prüfe ob Änderungen vorhanden
+    if (Object.keys(changedValues).length === 0) {
+        showNotification('Keine Änderungen zum Speichern', 'info');
+        return;
+    }
+    
+    // Button deaktivieren während Request
+    saveButton.disabled = true;
+    saveButton.textContent = 'Speichert...';
+    
+    try {
+        const response = await fetch('/api/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(changedValues)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('Konfiguration erfolgreich gespeichert', 'success');
+            
+            // Reset: Neue Original-Werte setzen
+            Object.keys(changedValues).forEach(key => {
+                originalValues[key] = changedValues[key];
+                document.querySelector(`[data-config-key="${key}"]`).classList.remove('changed');
+            });
+            
+            // Leere Änderungs-Array
+            Object.keys(changedValues).forEach(key => delete changedValues[key]);
+            updateSaveButtonState();
+            
+            // Zeige Restart-Info an
+            if (result.restart_info) {
+                const restartInfo = JSON.parse(result.restart_info);
+                if (restartInfo.disk2iso_restarted || restartInfo.disk2iso_web_restarted) {
+                    showNotification('Services wurden neu gestartet', 'info');
+                }
+            }
+        } else {
+            showNotification(`Fehler: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        showNotification(`Netzwerkfehler: ${error.message}`, 'error');
+    } finally {
+        saveButton.disabled = false;
+        updateSaveButtonState();
+    }
+});
+```
+
+### 9. Frontend: Ordner-Auswahl-Modal in Änderungs-Array integrieren
+**Datei:** www/static/js/config.js
+**Was:** Wenn Modal mit OK verlassen wird, triggere Änderungs-Logik
+
+```javascript
+// Ordner-Auswahl-Modal Handler (angenommen: bereits vorhanden)
+function handleFolderSelection(selectedPath) {
+    const outputDirField = document.querySelector('[data-config-key="DEFAULT_OUTPUT_DIR"]');
+    const oldValue = outputDirField.value;
+    
+    // Setze neuen Wert
+    outputDirField.value = selectedPath;
+    
+    // Triggere Change-Logik manuell
+    if (selectedPath !== originalValues['DEFAULT_OUTPUT_DIR']) {
+        changedValues['DEFAULT_OUTPUT_DIR'] = selectedPath;
+        outputDirField.classList.add('changed');
+    } else {
+        delete changedValues['DEFAULT_OUTPUT_DIR'];
+        outputDirField.classList.remove('changed');
+    }
+    
+    updateSaveButtonState();
+}
+```
+
+### 10. Testing und Fehlerbehandlung implementieren
+**Was:** Edge Cases abdecken
+
+**Test-Szenarien:**
+1. **Single Value Change**: Ändere nur MP3_QUALITY → kein Service-Restart
+2. **MQTT Change**: Ändere MQTT_BROKER → disk2iso restart
+3. **TMDB Change**: Ändere TMDB_API_KEY → disk2iso-web restart
+4. **Multiple Changes**: Ändere MQTT + TMDB → beide Services restart
+5. **Invalid Value**: Sende ungültigen Port → Fehler-Response
+6. **Service Restart Failure**: Simuliere fehlgeschlagenen Restart
+7. **Empty Array**: Sende leeres JSON → Error-Response
+8. **Partial Success**: 3 von 5 Werten erfolgreich → Response mit Details
+
+**Fehlerbehandlung in Bash:**
+- Validierung in jedem Setter
+- Fehler auf stderr ausgeben
+- Non-Zero Exit-Code bei Fehler
+- Detaillierte Fehler-JSON zurückgeben
+
+**Fehlerbehandlung in Python:**
+- Try-Catch um subprocess-Call
+- Timeout (30s) für Bash-Ausführung
+- HTTP-Status-Codes: 200 (OK), 400 (Bad Request), 500 (Server Error)
+
+**Fehlerbehandlung in Frontend:**
+- Network-Error-Handling
+- User-Feedback über Notifications
+- Rollback bei Fehler (Original-Werte wiederherstellen)
+
+## HTML-Anpassungen erforderlich
+
+Alle Input-Felder benötigen das Attribut `data-config-key`:
+
+```html
+<!-- Beispiel: templates/config.html -->
+<input type="text" 
+       id="output_dir" 
+       data-config-key="DEFAULT_OUTPUT_DIR" 
+       value="{{ config.output_dir }}">
+
+<input type="number" 
+       id="mp3_quality" 
+       data-config-key="MP3_QUALITY" 
+       value="{{ config.mp3_quality }}" 
+       min="0" max="9">
+
+<input type="text" 
+       id="mqtt_broker" 
+       data-config-key="MQTT_BROKER" 
+       value="{{ config.mqtt_broker }}">
+```
+
+## Vorteile dieser Lösung
+
+1. ✅ **Granular**: Nur geänderte Werte werden geschrieben
+2. ✅ **Effizient**: Service-Neustarts nur bei Bedarf
+3. ✅ **Robust**: Validierung in Bash-Settern
+4. ✅ **User-Friendly**: Visuelles Feedback, Change-Tracking
+5. ✅ **Atomic**: Alle Änderungen in einem Bash-Prozess
+6. ✅ **Debuggable**: Klare Fehler-Messages, strukturierte Logs
+
+## Migration / Deployment
+
+1. Backup der aktuellen `lib/lib-config.sh` erstellen
+2. Neue Funktionen in `lib-config.sh` einfügen
+3. Python-Endpoint aktualisieren
+4. Frontend-JS aktualisieren
+5. HTML-Templates mit `data-config-key` erweitern
+6. Tests durchführen
+7. Alte `save_config_and_restart()` Funktion als deprecated markieren, sie wird beim Relase entfernt
+
+## Datum
+16. Januar 2026
