@@ -1445,52 +1445,157 @@ def api_system():
 
 @app.route('/api/metadata/tmdb/search', methods=['POST'])
 def api_tmdb_search():
-    """API-Endpoint: Suche Film/TV-Serie in TMDB (nutzt Bash-Funktion)"""
+    """API-Endpoint: Suche Film/TV-Serie in TMDB (Python-basierte Verarbeitung wie MusicBrainz)"""
     try:
+        import requests
+        
         data = request.get_json()
-        title = data.get('title', '').strip()
-        media_type = data.get('type', 'movie')  # 'movie' oder 'tv'
+        iso_filename = data.get('iso_filename', '').strip()
         
-        if not title:
-            return jsonify({'success': False, 'message': 'Titel erforderlich'}), 400
+        if not iso_filename:
+            return jsonify({'success': False, 'message': 'ISO-Dateiname erforderlich'}), 400
         
-        # Rufe Bash-Funktion auf (sicheres Argument-Array statt String-Interpolation)
+        # Schritt 1: Rufe Bash search_and_cache_tmdb() auf (nur raw API call)
         script = f"""
-source {INSTALL_DIR}/lib/config.sh
-source {INSTALL_DIR}/lib/lib-dvd-metadata.sh
-search_tmdb_json "$1" "$2"
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+source {INSTALL_DIR}/conf/disk2iso.conf 2>/dev/null
+source {INSTALL_DIR}/lib/lib-config.sh 2>/dev/null
+source {INSTALL_DIR}/lib/lib-logging.sh 2>/dev/null
+source {INSTALL_DIR}/lib/lib-common.sh 2>/dev/null
+source {INSTALL_DIR}/lib/lib-folders.sh 2>/dev/null
+source {INSTALL_DIR}/lib/lib-dvd-metadata.sh 2>/dev/null
+
+# Setze OUTPUT_DIR explizit aus DEFAULT_OUTPUT_DIR (wird vom Service benötigt)
+OUTPUT_DIR="${{DEFAULT_OUTPUT_DIR:-/media/iso}}"
+
+search_and_cache_tmdb "$1"
+if [ $? -eq 0 ]; then
+    echo "SUCCESS"
+else
+    echo "FAILED"
+fi
         """
         
         result = subprocess.run(
-            ['/bin/bash', '-c', script, '--', title, media_type],
+            ['/bin/bash', '-c', script, '--', iso_filename],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
+            env={**os.environ, 'PATH': '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'}
         )
         
-        if result.returncode == 0 and result.stdout.strip():
-            # Parse JSON-Output von Bash
-            try:
-                bash_response = json.loads(result.stdout)
-                return jsonify(bash_response)
-            except json.JSONDecodeError as e:
-                print(f"[ERROR] JSON-Parse-Fehler: {e}, Output: {result.stdout}", file=sys.stderr)
-                return jsonify({
-                    'success': False,
-                    'message': 'Ungültige Antwort vom Server'
-                }), 500
-        else:
-            error_msg = result.stderr.strip() if result.stderr else 'TMDB-Suche fehlgeschlagen'
-            print(f"[ERROR] Bash-Fehler: {error_msg}", file=sys.stderr)
+        if "SUCCESS" not in result.stdout:
+            print(f"[ERROR] search_and_cache_tmdb failed: {result.stderr}", file=sys.stderr)
             return jsonify({
                 'success': False,
                 'message': 'TMDB-Suche fehlgeschlagen'
             }), 500
+        
+        # Schritt 2: Python verarbeitet die raw response (wie bei MusicBrainz)
+        iso_basename = iso_filename.replace('.iso', '')
+        config = get_config()
+        output_dir = config.get('output_dir', '/media/iso')
+        cache_dir = Path(output_dir) / '.temp' / 'tmdb'
+        thumbs_dir = cache_dir / 'thumbs'
+        raw_cache_file = cache_dir / f"{iso_basename}_raw.json"
+        final_cache_file = cache_dir / f"{iso_basename}.json"
+        
+        # Lese raw TMDB response
+        if not raw_cache_file.exists():
+            return jsonify({
+                'success': False,
+                'message': 'Raw cache nicht gefunden'
+            }), 500
+        
+        with open(raw_cache_file, 'r', encoding='utf-8') as f:
+            raw_data = json.load(f)
+        
+        # Prüfe auf API-Fehler
+        if 'error' in raw_data:
+            return jsonify({
+                'success': False,
+                'message': 'TMDB-API-Fehler'
+            }), 500
+        
+        # Extrahiere Suchbegriff (aus Bash-Script übernommen)
+        # Erkenne Media-Type
+        media_type = "movie"
+        if '_season' in iso_filename.lower() or '_s' in iso_filename.lower():
+            media_type = "tv"
+        
+        # Parse search term aus raw response (rückwärts vom Dateinamen)
+        # Bash hat bereits prepare_search_string() ausgeführt
+        search_term = iso_basename.replace('_', ' ').title()
+        
+        # Verarbeite Ergebnisse (max. 10)
+        results = raw_data.get('results', [])[:10]
+        total_results = raw_data.get('total_results', 0)
+        
+        processed_results = []
+        poster_count = 0
+        
+        for item in results:
+            # Extrahiere relevante Felder
+            tmdb_id = item.get('id')
+            title = item.get('title') or item.get('name', '')
+            
+            # Extrahiere Jahr aus release_date oder first_air_date
+            release_date = item.get('release_date') or item.get('first_air_date', '')
+            year = release_date.split('-')[0] if release_date else ''
+            
+            overview = item.get('overview', '')
+            poster_path = item.get('poster_path')
+            
+            # Download Poster wenn vorhanden
+            local_poster = None
+            if poster_path:
+                poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}"
+                local_poster_file = thumbs_dir / f"{iso_basename}_{tmdb_id}.jpg"
+                
+                try:
+                    response = requests.get(poster_url, timeout=10)
+                    if response.status_code == 200:
+                        thumbs_dir.mkdir(parents=True, exist_ok=True)
+                        with open(local_poster_file, 'wb') as f:
+                            f.write(response.content)
+                        # Relativer Pfad ab OUTPUT_DIR
+                        local_poster = f".temp/tmdb/thumbs/{local_poster_file.name}"
+                        poster_count += 1
+                except Exception as e:
+                    print(f"[WARN] Poster download failed for {tmdb_id}: {e}", file=sys.stderr)
+            
+            processed_results.append({
+                'id': tmdb_id,
+                'title': title,
+                'year': year,
+                'overview': overview,
+                'poster_path': poster_path,
+                'local_poster': local_poster
+            })
+        
+        # Erstelle finale Cache-Struktur
+        final_data = {
+            'success': True,
+            'search_term': search_term,
+            'media_type': media_type,
+            'total_results': total_results,
+            'results': processed_results
+        }
+        
+        # Speichere verarbeitete Daten
+        with open(final_cache_file, 'w', encoding='utf-8') as f:
+            json.dump(final_data, f, ensure_ascii=False, indent=2)
+        
+        print(f"[INFO] TMDB: {total_results} Treffer, {poster_count} Poster heruntergeladen", file=sys.stderr)
+        
+        return jsonify(final_data)
             
     except subprocess.TimeoutExpired:
         return jsonify({'success': False, 'message': 'Timeout bei TMDB-Anfrage'}), 504
     except Exception as e:
         print(f"[ERROR] Unexpected: {str(e)}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': f'Fehler: {str(e)}'}), 500
 
 @app.route('/api/metadata/tmdb/apply', methods=['POST'])
@@ -1512,12 +1617,14 @@ def api_tmdb_apply():
         
         # Rufe Bash-Funktion auf
         script = f"""
-source {INSTALL_DIR}/lib/config.sh
-source {INSTALL_DIR}/lib/lib-common.sh
-source {INSTALL_DIR}/lib/lib-logging.sh
-source {INSTALL_DIR}/lib/lib-dvd-metadata.sh
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+source {INSTALL_DIR}/conf/disk2iso.conf
+source {INSTALL_DIR}/lib/lib-config.sh
+source {INSTALL_DIR}/lib/lib-logging.sh 2>/dev/null
+source {INSTALL_DIR}/lib/lib-common.sh 2>/dev/null
+source {INSTALL_DIR}/lib/lib-dvd-metadata.sh 2>/dev/null
 
-add_metadata_to_existing_iso "{iso_path}" "{title}" "{media_type}" "{tmdb_id}"
+add_metadata_to_existing_iso "{iso_path}" "{title}" "{media_type}" "{tmdb_id}" 2>/dev/null
 result=$?
 
 if [ $result -eq 0 ]; then
@@ -1525,13 +1632,14 @@ if [ $result -eq 0 ]; then
 else
     echo "FAILED"
 fi
-        """
+        """.strip().split('\n')[-1]  # Nur letzte Zeile (SUCCESS/FAILED)
         
         result = subprocess.run(
             ['bash', '-c', script],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
+            env={**os.environ, 'PATH': '/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin'}
         )
         
         if "SUCCESS" in result.stdout:

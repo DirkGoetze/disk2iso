@@ -23,6 +23,23 @@
 readonly TMDB_API_BASE_URL="https://api.themoviedb.org/3"
 readonly TMDB_IMAGE_BASE_URL="https://image.tmdb.org/t/p/w500"
 
+# Globale Cache-Verzeichnis Variable (Lazy Initialization)
+TMDB_CACHE_DIR=""
+TMDB_THUMBS_DIR=""
+
+# Funktion: Initialisiere TMDB Cache-Verzeichnisse (Lazy Initialization)
+# Nutzt ensure_subfolder() aus lib-folders.sh für konsistente Verzeichnisverwaltung
+# Wird beim ersten Aufruf von make_tmdb_request() oder get_cached_tmdb_results() aufgerufen
+init_tmdb_cache_dirs() {
+    if [[ -z "$TMDB_CACHE_DIR" ]]; then
+        TMDB_CACHE_DIR=$(ensure_subfolder ".temp/tmdb") || return 1
+        TMDB_THUMBS_DIR="${TMDB_CACHE_DIR}/thumbs"
+        mkdir -p "$TMDB_THUMBS_DIR" 2>/dev/null || return 1
+        log_message "TMDB: Cache-Verzeichnis initialisiert: $TMDB_CACHE_DIR"
+    fi
+    return 0
+}
+
 # ============================================================================
 # TMDB API FUNCTIONS - MOVIES
 # ============================================================================
@@ -476,6 +493,42 @@ create_dvd_archive_metadata() {
 # TITLE EXTRACTION
 # ============================================================================
 
+# Funktion: Bereite Suchstring aus ISO-Dateinamen vor
+# Parameter: $1 = ISO-Dateiname (z.B. "supernatural_season_10.iso")
+# Rückgabe: Bereinigter Suchbegriff für TMDB
+prepare_search_string() {
+    local filename="$1"
+    local basename="${filename%.iso}"
+    
+    log_message "TMDB-Prepare: Input = '$basename'" >&2
+    
+    # Entferne gängige Suffixe
+    basename=$(echo "$basename" | sed -E 's/_disc_?[0-9]+$//i')
+    basename=$(echo "$basename" | sed -E 's/_dvd$//i')
+    basename=$(echo "$basename" | sed -E 's/_bluray$//i')
+    basename=$(echo "$basename" | sed -E 's/_bd$//i')
+    
+    # Entferne Disc-Nummern (_d1, _d2, _disc1, etc.)
+    basename=$(echo "$basename" | sed -E 's/_d[0-9]+$//i')
+    basename=$(echo "$basename" | sed -E 's/_disc[0-9]+$//i')
+    
+    # Entferne Season-Informationen (für bessere TV-Suche)
+    basename=$(echo "$basename" | sed -E 's/_season[_[:space:]]*[0-9]+//gi')
+    basename=$(echo "$basename" | sed -E 's/_s[0-9]{2}//gi')
+    
+    # Entferne Jahr am Ende (4-stellig)
+    basename=$(echo "$basename" | sed -E 's/_[0-9]{4}$//')
+    
+    # Ersetze Unterstriche durch Leerzeichen
+    basename=$(echo "$basename" | tr '_' ' ')
+    
+    # Entferne mehrfache Leerzeichen
+    basename=$(echo "$basename" | sed 's/  */ /g' | xargs)
+    
+    log_message "TMDB-Prepare: Output = '$basename'" >&2
+    echo "$basename"
+}
+
 # Funktion: Extrahiere Filmtitel aus disc_label
 # Parameter: $1 = disc_label (z.B. "the_matrix_1999" oder "MOVIE_TITLE")
 # Rückgabe: Bereinigter Titel für TMDB-Suche
@@ -498,6 +551,101 @@ extract_movie_title() {
     label=$(echo "$label" | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2))}1')
     
     echo "$label"
+}
+
+# ============================================================================
+# CACHING FUNCTIONS (NEW ARCHITECTURE)
+# ============================================================================
+
+# Funktion: Führe TMDB-Anfrage durch und speichere RAW Response
+# Parameter: $1 = Suchbegriff (bereinigter Titel)
+#            $2 = ISO-Basisname (ohne .iso, für Cache-Dateinamen)
+#            $3 = Media-Type ("movie" oder "tv")
+# Rückgabe: 0 bei Erfolg, 1 bei Fehler
+# WICHTIG: Speichert nur die unverarbeitete TMDB-API Response
+#          Python übernimmt die gesamte JSON-Verarbeitung und Poster-Downloads
+fetch_tmdb_raw() {
+    local search_term="$1"
+    local iso_basename="$2"
+    local media_type="$3"
+    
+    # Validierung
+    if [[ -z "$TMDB_API_KEY" ]]; then
+        log_message "TMDB-Request: API-Key nicht konfiguriert"
+        return 1
+    fi
+    
+    # Initialisiere Cache-Verzeichnisse (Lazy Initialization)
+    init_tmdb_cache_dirs || return 1
+    
+    local cache_file="${TMDB_CACHE_DIR}/${iso_basename}_raw.json"
+    
+    log_message "TMDB-Request: Suche '$search_term' (Typ: $media_type)"
+    
+    # URL-Encode des Suchbegriffs
+    local encoded_query=$(echo "$search_term" | sed 's/ /%20/g' | sed 's/&/%26/g')
+    
+    # Wähle API-Endpoint
+    local url
+    if [[ "$media_type" == "tv" ]]; then
+        url="${TMDB_API_BASE_URL}/search/tv?api_key=${TMDB_API_KEY}&language=de-DE&query=${encoded_query}&page=1"
+    else
+        url="${TMDB_API_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&language=de-DE&query=${encoded_query}&page=1"
+    fi
+    
+    # API-Anfrage - speichere direkt in Datei (vermeidet Bash String-Length-Limits)
+    log_message "TMDB-Request: URL = $url" >&2
+    
+    if ! curl -s -f "$url" -o "$cache_file" 2>/dev/null; then
+        local curl_exit=$?
+        log_message "TMDB-Request: API-Anfrage fehlgeschlagen (exit $curl_exit)" >&2
+        echo '{"error": "API request failed"}' > "$cache_file"
+        return 1
+    fi
+    
+    # Prüfe ob Response JSON ist (mindestens '{}')
+    if [[ ! -s "$cache_file" ]]; then
+        log_message "TMDB-Request: Leere Response erhalten"
+        echo '{"error": "Empty response"}' > "$cache_file"
+        return 1
+    fi
+    
+    log_message "TMDB-Request: Raw response gespeichert: $(basename "$cache_file")"
+    return 0
+}
+
+# Funktion: Suche und Cache TMDB-Metadaten (Hauptfunktion)
+# Parameter: $1 = ISO-Dateiname (z.B. "supernatural_season_10.iso")
+# Rückgabe: 0 bei Erfolg, 1 bei Fehler
+search_and_cache_tmdb() {
+    local iso_filename="$1"
+    local iso_basename="${iso_filename%.iso}"
+    
+    log_message "TMDB: Starte Suche für: $iso_filename"
+    
+    # Schritt 1: Suchbegriff vorbereiten
+    local search_term=$(prepare_search_string "$iso_filename")
+    
+    if [[ -z "$search_term" ]]; then
+        log_message "TMDB: Fehler bei Suchbegriff-Extraktion"
+        return 1
+    fi
+    
+    # Erkenne Media-Type (TV wenn Season im Dateinamen)
+    local media_type="movie"
+    if [[ "$iso_filename" =~ season[_[:space:]]*[0-9]+ ]] || [[ "$iso_filename" =~ _s[0-9]{2} ]]; then
+        media_type="tv"
+        log_message "TMDB: TV-Serie erkannt"
+    fi
+    
+    # Schritt 2: TMDB-Anfrage durchführen (nur raw API call)
+    if ! fetch_tmdb_raw "$search_term" "$iso_basename" "$media_type"; then
+        log_message "TMDB: Anfrage fehlgeschlagen"
+        return 1
+    fi
+    
+    log_message "TMDB: Raw response bereit - Python übernimmt Verarbeitung"
+    return 0
 }
 
 # ============================================================================

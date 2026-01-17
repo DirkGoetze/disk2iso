@@ -227,6 +227,42 @@ function escapeHtml(text) {
 let currentMetadataPath = '';
 let currentMetadataType = '';
 
+// Extrahiere Titel aus ISO-Dateiname (entspricht extract_movie_title() aus Bash)
+function extractTitleFromFilename(filename) {
+    // Entferne Pfad und .iso Extension
+    let title = filename.split('/').pop().replace(/\.iso$/, '');
+    
+    // Entferne gängige Suffixe
+    title = title.replace(/_disc_?\d+$/i, '');
+    title = title.replace(/_dvd$/i, '');
+    title = title.replace(/_bluray$/i, '');
+    title = title.replace(/_bd$/i, '');
+    
+    // Entferne Season/Staffel-Informationen (für TV-Serien)
+    title = title.replace(/_season[_\s]*\d+/i, '');
+    title = title.replace(/_s\d{2}/i, '');  // S01, S02, etc.
+    
+    // Entferne Jahr am Ende (4-stellig)
+    title = title.replace(/_\d{4}$/, '');
+    
+    // Ersetze Unterstriche und Bindestriche durch Leerzeichen
+    title = title.replace(/[_-]/g, ' ');
+    
+    // Kapitalisierung (erster Buchstabe jedes Wortes)
+    title = title.replace(/\b\w/g, l => l.toUpperCase());
+    
+    return title.trim();
+}
+
+// Erkenne ob es eine TV-Serie ist (Season im Dateinamen)
+function detectMediaType(filename) {
+    const lowerName = filename.toLowerCase();
+    if (lowerName.match(/season[_\s]*\d+/) || lowerName.match(/s\d{2}e\d{2}/)) {
+        return 'tv';
+    }
+    return 'movie';
+}
+
 function openMetadataModal(isoPath, type) {
     currentMetadataPath = isoPath;
     currentMetadataType = type;
@@ -234,9 +270,21 @@ function openMetadataModal(isoPath, type) {
     const modal = document.getElementById('metadata-modal');
     const searchType = document.getElementById('metadata-search-type');
     const searchFields = document.getElementById('metadata-search-fields');
+    const resultsDiv = document.getElementById('metadata-results');
+    
+    // Stoppe altes TMDB-Polling falls aktiv
+    if (typeof stopTmdbResultCheck === 'function') {
+        stopTmdbResultCheck();
+    }
     
     if (type === 'audio') {
         searchType.textContent = 'MusicBrainz-Suche';
+        
+        // Zeige Suchen-Button für Audio
+        const searchButton = document.getElementById('metadata-search-button');
+        if (searchButton) {
+            searchButton.style.display = 'block';
+        }
         
         // Prüfe ob .mbquery existiert (zeige Hinweis)
         const isoBase = isoPath.replace(/\.iso$/, '');
@@ -249,19 +297,103 @@ function openMetadataModal(isoPath, type) {
             <input type="text" id="search-artist" placeholder="Künstler (optional bei gespeicherten Daten)" class="form-control">
             <input type="text" id="search-album" placeholder="Album (optional bei gespeicherten Daten)" class="form-control">
         `;
+        resultsDiv.innerHTML = '';
     } else {
+        // TMDB-Suche: Automatischer Workflow
         searchType.textContent = 'TMDB-Suche';
+        
+        // Verstecke globalen Suchen-Button für TMDB
+        const searchButton = document.getElementById('metadata-search-button');
+        if (searchButton) {
+            searchButton.style.display = 'none';
+        }
+        
+        // Extrahiere Titel aus Dateinamen
+        const extractedTitle = extractTitleFromFilename(isoPath);
+        const mediaType = detectMediaType(isoPath);
+        
+        // Zeige Lade-Hinweis und extrahierten Titel
         searchFields.innerHTML = `
-            <input type="text" id="search-title" placeholder="Film/Serie Titel" class="form-control">
-            <select id="search-media-type" class="form-control">
-                <option value="movie">Film</option>
-                <option value="tv">TV-Serie</option>
-            </select>
+            <div style="background: #e8f4f8; padding: 10px; border-radius: 4px; margin-bottom: 10px;">
+                📝 Erkannter Titel: <strong>${escapeHtml(extractedTitle)}</strong>
+            </div>
+            <div id="manual-search-toggle" style="display: none;">
+                <input type="text" id="search-title" placeholder="Film/Serie Titel" class="form-control" value="${escapeHtml(extractedTitle)}">
+                <select id="search-media-type" class="form-control">
+                    <option value="movie" ${mediaType === 'movie' ? 'selected' : ''}>Film</option>
+                    <option value="tv" ${mediaType === 'tv' ? 'selected' : ''}>TV-Serie</option>
+                </select>
+                <button onclick="searchMetadata()" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Erneut suchen</button>
+            </div>
         `;
+        
+        resultsDiv.innerHTML = '<p>🔍 Suche automatisch nach Metadaten...</p>';
+        
+        // Starte automatische Suche - übergebe ISO-Dateinamen statt extrahiertem Titel
+        const isoFilename = isoPath.split('/').pop(); // Extrahiere nur Dateinamen
+        autoSearchTMDB(isoFilename, mediaType);
     }
     
-    document.getElementById('metadata-results').innerHTML = '';
     modal.style.display = 'block';
+}
+
+// Automatische TMDB-Suche beim Öffnen des Modals (nutzt neues Caching-System)
+function autoSearchTMDB(isoFilename, mediaType) {
+    const resultsDiv = document.getElementById('metadata-results');
+    
+    console.log('[TMDB] Starte Suche für ISO:', isoFilename);
+    
+    fetch('/api/metadata/tmdb/search', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({iso_filename: isoFilename})
+    })
+    .then(res => {
+        console.log('[TMDB] Response Status:', res.status);
+        return res.json();
+    })
+    .then(data => {
+        console.log('[TMDB] Response Data:', data);
+        
+        if (data.success && data.results && data.results.length > 0) {
+            console.log(`[TMDB] ${data.total_results} Treffer gefunden (zeige ${data.results.length})`);
+            
+            if (data.results.length === 1) {
+                // Ein Treffer → Modal schließen und direkt übernehmen
+                console.log('[TMDB] Eindeutiger Treffer - übernehme automatisch');
+                closeMetadataModal();
+                applyTMDBMetadata(data.results[0].id, data.results[0].title, data.media_type);
+            } else {
+                // Mehrere Treffer → Auswahl anzeigen
+                console.log('[TMDB] Mehrere Treffer - zeige Auswahl');
+                displayTMDBResults(data.results, data.media_type);
+                
+                // Zeige manuelle Suche als zusätzliche Option
+                document.getElementById('manual-search-toggle').style.display = 'block';
+            }
+        } else {
+            // Keine Treffer → Manuelle Eingabe ermöglichen
+            console.log('[TMDB] Keine Treffer gefunden');
+            resultsDiv.innerHTML = `
+                <div style="background: #f8d7da; padding: 15px; border-radius: 4px; margin-bottom: 10px; border-left: 4px solid #dc3545;">
+                    <strong>❌ Keine Treffer gefunden</strong><br>
+                    <small>Suchbegriff: "${data.search_term || 'unbekannt'}"</small><br>
+                    <small>Bitte passen Sie den Suchbegriff an und suchen Sie erneut:</small>
+                </div>
+            `;
+            document.getElementById('manual-search-toggle').style.display = 'block';
+        }
+    })
+    .catch(err => {
+        console.error('[TMDB] Fehler:', err);
+        resultsDiv.innerHTML = `
+            <div style="background: #f8d7da; padding: 15px; border-radius: 4px; margin-bottom: 10px; border-left: 4px solid #dc3545;">
+                <strong>❌ Fehler bei der Suche</strong><br>
+                <small>${err.message}</small>
+            </div>
+        `;
+        document.getElementById('manual-search-toggle').style.display = 'block';
+    });
 }
 
 function closeMetadataModal() {
@@ -269,6 +401,14 @@ function closeMetadataModal() {
     currentMetadataPath = '';
     currentMetadataType = '';
 }
+
+// Click außerhalb des Modals schließt es
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('metadata-modal');
+    if (modal && event.target === modal) {
+        closeMetadataModal();
+    }
+});
 
 function searchMetadata() {
     const resultsDiv = document.getElementById('metadata-results');
@@ -397,24 +537,72 @@ function displayTMDBResults(results, mediaType) {
         return;
     }
     
-    resultsDiv.innerHTML = '<div class="metadata-results-list"></div>';
+    resultsDiv.innerHTML = `
+        <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 15px; border-left: 4px solid #ff9800;">
+            <strong>⚠️ ${results.length} Treffer gefunden</strong><br>
+            <small>Bitte wählen Sie den richtigen Eintrag aus:</small>
+        </div>
+        <div class="metadata-results-list"></div>
+    `;
     const listDiv = resultsDiv.querySelector('.metadata-results-list');
     
     results.forEach(item => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'metadata-result-item';
-        itemDiv.innerHTML = `
-            ${item.poster_url ? `<img src="${item.poster_url}" alt="Poster" class="result-poster">` : ''}
-            <div class="result-info">
-                <div class="result-title">${escapeHtml(item.title)}</div>
-                <div class="result-details">${item.year || 'Unknown'}</div>
-                ${item.overview ? `<div class="result-overview">${escapeHtml(item.overview.substring(0, 150))}...</div>` : ''}
-            </div>
-            <button class="btn-select-metadata" data-id="${item.id}" data-title="${escapeHtml(item.title)}">Auswählen</button>
+        itemDiv.style.cssText = `
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
         `;
         
+        // Nutze local_poster falls vorhanden (gecachtes Bild), sonst poster_url
+        const posterSrc = item.local_poster ? `/api/archive/thumbnail/${item.local_poster}` : (item.poster_url || null);
+        
+        itemDiv.innerHTML = `
+            ${posterSrc ? `<img src="${posterSrc}" alt="Poster" style="width: 80px; height: 120px; object-fit: cover; border-radius: 4px; flex-shrink: 0;">` : '<div style="width: 80px; height: 120px; background: #f0f0f0; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 40px;">🎬</div>'}
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px; color: #333;">${escapeHtml(item.title)}</div>
+                <div style="font-size: 14px; color: #666; margin-bottom: 5px;">📅 ${item.year || 'Jahr unbekannt'}</div>
+                ${item.overview ? `<div style="font-size: 13px; color: #888; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${escapeHtml(item.overview)}</div>` : ''}
+            </div>
+            <button class="btn-select-metadata" data-id="${item.id}" data-title="${escapeHtml(item.title)}" style="
+                background: #4CAF50;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+                white-space: nowrap;
+                flex-shrink: 0;
+            ">✓ Auswählen</button>
+        `;
+        
+        // Hover-Effekt
+        itemDiv.addEventListener('mouseenter', () => {
+            itemDiv.style.borderColor = '#4CAF50';
+            itemDiv.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.2)';
+        });
+        itemDiv.addEventListener('mouseleave', () => {
+            itemDiv.style.borderColor = '#ddd';
+            itemDiv.style.boxShadow = 'none';
+        });
+        
         itemDiv.querySelector('.btn-select-metadata').addEventListener('click', (e) => {
+            e.stopPropagation();
             applyTMDBMetadata(item.id, e.target.dataset.title, mediaType);
+        });
+        
+        // Klick auf ganzes Item
+        itemDiv.addEventListener('click', () => {
+            itemDiv.querySelector('.btn-select-metadata').click();
         });
         
         listDiv.appendChild(itemDiv);

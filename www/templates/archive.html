@@ -86,9 +86,12 @@
                 <div id="metadata-search-fields" style="margin-bottom: 20px;">
                     <!-- Wird dynamisch gefüllt -->
                 </div>
-                <button onclick="searchMetadata()" class="btn btn-primary" style="width: 100%;">Suchen</button>
-                <div id="metadata-results" style="margin-top: 20px;">
+                <button id="metadata-search-button" onclick="searchMetadata()" class="btn btn-primary" style="width: 100%;">Suchen</button>
+                <div id="metadata-results" style="margin-top: 20px; max-height: 400px; overflow-y: auto;">
                     <!-- Suchergebnisse werden hier angezeigt -->
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button onclick="closeMetadataModal()" class="btn" style="background: #6c757d; color: white; padding: 10px 30px; border: none; border-radius: 4px; cursor: pointer;">Abbrechen</button>
                 </div>
             </div>
         </div>

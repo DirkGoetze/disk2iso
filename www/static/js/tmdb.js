@@ -160,8 +160,11 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// DISABLED: Auto-start deaktiviert - Neuer Workflow in archive.js
+// Das alte Polling-System wird nicht mehr verwendet
 // Start checking only if TMDB modal exists (i.e., on archive page)
 // This prevents unnecessary 404 errors on other pages
+/*
 if (document.getElementById('tmdbModal')) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', startTmdbResultCheck);
@@ -169,3 +172,4 @@ if (document.getElementById('tmdbModal')) {
         startTmdbResultCheck();
     }
 }
+*/
