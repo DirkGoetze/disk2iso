@@ -41,8 +41,8 @@ ensure_subfolder() {
     # Stelle sicher dass OUTPUT_DIR existiert
     get_out_folder || return 1
     
-    # Vollständiger Pfad
-    local full_path="${OUTPUT_DIR}/${subfolder}"
+    # Vollständiger Pfad (entferne trailing slash von OUTPUT_DIR)
+    local full_path="${OUTPUT_DIR%/}/${subfolder}"
     
     # Prüfe/Erstelle Ordner (idempotent)
     if [[ ! -d "$full_path" ]]; then

@@ -96,6 +96,8 @@
 {% endblock %}
 
 {% block scripts %}
+    <script src="{{ url_for('static', filename='js/tmdb.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/musicbrainz.js') }}"></script>
     <script src="{{ url_for('static', filename='js/archive.js') }}"></script>
 {% endblock %}
 

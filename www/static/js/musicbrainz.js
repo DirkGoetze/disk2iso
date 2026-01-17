@@ -262,9 +262,12 @@ function showNotification(message, type = 'info') {
 }
 
 // Prüfe alle 5 Sekunden ob MusicBrainz-Auswahl erforderlich ist
-mbCheckInterval = setInterval(checkMusicBrainzStatus, 5000);
-
-// Initiale Prüfung beim Laden
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(checkMusicBrainzStatus, 1000);
-});
+// Nur wenn Modal existiert (d.h. auf Archive-Seite)
+if (document.getElementById('musicbrainz-modal')) {
+    mbCheckInterval = setInterval(checkMusicBrainzStatus, 5000);
+    
+    // Initiale Prüfung beim Laden
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(checkMusicBrainzStatus, 1000);
+    });
+}

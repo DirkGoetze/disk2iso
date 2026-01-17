@@ -162,11 +162,8 @@ function updateLiveStatus() {
                 });
             }
             
-            // Timestamp aktualisieren
-            const updateElement = document.querySelector('.info-row:has(.info-label:contains("Aktualisiert")) .info-value');
-            if (updateElement) {
-                updateElement.textContent = new Date().toLocaleString('de-DE');
-            }
+            // Timestamp aktualisieren - keine automatische Aktualisierung mehr nötig
+            // (wird vom Server bei jedem Reload gesetzt)
         })
         .catch(error => {
             console.error('Fehler beim Laden der Live-Daten:', error);

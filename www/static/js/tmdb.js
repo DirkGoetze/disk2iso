@@ -160,9 +160,12 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Start checking when page loads
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startTmdbResultCheck);
-} else {
-    startTmdbResultCheck();
+// Start checking only if TMDB modal exists (i.e., on archive page)
+// This prevents unnecessary 404 errors on other pages
+if (document.getElementById('tmdbModal')) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startTmdbResultCheck);
+    } else {
+        startTmdbResultCheck();
+    }
 }

@@ -426,6 +426,11 @@ def index():
         page_title='INDEX_TITLE'
     )
 
+@app.route('/favicon.ico')
+def favicon():
+    """Unterdrücke Favicon-404-Fehler"""
+    return '', 204
+
 @app.route('/config')
 def config_page():
     """Konfigurations-Seite"""
