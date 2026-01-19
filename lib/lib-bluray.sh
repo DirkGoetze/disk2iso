@@ -58,16 +58,16 @@ check_bluray_dependencies() {
     
     # Logging
     if [[ ${#available_methods[@]} -gt 0 ]]; then
-        log_message "$MSG_BLURAY_SUPPORT_INFO ${available_methods[*]}"
+        log_info "$MSG_BLURAY_SUPPORT_INFO ${available_methods[*]}"
         
         if [[ ${#missing_methods[@]} -gt 0 ]]; then
-            log_message "$MSG_RECOMMENDED_INSTALLATION ${missing_methods[*]}"
-            log_message "$MSG_INSTALL_DDRESCUE_INFO"
+            log_error "$MSG_RECOMMENDED_INSTALLATION ${missing_methods[*]}"
+            log_info "$MSG_INSTALL_DDRESCUE_INFO"
         fi
         
         return 0
     else
-        log_message "$MSG_ERROR_NO_BLURAY_METHOD_AVAILABLE"
+        log_error "$MSG_ERROR_NO_BLURAY_METHOD_AVAILABLE"
         return 1
     fi
 }
@@ -80,7 +80,10 @@ check_bluray_dependencies() {
 # Schneller als dd bei Lesefehlern, ISO bleibt verschlüsselt
 # KEIN Fallback - Methode wird zu Beginn gewählt
 copy_bluray_ddrescue() {
-    log_message "$MSG_METHOD_DDRESCUE_ENCRYPTED"
+    # Initialisiere Kopiervorgang-Log
+    init_copy_log "$disc_label" "bluray"
+    
+    log_copying "$MSG_METHOD_DDRESCUE_ENCRYPTED"
     
     # ddrescue benötigt Map-Datei (im .temp Verzeichnis, wird auto-gelöscht)
     local mapfile="${temp_pathname}/$(basename "${iso_filename}").mapfile"
@@ -93,7 +96,7 @@ copy_bluray_ddrescue() {
         volume_size=$(isoinfo -d -i "$CD_DEVICE" 2>/dev/null | grep "Volume size is:" | awk '{print $4}')
         if [[ -n "$volume_size" ]] && [[ "$volume_size" =~ ^[0-9]+$ ]]; then
             total_bytes=$((volume_size * 2048))
-            log_message "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
+            log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
         fi
     fi
     
@@ -111,7 +114,7 @@ copy_bluray_ddrescue() {
             if [[ -n "$device_size" ]] && [[ "$device_size" =~ ^[0-9]+$ ]]; then
                 total_bytes=$device_size
                 volume_size=$((device_size / 2048))
-                log_message "$MSG_DISC_SIZE_DETECTED $(( total_bytes / 1024 / 1024 )) $MSG_DISC_SIZE_MB"
+                log_copying "$MSG_DISC_SIZE_DETECTED $(( total_bytes / 1024 / 1024 )) $MSG_DISC_SIZE_MB"
             fi
         fi
     fi
@@ -127,7 +130,7 @@ copy_bluray_ddrescue() {
     fi
     
     # Kopiere mit ddrescue
-    log_message "$MSG_START_DDRESCUE_BLURAY"
+    log_copying "$MSG_START_DDRESCUE_BLURAY"
     
     # ddrescue Parameter:
     # -b 2048: Blockgröße für optische Medien
@@ -144,15 +147,15 @@ copy_bluray_ddrescue() {
     # Starte ddrescue im Hintergrund (mit oder ohne flock)
     if $use_flock; then
         if [[ $total_bytes -gt 0 ]]; then
-            flock -x "$CD_DEVICE" ddrescue -b 2048 -r 1 -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+            flock -x "$CD_DEVICE" ddrescue -b 2048 -r 1 -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
         else
-            flock -x "$CD_DEVICE" ddrescue -b 2048 -r 1 "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+            flock -x "$CD_DEVICE" ddrescue -b 2048 -r 1 "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
         fi
     else
         if [[ $total_bytes -gt 0 ]]; then
-            ddrescue -b 2048 -r 1 -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+            ddrescue -b 2048 -r 1 -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
         else
-            ddrescue -b 2048 -r 1 "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+            ddrescue -b 2048 -r 1 "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
         fi
     fi
     local ddrescue_pid=$!
@@ -197,7 +200,7 @@ copy_bluray_ddrescue() {
                     eta=$(printf "%02d:%02d:%02d" $hours $minutes $seconds)
                 fi
                 
-                log_message "$MSG_BLURAY_PROGRESS ${copied_mb} $MSG_PROGRESS_MB / ${total_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
+                log_info "$MSG_BLURAY_PROGRESS ${copied_mb} $MSG_PROGRESS_MB / ${total_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
                 
                 # API: Fortschritt senden (IMMER)
                 if declare -f api_update_progress >/dev/null 2>&1; then
@@ -209,7 +212,7 @@ copy_bluray_ddrescue() {
                     mqtt_publish_progress "$percent" "$copied_mb" "$total_mb" "$eta"
                 fi
             else
-                log_message "$MSG_BLURAY_PROGRESS ${copied_mb} $MSG_PROGRESS_MB $MSG_COPIED"
+                log_info "$MSG_BLURAY_PROGRESS ${copied_mb} $MSG_PROGRESS_MB $MSG_COPIED"
             fi
             
             last_log_time=$current_time
@@ -223,7 +226,7 @@ copy_bluray_ddrescue() {
     
     # Prüfe Ergebnis
     if [[ $ddrescue_exit -eq 0 ]]; then
-        log_message "$MSG_BLURAY_DDRESCUE_SUCCESS"
+        log_copying "$MSG_BLURAY_DDRESCUE_SUCCESS"
         
         # Erstelle Metadaten für Archiv-Ansicht
         if declare -f create_dvd_archive_metadata >/dev/null 2>&1; then
@@ -232,10 +235,12 @@ copy_bluray_ddrescue() {
         fi
         
         # Mapfile wird mit temp_pathname automatisch gelöscht
+        finish_copy_log
         return 0
     else
-        log_message "$MSG_ERROR_DDRESCUE_FAILED"
+        log_error "$MSG_ERROR_DDRESCUE_FAILED"
         # Mapfile wird mit temp_pathname automatisch gelöscht
+        finish_copy_log
         return 1
     fi
 }

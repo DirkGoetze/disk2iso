@@ -67,7 +67,7 @@ load_module_language() {
         source "$lang_file"
         # Optional: Log-Nachricht nur wenn log_message bereits definiert
         if declare -f log_message >/dev/null 2>&1; then
-            log_message "$MSG_LANG_FILE_LOADED $(basename "$lang_file")" >&2
+            log_info "$MSG_LANG_FILE_LOADED $(basename "$lang_file")" >&2
         fi
     else
         # Fallback auf Englisch
@@ -81,12 +81,12 @@ load_module_language() {
         if [[ -f "$fallback_file" ]]; then
             source "$fallback_file"
             if declare -f log_message >/dev/null 2>&1; then
-                log_message "$MSG_LANG_FALLBACK_LOADED $(basename "$fallback_file")" >&2
+                log_info "$MSG_LANG_FALLBACK_LOADED $(basename "$fallback_file")" >&2
             fi
         else
             # Keine Sprachdatei gefunden - Module funktionieren trotzdem
             if declare -f log_message >/dev/null 2>&1; then
-                log_message "$MSG_WARNING_NO_LANG_FILE ${module_name}.${LANGUAGE}" >&2
+                log_warning "$MSG_WARNING_NO_LANG_FILE ${module_name}.${LANGUAGE}" >&2
             fi
         fi
     fi
@@ -168,7 +168,7 @@ log_message() {
 # Funktion für Info-Logging (alias für log_message)
 # Parameter: $1 = Info-Nachricht
 log_info() {
-    log_message "ℹ️  $1"
+    log_info "ℹ️  $1"
 }
 
 # Funktion für Warning-Logging

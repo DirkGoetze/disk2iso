@@ -181,8 +181,8 @@ check_common_dependencies() {
     command -v eject >/dev/null 2>&1 || missing+=("eject")
     
     if [[ ${#missing[@]} -gt 0 ]]; then
-        log_message "$MSG_ERROR_CRITICAL_TOOLS_MISSING ${missing[*]}"
-        log_message "$MSG_INSTALLATION_CORE_TOOLS"
+        log_error "$MSG_ERROR_CRITICAL_TOOLS_MISSING ${missing[*]}"
+        log_info "$MSG_INSTALLATION_CORE_TOOLS"
         return 1
     fi
     
@@ -192,8 +192,8 @@ check_common_dependencies() {
     command -v ddrescue >/dev/null 2>&1 || optional_missing+=("ddrescue")
     
     if [[ ${#optional_missing[@]} -gt 0 ]]; then
-        log_message "$MSG_OPTIONAL_TOOLS_INFO ${optional_missing[*]}"
-        log_message "$MSG_INSTALL_GENISOIMAGE_GDDRESCUE"
+        log_error "$MSG_OPTIONAL_TOOLS_INFO ${optional_missing[*]}"
+        log_info "$MSG_INSTALL_GENISOIMAGE_GDDRESCUE"
     fi
     
     return 0
@@ -241,7 +241,7 @@ calculate_and_log_progress() {
         fi
         
         # Log-Nachricht mit Präfix
-        log_message "${log_prefix} $MSG_PROGRESS: ${current_mb} $MSG_PROGRESS_MB $MSG_PROGRESS_OF ${total_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
+        log_info "${log_prefix} $MSG_PROGRESS: ${current_mb} $MSG_PROGRESS_MB $MSG_PROGRESS_OF ${total_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
         
         # API: Fortschritt senden (IMMER)
         if declare -f api_update_progress >/dev/null 2>&1; then
@@ -259,7 +259,7 @@ calculate_and_log_progress() {
         fi
     else
         # Fallback: Nur kopierte Größe
-        log_message "${log_prefix} $MSG_PROGRESS: ${current_mb} $MSG_PROGRESS_MB $MSG_COPIED"
+        log_info "${log_prefix} $MSG_PROGRESS: ${current_mb} $MSG_PROGRESS_MB $MSG_COPIED"
     fi
 }
 
@@ -303,7 +303,10 @@ get_disc_size() {
 # Funktion zum Kopieren von Daten-Discs mit ddrescue
 # Schneller und robuster als dd
 copy_data_disc_ddrescue() {
-    log_message "$MSG_METHOD_DDRESCUE"
+    # Initialisiere Kopiervorgang-Log
+    init_copy_log "$disc_label" "data"
+    
+    log_copying "$MSG_METHOD_DDRESCUE"
     
     # ddrescue benötigt Map-Datei (im .temp Verzeichnis, wird auto-gelöscht)
     local mapfile="${temp_pathname}/$(basename "${iso_filename}").mapfile"
@@ -311,7 +314,7 @@ copy_data_disc_ddrescue() {
     # Ermittle Disc-Größe mit isoinfo
     get_disc_size
     if [[ $total_bytes -gt 0 ]]; then
-        log_message "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE 2048 $MSG_ISO_BYTES ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
+        log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE 2048 $MSG_ISO_BYTES ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
     fi
     
     # Prüfe Speicherplatz (ISO-Größe + 5% Puffer)
@@ -330,9 +333,9 @@ copy_data_disc_ddrescue() {
     # -r: Retry-Count aus Konfiguration
     # -n: No-scrape (erster Durchlauf ohne Retry)
     if [[ $total_bytes -gt 0 ]]; then
-        ddrescue -b "$block_size" -r "$DDRESCUE_RETRIES" -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+        ddrescue -b "$block_size" -r "$DDRESCUE_RETRIES" -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
     else
-        ddrescue -b "$block_size" -r "$DDRESCUE_RETRIES" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+        ddrescue -b "$block_size" -r "$DDRESCUE_RETRIES" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
     fi
     local ddrescue_pid=$!
     
@@ -366,12 +369,14 @@ copy_data_disc_ddrescue() {
     
     # Prüfe Ergebnis
     if [[ $ddrescue_exit -eq 0 ]]; then
-        log_message "$MSG_DATA_DISC_SUCCESS_DDRESCUE"
+        log_copying "$MSG_DATA_DISC_SUCCESS_DDRESCUE"
         # Mapfile wird mit temp_pathname automatisch gelöscht
+        finish_copy_log
         return 0
     else
-        log_message "$MSG_ERROR_DDRESCUE_FAILED"
+        log_error "$MSG_ERROR_DDRESCUE_FAILED"
         # Mapfile wird mit temp_pathname automatisch gelöscht
+        finish_copy_log
         return 1
     fi
 }
@@ -384,11 +389,14 @@ copy_data_disc_ddrescue() {
 # Nutzt isoinfo (falls verfügbar) um exakte Volume-Größe zu ermitteln
 # Sendet Fortschritt via systemd-notify für Service-Betrieb
 copy_data_disc() {
+    # Initialisiere Kopiervorgang-Log
+    init_copy_log "$disc_label" "data"
+    
     # Versuche Volume-Größe mit isoinfo zu ermitteln
     get_disc_size
     
     if [[ $total_bytes -gt 0 ]]; then
-        log_message "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE $block_size $MSG_ISO_BYTES ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
+        log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE $block_size $MSG_ISO_BYTES ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
         
         # Prüfe Speicherplatz (ISO-Größe + 5% Puffer)
         local size_mb=$((total_bytes / 1024 / 1024))
@@ -398,7 +406,7 @@ copy_data_disc() {
         fi
         
         # Starte dd im Hintergrund
-        dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" count="$volume_size" conv=noerror,sync status=progress 2>>"$log_filename" &
+        dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" count="$volume_size" conv=noerror,sync status=progress 2>>"$copy_log_filename" &
         local dd_pid=$!
         
         # Überwache Fortschritt und sende systemd-notify Status
@@ -406,14 +414,18 @@ copy_data_disc() {
         
         # Warte auf dd und hole Exit-Code
         wait "$dd_pid"
-        return $?
+        local dd_exit=$?
+        finish_copy_log
+        return $dd_exit
     fi
     
     # Fallback: Kopiere komplette Disc (ohne Fortschrittsanzeige, da Größe unbekannt)
-    log_message "$MSG_COPYING_COMPLETE_DISC"
-    if dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" conv=noerror,sync status=progress 2>>"$log_filename"; then
+    log_copying "$MSG_COPYING_COMPLETE_DISC"
+    if dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" conv=noerror,sync status=progress 2>>"$copy_log_filename"; then
+        finish_copy_log
         return 0
     else
+        finish_copy_log
         return 1
     fi
 }
@@ -486,7 +498,7 @@ cleanup_disc_operation() {
         # Lösche Temp-Verzeichnis (mit force)
         rm -rf "$temp_pathname" 2>/dev/null || {
             # Fallback: Versuche mit sudo falls Permission-Fehler
-            log_message "$MSG_WARNING_TEMP_DIR_DELETE_FAILED"
+            log_error "$MSG_WARNING_TEMP_DIR_DELETE_FAILED"
             sudo rm -rf "$temp_pathname" 2>/dev/null || true
         }
     fi
@@ -499,9 +511,9 @@ cleanup_disc_operation() {
     # 3. Disc auswerfen (immer)
     if [[ -b "$CD_DEVICE" ]]; then
         if eject "$CD_DEVICE" 2>/dev/null; then
-            log_message "$MSG_DISC_EJECTED"
+            log_info "$MSG_DISC_EJECTED"
         else
-            log_message "$MSG_EJECT_FAILED"
+            log_error "$MSG_EJECT_FAILED"
         fi
         
         # In Container-Umgebungen: Warte auf manuellen Medium-Wechsel

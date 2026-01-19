@@ -55,8 +55,8 @@ check_audio_cd_dependencies() {
     command -v genisoimage >/dev/null 2>&1 || missing+=("genisoimage")
     
     if [[ ${#missing[@]} -gt 0 ]]; then
-        log_message "$MSG_AUDIO_SUPPORT_NOT_AVAILABLE ${missing[*]}"
-        log_message "$MSG_INSTALL_AUDIO_TOOLS"
+        log_error "$MSG_AUDIO_SUPPORT_NOT_AVAILABLE ${missing[*]}"
+        log_info "$MSG_INSTALL_AUDIO_TOOLS"
         return 1
     fi
     
@@ -73,17 +73,17 @@ check_audio_cd_dependencies() {
     command -v cdda2wav >/dev/null 2>&1 && cdtext_available=true
     
     if [[ ${#optional_missing[@]} -gt 0 ]]; then
-        log_message "$MSG_AUDIO_OPTIONAL_LIMITED ${optional_missing[*]}"
-        log_message "$MSG_INSTALL_MUSICBRAINZ_TOOLS"
+        log_warning "$MSG_AUDIO_OPTIONAL_LIMITED ${optional_missing[*]}"
+        log_info "$MSG_INSTALL_MUSICBRAINZ_TOOLS"
         
         if [[ "$cdtext_available" == "true" ]]; then
-            log_message "$MSG_CDTEXT_FALLBACK_AVAILABLE"
+            log_info "$MSG_CDTEXT_FALLBACK_AVAILABLE"
         else
-            log_message "$MSG_CDTEXT_FALLBACK_INSTALL_HINT"
+            log_info "$MSG_CDTEXT_FALLBACK_INSTALL_HINT"
         fi
     fi
     
-    log_message "$MSG_AUDIO_SUPPORT_AVAILABLE"
+    log_info "$MSG_AUDIO_SUPPORT_AVAILABLE"
     return 0
 }
 
@@ -98,7 +98,7 @@ get_cdtext_metadata() {
     cd_artist=""
     cd_album=""
     
-    log_message "$MSG_TRY_CDTEXT"
+    log_info "$MSG_TRY_CDTEXT"
     
     # Methode 1: icedax (aus cdrtools/cdrkit)
     if command -v icedax >/dev/null 2>&1; then
@@ -110,7 +110,7 @@ get_cdtext_metadata() {
             cd_artist=$(echo "$cdtext_output" | grep "^Performer:" | cut -d':' -f2- | xargs)
             
             if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
-                log_message "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
+                log_info "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
                 return 0
             fi
         fi
@@ -127,7 +127,7 @@ get_cdtext_metadata() {
             cd_artist=$(echo "$cdtext_output" | grep -i "PERFORMER" | head -1 | cut -d':' -f2- | xargs)
             
             if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
-                log_message "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
+                log_info "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
                 return 0
             fi
         fi
@@ -143,13 +143,13 @@ get_cdtext_metadata() {
             cd_artist=$(echo "$cdtext_output" | grep "^Performer:" | cut -d':' -f2- | xargs)
             
             if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
-                log_message "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
+                log_info "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
                 return 0
             fi
         fi
     fi
     
-    log_message "$MSG_NO_CDTEXT_FOUND"
+    log_info "$MSG_NO_CDTEXT_FOUND"
     return 1
 }
 
@@ -170,16 +170,16 @@ get_musicbrainz_metadata() {
     toc=""  # TOC-String für MusicBrainz
     track_count=""  # Anzahl der Tracks
     
-    log_message "$MSG_RETRIEVE_METADATA"
+    log_info "$MSG_RETRIEVE_METADATA"
     
     # Prüfe benötigte Tools
     if ! command -v cd-discid >/dev/null 2>&1; then
-        log_message "$MSG_WARNING_CDISCID_MISSING"
+        log_warning "$MSG_WARNING_CDISCID_MISSING"
         return 1
     fi
     
     if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
-        log_message "$MSG_WARNING_CURL_JQ_MISSING"
+        log_warning "$MSG_WARNING_CURL_JQ_MISSING"
         return 1
     fi
     
@@ -188,7 +188,7 @@ get_musicbrainz_metadata() {
     discid_output=$(cd-discid "$CD_DEVICE" 2>/dev/null)
     
     if [[ -z "$discid_output" ]]; then
-        log_message "$MSG_ERROR_DISCID_FAILED"
+        log_error "$MSG_ERROR_DISCID_FAILED"
         return 1
     fi
     
@@ -197,7 +197,7 @@ get_musicbrainz_metadata() {
     cd_discid="${discid_parts[0]}"
     track_count="${discid_parts[1]}"  # Global für spätere Verwendung
     
-    log_message "$MSG_DISCID: $cd_discid ($MSG_TRACKS: $track_count)"
+    log_info "$MSG_DISCID: $cd_discid ($MSG_TRACKS: $track_count)"
     
     # Ermittle Leadout-Position (letzte Position + 150 für Pregap der ersten Track)
     # cdparanoia gibt TOTAL in Frames, das ist der Leadout
@@ -205,7 +205,7 @@ get_musicbrainz_metadata() {
     leadout=$(cdparanoia -Q -d "$CD_DEVICE" 2>&1 | grep "TOTAL" | awk '{print $2}')
     
     if [[ -z "$leadout" ]]; then
-        log_message "$MSG_WARNING_LEADOUT_FAILED"
+        log_warning "$MSG_WARNING_LEADOUT_FAILED"
         leadout="${discid_parts[-1]}"  # Fallback auf letzte Spalte
     fi
     
@@ -221,11 +221,11 @@ get_musicbrainz_metadata() {
     # MusicBrainz-Abfrage mit TOC statt nur Disc-ID
     local mb_url="https://musicbrainz.org/ws/2/discid/${cd_discid}?toc=${toc}&fmt=json&inc=artists+recordings"
     
-    log_message "$MSG_QUERY_MUSICBRAINZ"
+    log_info "$MSG_QUERY_MUSICBRAINZ"
     mb_response=$(curl -s -A "disk2iso/1.0 (https://github.com/user/disk2iso)" "$mb_url" 2>/dev/null)
     
     if [[ -z "$mb_response" ]]; then
-        log_message "$MSG_WARNING_MUSICBRAINZ_FAILED"
+        log_warning "$MSG_WARNING_MUSICBRAINZ_FAILED"
         return 1
     fi
     
@@ -234,7 +234,7 @@ get_musicbrainz_metadata() {
     releases_count=$(echo "$mb_response" | jq -r '.releases | length' 2>/dev/null)
     
     if [[ -z "$releases_count" ]] || [[ "$releases_count" == "0" ]] || [[ "$releases_count" == "null" ]]; then
-        log_message "$MSG_WARNING_NO_MUSICBRAINZ_ENTRY $cd_discid"
+        log_warning "$MSG_WARNING_NO_MUSICBRAINZ_ENTRY $cd_discid"
         return 1
     fi
     
@@ -243,7 +243,7 @@ get_musicbrainz_metadata() {
     
     if [[ "$releases_count" -gt 1 ]]; then
         # Mehrere Releases gefunden - speichere für User-Auswahl
-        log_message "WARNUNG: $releases_count Releases gefunden - Benutzer-Auswahl erforderlich"
+        log_warning "WARNUNG: $releases_count Releases gefunden - Benutzer-Auswahl erforderlich"
         
         # Speichere alle Releases in API-Datei für Web-Interface
         if declare -f api_write_json >/dev/null 2>&1; then
@@ -299,11 +299,11 @@ get_musicbrainz_metadata() {
         done
         
         if [[ "${DEBUG:-0}" == "1" ]]; then
-            log_message "DEBUG: $releases_count Releases gefunden, gewählt: Index $best_release_index (Score: $best_score)"
+            log_debug "$releases_count Releases gefunden, gewählt: Index $best_release_index (Score: $best_score)"
         fi
         
         # Bei mehreren Releases IMMER User-Input anfordern (auch wenn Score hoch)
-        log_message "INFO: $releases_count Releases gefunden - Benutzer-Bestätigung wird angefordert"
+        log_info "$releases_count Releases gefunden - Benutzer-Bestätigung wird angefordert"
         
         # Setze vorläufige Auswahl
         if declare -f api_write_json >/dev/null 2>&1; then
@@ -330,27 +330,27 @@ get_musicbrainz_metadata() {
     [[ "$cd_year" == "null" ]] && cd_year=""
     
     if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
-        log_message "$MSG_ALBUM: $cd_album"
-        log_message "$MSG_ARTIST: $cd_artist"
-        [[ -n "$cd_year" ]] && log_message "$MSG_YEAR: $cd_year"
+        log_info "$MSG_ALBUM: $cd_album"
+        log_info "$MSG_ARTIST: $cd_artist"
+        [[ -n "$cd_year" ]] && log_info "$MSG_YEAR: $cd_year"
         
         # Zähle Track-Anzahl (vom gewählten Release)
         local mb_track_count
         mb_track_count=$(echo "$mb_response" | jq -r ".releases[$best_release_index].media[0].tracks | length" 2>/dev/null)
         if [[ -n "$mb_track_count" ]] && [[ "$mb_track_count" != "null" ]] && [[ "$mb_track_count" != "0" ]]; then
-            log_message "$MSG_MUSICBRAINZ_TRACKS_FOUND $mb_track_count"
+            log_info "$MSG_MUSICBRAINZ_TRACKS_FOUND $mb_track_count"
         fi
         
         # Prüfe Cover-Art Verfügbarkeit (vom gewählten Release)
         local has_cover
         has_cover=$(echo "$mb_response" | jq -r ".releases[$best_release_index][\"cover-art-archive\"].front" 2>/dev/null)
         if [[ "$has_cover" == "true" ]]; then
-            log_message "$MSG_COVER_AVAILABLE"
+            log_info "$MSG_COVER_AVAILABLE"
         fi
         
         return 0
     else
-        log_message "$MSG_WARNING_INCOMPLETE_METADATA"
+        log_warning "$MSG_WARNING_INCOMPLETE_METADATA"
         mb_response=""  # Leere Antwort bei Fehler
         return 1
     fi
@@ -381,7 +381,7 @@ download_cover_art() {
     release_id=$(echo "$mb_response" | jq -r ".releases[$release_idx].id" 2>/dev/null)
     
     if [[ -z "$release_id" ]] || [[ "$release_id" == "null" ]]; then
-        log_message "$MSG_WARNING_NO_RELEASE_ID"
+        log_warning "$MSG_WARNING_NO_RELEASE_ID"
         return 1
     fi
     
@@ -389,19 +389,19 @@ download_cover_art() {
     local cover_file="${target_dir}/disk2iso_cover_$$.jpg"
     local cover_url="https://coverartarchive.org/release/${release_id}/front"
     
-    log_message "$MSG_DOWNLOAD_COVER" >&2
+    log_info "$MSG_DOWNLOAD_COVER" >&2
     
     if curl -L -s -f "$cover_url" -o "$cover_file" 2>/dev/null; then
         # Prüfe ob Datei gültig ist
         if [[ -f "$cover_file" ]] && [[ -s "$cover_file" ]]; then
             local cover_size=$(du -h "$cover_file" | awk '{print $1}')
-            log_message "$MSG_COVER_DOWNLOADED: ${cover_size}" >&2
+            log_info "$MSG_COVER_DOWNLOADED: ${cover_size}" >&2
             echo "$cover_file"
             return 0
         fi
     fi
     
-    log_message "$MSG_WARNING_COVER_DOWNLOAD_FAILED" >&2
+    log_error "$MSG_WARNING_COVER_DOWNLOAD_FAILED" >&2
     rm -f "$cover_file" 2>/dev/null
     return 1
 }
@@ -442,11 +442,11 @@ create_album_nfo() {
     local nfo_file="${album_dir}/album.nfo"
     
     if [[ -z "$mb_response" ]]; then
-        log_message "$MSG_INFO_NO_MUSICBRAINZ_NFO_SKIPPED"
+        log_warning "$MSG_INFO_NO_MUSICBRAINZ_NFO_SKIPPED"
         return 1
     fi
     
-    log_message "$MSG_CREATE_ALBUM_NFO"
+    log_info "$MSG_CREATE_ALBUM_NFO"
     
     # Nutze besten Release-Index (falls aus get_musicbrainz_metadata gesetzt)
     local release_idx="${best_release_index:-0}"
@@ -519,7 +519,7 @@ EOF
     # Schließe XML
     echo "</album>" >> "$nfo_file"
     
-    log_message "$MSG_NFO_FILE_CREATED"
+    log_info "$MSG_NFO_FILE_CREATED"
     return 0
 }
 
@@ -547,7 +547,88 @@ TOC=${toc_str}
 TRACK_COUNT=${tracks}
 EOF
     
-    log_message "MusicBrainz Query-Daten gespeichert: $(basename "$mbquery_file")"
+    log_info "MusicBrainz Query-Daten gespeichert: $(basename "$mbquery_file")"
+}
+
+# ============================================================================
+# METADATA BEFORE COPY - WAIT FOR SELECTION
+# ============================================================================
+
+# Funktion: Warte auf User-Metadata-Auswahl (BEFORE Copy)
+# Parameter: $1 = disc_id, $2 = mb_response (JSON)
+# Rückgabe: 0 = Auswahl getroffen, 1 = Timeout/Skip
+# Setzt: cd_artist, cd_album, cd_year aus User-Auswahl
+wait_for_metadata_selection() {
+    local disc_id="$1"
+    local mb_json="$2"
+    
+    # Schreibe .mbquery Datei (für Frontend-API)
+    local output_base
+    output_base=$(get_type_subfolder "audio-cd")
+    local mbquery_file="${output_base}/${disc_id}_mb.mbquery"
+    
+    log_info "Erstelle Metadata-Query für User-Auswahl: $(basename "$mbquery_file")"
+    echo "$mb_json" > "$mbquery_file"
+    chmod 644 "$mbquery_file" 2>/dev/null
+    
+    # Warte auf .mbselect Datei oder Timeout
+    local mbselect_file="${output_base}/${disc_id}_mb.mbselect"
+    local timeout="${METADATA_SELECTION_TIMEOUT:-60}"
+    local elapsed=0
+    local check_interval=1
+    
+    log_info "Warte auf Metadata-Auswahl (Timeout: ${timeout}s)..."
+    
+    # State: waiting_for_metadata
+    if declare -f transition_to_state >/dev/null 2>&1; then
+        transition_to_state "$STATE_WAITING_FOR_METADATA" "Warte auf Metadata-Auswahl"
+    fi
+    
+    while [[ $elapsed -lt $timeout ]]; do
+        # Prüfe ob Selection-Datei existiert
+        if [[ -f "$mbselect_file" ]]; then
+            log_info "Metadata-Auswahl erhalten nach ${elapsed}s"
+            
+            # Lese Auswahl
+            local selected_index
+            selected_index=$(jq -r '.selected_index' "$mbselect_file" 2>/dev/null || echo "-1")
+            
+            # Cleanup
+            rm -f "$mbquery_file" "$mbselect_file" 2>/dev/null
+            
+            # Skip?
+            if [[ "$selected_index" == "-1" ]] || [[ "$selected_index" == "skip" ]]; then
+                log_info "Metadata-Auswahl übersprungen - verwende generische Namen"
+                return 1
+            fi
+            
+            # Extrahiere Metadata aus gewähltem Release
+            cd_artist=$(echo "$mb_json" | jq -r ".releases[$selected_index][\"artist-credit\"][0].name" 2>/dev/null)
+            cd_album=$(echo "$mb_json" | jq -r ".releases[$selected_index].title" 2>/dev/null)
+            cd_year=$(echo "$mb_json" | jq -r ".releases[$selected_index].date" 2>/dev/null | cut -d- -f1)
+            
+            if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
+                log_info "Metadata ausgewählt: $cd_artist - $cd_album ($cd_year)"
+                return 0
+            else
+                log_warning "Metadata-Extraktion fehlgeschlagen - verwende generische Namen"
+                return 1
+            fi
+        fi
+        
+        sleep "$check_interval"
+        ((elapsed += check_interval))
+        
+        # Progress-Log alle 10 Sekunden
+        if (( elapsed % 10 == 0 )); then
+            log_info "Warte auf Auswahl... (${elapsed}/${timeout}s)"
+        fi
+    done
+    
+    # Timeout erreicht
+    log_warning "Metadata-Auswahl Timeout nach ${timeout}s - verwende generische Namen"
+    rm -f "$mbquery_file" "$mbselect_file" 2>/dev/null
+    return 1
 }
 
 create_archive_metadata() {
@@ -605,7 +686,7 @@ EOF
         cp "$cover_file" "$archive_thumb" 2>/dev/null
     fi
     
-    log_message "Archiv-Metadaten erstellt: $(basename "$archive_nfo")"
+    log_info "Archiv-Metadaten erstellt: $(basename "$archive_nfo")"
 }
 
 # ============================================================================
@@ -613,9 +694,9 @@ EOF
 # ============================================================================
 
 # Funktion: Audio-CD rippen und als ISO erstellen
-# Workflow: MusicBrainz → cdparanoia → lame → genisoimage → ISO
+# Workflow: MusicBrainz BEFORE → Wait for Selection → cdparanoia → lame → genisoimage → ISO
 copy_audio_cd() {
-    log_message "$MSG_START_AUDIO_RIPPING"
+    log_info "$MSG_START_AUDIO_RIPPING"
     
     # Prüfe benötigte Tools
     if ! command -v cdparanoia >/dev/null 2>&1; then
@@ -633,45 +714,65 @@ copy_audio_cd() {
         return 1
     fi
     
-    # Metadaten abrufen - aber nur OHNE Modal!
-    # - 1 Release gefunden → Metadaten direkt nutzen
-    # - Mehrere Releases → Überspringen, später im Archiv hinzufügen
+    # ========================================================================
+    # METADATA BEFORE COPY - Neue Strategie
+    # ========================================================================
+    # Metadaten VOR dem Rippen abfragen und auf User-Auswahl warten
+    
     cd_artist=""
     cd_album=""
     cd_year=""
     cd_discid=""
     mb_response=""
     local skip_metadata=false
+    local releases_count=0
     
+    # Hole MusicBrainz Metadaten
     if ! get_musicbrainz_metadata; then
         log_info "$MSG_CONTINUE_WITHOUT_METADATA"
         skip_metadata=true
-    elif [[ "${MUSICBRAINZ_NEEDS_CONFIRMATION:-false}" == "true" ]]; then
-        # Mehrere Releases gefunden - verwende generische Namen
-        log_message "INFO: Mehrere Releases - verwende generische Namen. Metadaten können später im Archiv hinzugefügt werden."
-        
-        # Lösche temporäre API-Dateien (kein Modal während Ripping)
-        local api_dir="${INSTALL_DIR:-/opt/disk2iso}/api"
-        rm -f "${api_dir}/musicbrainz_releases.json" "${api_dir}/musicbrainz_selection.json" 2>/dev/null || true
-        
-        # WICHTIG: Merke Query-Daten für spätere Browser-Suche
-        # Diese Daten werden später mit der ISO verknüpft (in save_mbquery_for_iso)
-        SAVED_DISCID="$cd_discid"
-        SAVED_TOC="$toc"
-        SAVED_TRACK_COUNT="$track_count"
-        
-        # Setze Variablen zurück
-        cd_artist=""
-        cd_album=""
-        cd_year=""
-        mb_response=""
-        skip_metadata=true
-        unset MUSICBRAINZ_NEEDS_CONFIRMATION
     else
-        # Genau 1 Release - nutze Metadaten direkt
-        log_message "INFO: 1 Release gefunden - verwende Metadaten: $cd_artist - $cd_album"
-        skip_metadata=false
+        # Zähle Releases
+        releases_count=$(echo "$mb_response" | jq '.releases | length' 2>/dev/null || echo "0")
+        
+        if [[ $releases_count -eq 0 ]]; then
+            # Keine Releases gefunden
+            log_info "Keine MusicBrainz Releases gefunden - verwende generische Namen"
+            skip_metadata=true
+        elif [[ $releases_count -eq 1 ]]; then
+            # Genau 1 Release - direkt verwenden (kein User-Input nötig)
+            log_info "1 Release gefunden - verwende Metadaten direkt"
+            cd_artist=$(echo "$mb_response" | jq -r '.releases[0]["artist-credit"][0].name' 2>/dev/null)
+            cd_album=$(echo "$mb_response" | jq -r '.releases[0].title' 2>/dev/null)
+            cd_year=$(echo "$mb_response" | jq -r '.releases[0].date' 2>/dev/null | cut -d- -f1)
+            skip_metadata=false
+        else
+            # Mehrere Releases - warte auf User-Auswahl
+            log_info "$releases_count Releases gefunden - warte auf User-Auswahl..."
+            
+            # Temporäres disc_label für .mbquery Datei
+            local temp_disc_id="${cd_discid:-audio_cd_$(date +%s)}"
+            
+            # Warte auf Auswahl (mit Timeout)
+            if wait_for_metadata_selection "$temp_disc_id" "$mb_response"; then
+                # User hat gewählt - cd_artist, cd_album, cd_year sind gesetzt
+                skip_metadata=false
+            else
+                # Timeout/Skip - verwende generische Namen
+                log_info "Verwende generische Namen - Metadaten können später hinzugefügt werden"
+                skip_metadata=true
+                
+                # Speichere Query-Daten für späteres Remastering
+                SAVED_DISCID="$cd_discid"
+                SAVED_TOC="$toc"
+                SAVED_TRACK_COUNT="$track_count"
+            fi
+        fi
     fi
+    
+    # ========================================================================
+    # TEMP DIRECTORY & FILENAMES
+    # ========================================================================
     
     # Nutze globales temp_pathname (wird von init_filenames erstellt)
     # Falls nicht vorhanden (standalone-Aufruf), erstelle eigenes Verzeichnis
@@ -688,7 +789,7 @@ copy_audio_cd() {
         if command -v eyeD3 >/dev/null 2>&1; then
             cover_file=$(download_cover_art "$temp_pathname")
         else
-            log_message "$MSG_INFO_EYED3_MISSING"
+            log_info "$MSG_INFO_EYED3_MISSING"
         fi
     fi
     
@@ -701,7 +802,7 @@ copy_audio_cd() {
         
         album_dir="${temp_pathname}/${safe_artist}/${safe_album}"
         
-        # ISO-Label (lowercase)
+        # ISO-Label (lowercase, human-readable!)
         local label_artist=$(echo "$cd_artist" | sed 's/[^a-zA-Z0-9_-]/_/g' | tr '[:upper:]' '[:lower:]')
         local label_album=$(echo "$cd_album" | sed 's/[^a-zA-Z0-9_-]/_/g' | tr '[:upper:]' '[:lower:]')
         disc_label="${label_artist}_${label_album}"
@@ -741,6 +842,16 @@ copy_audio_cd() {
     log_copying "$MSG_TRACKS_FOUND: $track_count"
     log_copying "$MSG_ALBUM_DIRECTORY: $album_dir"
     
+    # Log Metadata (BEFORE strategy - jetzt schon bekannt!)
+    if [[ "$skip_metadata" == "false" ]] && [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
+        log_copying "Album: $cd_artist - $cd_album"
+        [[ -n "$cd_year" ]] && log_copying "Jahr: $cd_year"
+        log_info "Rippe Album: $cd_artist - $cd_album ($track_count Tracks)"
+    else
+        log_copying "Disc-ID: ${cd_discid:-unbekannt}"
+        log_info "Rippe Audio-CD: $disc_label ($track_count Tracks)"
+    fi
+    
     # API: Aktualisiere Status
     if declare -f api_update_status >/dev/null 2>&1; then
         api_update_status "copying" "$disc_label" "audio-cd"
@@ -776,7 +887,19 @@ copy_audio_cd() {
         local track_num=$(printf "%02d" "$track")
         local wav_file="${temp_pathname}/track_${track_num}.wav"
         
-        log_copying "$MSG_RIPPING_TRACK $track / $track_count"
+        # Progress-Message mit Tracktitel (falls verfügbar)
+        if [[ "$skip_metadata" == "false" ]] && [[ -n "$mb_response" ]]; then
+            local track_title
+            track_title=$(get_track_title "$track")
+            if [[ -n "$track_title" ]]; then
+                log_copying "Rippe Track $track/$track_count: $track_title"
+                log_info "Rippe Track $track/$track_count: $track_title"
+            else
+                log_copying "$MSG_RIPPING_TRACK $track / $track_count"
+            fi
+        else
+            log_copying "$MSG_RIPPING_TRACK $track / $track_count"
+        fi
         
         if ! cdparanoia -d "$CD_DEVICE" "$track" "$wav_file" >>"$copy_log_filename" 2>&1; then
             log_error "$MSG_ERROR_TRACK_RIP_FAILED $track"
@@ -879,7 +1002,7 @@ copy_audio_cd() {
     # Kopiere Cover als folder.jpg (falls vorhanden)
     if [[ "$skip_metadata" == "false" ]] && [[ -n "$cover_file" ]] && [[ -f "$cover_file" ]]; then
         cp "$cover_file" "${album_dir}/folder.jpg" 2>/dev/null && \
-            log_message "$MSG_COVER_SAVED_FOLDER_JPG"
+            log_info "$MSG_COVER_SAVED_FOLDER_JPG"
     fi
     
     log_copying "$MSG_RIPPING_COMPLETE_CREATE_ISO"

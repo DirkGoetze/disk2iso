@@ -59,12 +59,12 @@ load_module_language "mqtt"
 # Rückgabe: 0 = mosquitto_pub verfügbar, 1 = nicht verfügbar
 check_mqtt_dependencies() {
     if ! command -v mosquitto_pub >/dev/null 2>&1; then
-        log_message "$MSG_MQTT_NOT_AVAILABLE"
-        log_message "$MSG_INSTALL_MQTT_TOOLS"
+        log_info "$MSG_MQTT_NOT_AVAILABLE"
+        log_info "$MSG_INSTALL_MQTT_TOOLS"
         return 1
     fi
     
-    log_message "$MSG_MQTT_AVAILABLE"
+    log_info "$MSG_MQTT_AVAILABLE"
     return 0
 }
 
@@ -78,7 +78,7 @@ check_mqtt_dependencies() {
 mqtt_init() {
     # Prüfe ob MQTT aktiviert ist
     if [[ "${MQTT_ENABLED:-false}" != "true" ]]; then
-        log_message "$MSG_MQTT_DISABLED"
+        log_info "$MSG_MQTT_DISABLED"
         MQTT_AVAILABLE=false
         return 1
     fi
@@ -91,7 +91,7 @@ mqtt_init() {
     
     # Prüfe Broker-Konfiguration
     if [[ -z "${MQTT_BROKER:-}" ]]; then
-        log_message "$MSG_MQTT_ERROR_NO_BROKER"
+        log_error "$MSG_MQTT_ERROR_NO_BROKER"
         MQTT_AVAILABLE=false
         return 1
     fi
@@ -108,7 +108,7 @@ mqtt_init() {
     MQTT_TOPIC_PREFIX="${MQTT_TOPIC_PREFIX:-homeassistant/sensor/disk2iso}"
     
     MQTT_AVAILABLE=true
-    log_message "$MSG_MQTT_INITIALIZED $MQTT_BROKER:$MQTT_PORT"
+    log_info "$MSG_MQTT_INITIALIZED $MQTT_BROKER:$MQTT_PORT"
     
     # Sende Initial Availability
     mqtt_publish_availability "online"
@@ -177,7 +177,7 @@ mqtt_publish() {
     local exit_code=$?
     
     if [[ $exit_code -ne 0 ]]; then
-        log_message "$MSG_MQTT_PUBLISH_FAILED ${topic}: ${payload} (Exit: $exit_code)"
+        log_error "$MSG_MQTT_PUBLISH_FAILED ${topic}: ${payload} (Exit: $exit_code)"
         return 1
     fi
     
@@ -201,9 +201,9 @@ mqtt_publish_availability() {
     mqtt_publish "availability" "${status}"
     
     if [[ "$status" == "online" ]]; then
-        log_message "$MSG_MQTT_ONLINE"
+        log_info "$MSG_MQTT_ONLINE"
     else
-        log_message "$MSG_MQTT_OFFLINE"
+        log_info "$MSG_MQTT_OFFLINE"
     fi
     
     return 0
@@ -315,19 +315,19 @@ EOF
     # Log
     case "$state" in
         idle)
-            log_message "$MSG_MQTT_STATE_IDLE"
+            log_info "$MSG_MQTT_STATE_IDLE"
             ;;
         copying)
-            log_message "$MSG_MQTT_STATE_COPYING ${label} (${type})"
+            log_info "$MSG_MQTT_STATE_COPYING ${label} (${type})"
             ;;
         waiting)
-            log_message "$MSG_MQTT_STATE_WAITING"
+            log_info "$MSG_MQTT_STATE_WAITING"
             ;;
         completed)
-            log_message "$MSG_MQTT_STATE_COMPLETED ${label}"
+            log_info "$MSG_MQTT_STATE_COMPLETED ${label}"
             ;;
         error)
-            log_message "$MSG_MQTT_STATE_ERROR ${error_msg}"
+            log_error "$MSG_MQTT_STATE_ERROR ${error_msg}"
             ;;
     esac
     
@@ -411,7 +411,7 @@ EOF
     mqtt_publish "attributes" "${attr_json}"
     
     # Log-Ausgabe mit korrekter Einheit
-    log_message "$MSG_MQTT_PROGRESS ${percent}% (${copied_mb}/${total_mb} ${unit}, ETA: ${eta})"
+    log_info "$MSG_MQTT_PROGRESS ${percent}% (${copied_mb}/${total_mb} ${unit}, ETA: ${eta})"
     
     return 0
 }
@@ -441,7 +441,7 @@ mqtt_publish_complete() {
     # Füge zur History hinzu
     api_add_history "completed" "${disc_label:-}" "${disc_type:-}" "success"
     
-    log_message "$MSG_MQTT_COMPLETED ${filename} (${duration})"
+    log_info "$MSG_MQTT_COMPLETED ${filename} (${duration})"
     
     return 0
 }
@@ -466,7 +466,7 @@ mqtt_publish_error() {
     # Füge zur History hinzu
     api_add_history "error" "${disc_label:-}" "${disc_type:-}" "error"
     
-    log_message "$MSG_MQTT_ERROR ${error_message}"
+    log_error "$MSG_MQTT_ERROR ${error_message}"
     
     return 0
 }

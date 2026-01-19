@@ -29,6 +29,7 @@ readonly STATE_DRIVE_DETECTED="drive_detected"
 readonly STATE_WAITING_FOR_MEDIA="waiting_for_media"
 readonly STATE_MEDIA_DETECTED="media_detected"
 readonly STATE_ANALYZING="analyzing"
+readonly STATE_WAITING_FOR_METADATA="waiting_for_metadata"
 readonly STATE_COPYING="copying"
 readonly STATE_COMPLETED="completed"
 readonly STATE_ERROR="error"
@@ -95,16 +96,16 @@ load_module_language "disk2iso"
 
 # Prüfe Kern-Abhängigkeiten (kritisch - Abbruch bei Fehler)
 if ! check_common_dependencies; then
-    log_message "$MSG_ABORT_CRITICAL_DEPENDENCIES"
+    log_error "$MSG_ABORT_CRITICAL_DEPENDENCIES"
     exit 1
 fi
 
 if ! check_systeminfo_dependencies; then
-    log_message "$MSG_ABORT_SYSTEMINFO_DEPENDENCIES"
+    log_error "$MSG_ABORT_SYSTEMINFO_DEPENDENCIES"
     exit 1
 fi
 
-log_message "$MSG_CORE_MODULES_LOADED"
+log_info "$MSG_CORE_MODULES_LOADED"
 
 # Erkenne Container-Umgebung (setzt IS_CONTAINER und CONTAINER_TYPE)
 detect_container_environment
@@ -120,12 +121,12 @@ if [[ -f "${SCRIPT_DIR}/lib/lib-cd.sh" ]]; then
     
     if check_audio_cd_dependencies; then
         AUDIO_CD_SUPPORT=true
-        log_message "$MSG_AUDIO_CD_SUPPORT_ENABLED"
+        log_info "$MSG_AUDIO_CD_SUPPORT_ENABLED"
     else
-        log_message "$MSG_AUDIO_CD_SUPPORT_DISABLED"
+        log_info "$MSG_AUDIO_CD_SUPPORT_DISABLED"
     fi
 else
-    log_message "$MSG_AUDIO_CD_NOT_INSTALLED"
+    log_info "$MSG_AUDIO_CD_NOT_INSTALLED"
 fi
 
 # Video-DVD Support (optional)
@@ -135,12 +136,12 @@ if [[ -f "${SCRIPT_DIR}/lib/lib-dvd.sh" ]]; then
     
     if check_video_dvd_dependencies; then
         VIDEO_DVD_SUPPORT=true
-        log_message "$MSG_VIDEO_DVD_SUPPORT_ENABLED"
+        log_info "$MSG_VIDEO_DVD_SUPPORT_ENABLED"
     else
-        log_message "$MSG_VIDEO_DVD_SUPPORT_DISABLED"
+        log_info "$MSG_VIDEO_DVD_SUPPORT_DISABLED"
     fi
 else
-    log_message "$MSG_VIDEO_DVD_NOT_INSTALLED"
+    log_info "$MSG_VIDEO_DVD_NOT_INSTALLED"
 fi
 
 # DVD/Blu-ray Metadata Support (optional, benötigt TMDB API-Key + jq)
@@ -150,12 +151,12 @@ if [[ -f "${SCRIPT_DIR}/lib/lib-dvd-metadata.sh" ]]; then
     
     if check_dvd_metadata_dependencies; then
         DVD_METADATA_SUPPORT=true
-        log_message "TMDB: Metadaten-Support aktiviert"
+        log_info "TMDB: Metadaten-Support aktiviert"
     else
-        log_message "TMDB: Metadaten-Support deaktiviert"
+        log_info "TMDB: Metadaten-Support deaktiviert"
     fi
 else
-    log_message "TMDB: Modul nicht installiert"
+    log_info "TMDB: Modul nicht installiert"
 fi
 
 # Audio-CD Metadata Support (optional, benötigt jq + curl)
@@ -165,12 +166,12 @@ if [[ -f "${SCRIPT_DIR}/lib/lib-cd-metadata.sh" ]]; then
     
     if check_audio_metadata_dependencies; then
         AUDIO_METADATA_SUPPORT=true
-        log_message "MusicBrainz: Metadaten-Support aktiviert"
+        log_info "MusicBrainz: Metadaten-Support aktiviert"
     else
-        log_message "MusicBrainz: Metadaten-Support deaktiviert"
+        log_info "MusicBrainz: Metadaten-Support deaktiviert"
     fi
 else
-    log_message "MusicBrainz: Modul nicht installiert"
+    log_info "MusicBrainz: Modul nicht installiert"
 fi
 
 # Blu-ray Support (optional)
@@ -180,12 +181,12 @@ if [[ -f "${SCRIPT_DIR}/lib/lib-bluray.sh" ]]; then
     
     if check_bluray_dependencies; then
         BLURAY_SUPPORT=true
-        log_message "$MSG_BLURAY_SUPPORT_ENABLED"
+        log_info "$MSG_BLURAY_SUPPORT_ENABLED"
     else
-        log_message "$MSG_BLURAY_SUPPORT_DISABLED"
+        log_info "$MSG_BLURAY_SUPPORT_DISABLED"
     fi
 else
-    log_message "$MSG_BLURAY_NOT_INSTALLED"
+    log_info "$MSG_BLURAY_NOT_INSTALLED"
 fi
 
 # MQTT Support (optional)
@@ -196,12 +197,12 @@ if [[ -f "${SCRIPT_DIR}/lib/lib-mqtt.sh" ]]; then
     # mqtt_init prüft selbst ob MQTT_ENABLED=true
     if mqtt_init; then
         MQTT_SUPPORT=true
-        log_message "$MSG_MQTT_SUPPORT_ENABLED"
+        log_info "$MSG_MQTT_SUPPORT_ENABLED"
     else
-        log_message "$MSG_MQTT_SUPPORT_DISABLED"
+        log_info "$MSG_MQTT_SUPPORT_DISABLED"
     fi
 else
-    log_message "$MSG_MQTT_MODULE_NOT_INSTALLED"
+    log_info "$MSG_MQTT_MODULE_NOT_INSTALLED"
 fi
 
 # Initialisiere API (IMMER, unabhängig von MQTT)
@@ -222,8 +223,8 @@ select_copy_method() {
             echo "audio-cd"
             return 0
         else
-            log_message "$MSG_WARNING_AUDIO_CD_NO_SUPPORT"
-            log_message "$MSG_FALLBACK_DATA_DISC"
+            log_info "$MSG_WARNING_AUDIO_CD_NO_SUPPORT"
+            log_info "$MSG_FALLBACK_DATA_DISC"
             echo "dd"
             return 0
         fi
@@ -295,7 +296,7 @@ copy_disc_to_iso() {
                 return 1
             fi
         else
-            log_message "$MSG_ERROR_AUDIO_CD_NOT_AVAILABLE"
+            log_info "$MSG_ERROR_AUDIO_CD_NOT_AVAILABLE"
             return 1
         fi
     fi
@@ -310,7 +311,7 @@ copy_disc_to_iso() {
     # Erstelle Log-Datei
     touch "$log_filename"
     
-    log_message "$MSG_START_COPY_PROCESS $disc_label -> $iso_filename"
+    log_info "$MSG_START_COPY_PROCESS $disc_label -> $iso_filename"
     
     # Speichere Methode für MQTT-Attribute (MUSS vor api_update_status gesetzt werden!)
     COPY_METHOD="$method"
@@ -336,7 +337,7 @@ copy_disc_to_iso() {
                     copy_success=true
                 fi
             else
-                log_message "$MSG_ERROR_VIDEO_DVD_NOT_AVAILABLE"
+                log_info "$MSG_ERROR_VIDEO_DVD_NOT_AVAILABLE"
                 return 1
             fi
             ;;
@@ -346,7 +347,7 @@ copy_disc_to_iso() {
                     copy_success=true
                 fi
             else
-                log_message "$MSG_ERROR_BLURAY_NOT_AVAILABLE"
+                log_info "$MSG_ERROR_BLURAY_NOT_AVAILABLE"
                 return 1
             fi
             ;;
@@ -376,7 +377,7 @@ copy_disc_to_iso() {
             echo "$md5sum  $iso_basename" > "$md5_filename"
         fi
         
-        log_message "$MSG_COPY_SUCCESS_FINAL $iso_filename"
+        log_info "$MSG_COPY_SUCCESS_FINAL $iso_filename"
         
         # MQTT: Erfolgreich abgeschlossen
         if [[ "$MQTT_SUPPORT" == "true" ]]; then
@@ -386,7 +387,7 @@ copy_disc_to_iso() {
         cleanup_disc_operation "success"
         return 0
     else
-        log_message "$MSG_COPY_FAILED_FINAL $disc_label"
+        log_info "$MSG_COPY_FAILED_FINAL $disc_label"
         
         # MQTT: Fehler
         if [[ "$MQTT_SUPPORT" == "true" ]]; then
@@ -409,7 +410,7 @@ transition_to_state() {
     
     # Log state change
     if [[ -n "$msg" ]]; then
-        log_message "$msg"
+        log_info "$msg"
     fi
     
     # Update API status for state
@@ -425,6 +426,9 @@ transition_to_state() {
             ;;
         "$STATE_ANALYZING")
             api_update_status "analyzing" "$disc_label" "$disc_type"
+            ;;
+        "$STATE_WAITING_FOR_METADATA")
+            api_update_status "waiting_for_metadata" "$disc_label" "$disc_type"
             ;;
         "$STATE_COPYING")
             api_update_status "copying" "$disc_label" "$disc_type"
@@ -452,6 +456,9 @@ transition_to_state() {
             "$STATE_ANALYZING")
                 mqtt_publish_state "analyzing" "$disc_label" "$disc_type"
                 ;;
+            "$STATE_WAITING_FOR_METADATA")
+                mqtt_publish_state "waiting" "$disc_label" "$disc_type"
+                ;;
             "$STATE_COPYING")
                 mqtt_publish_state "copying" "$disc_label" "$disc_type"
                 ;;
@@ -470,7 +477,7 @@ transition_to_state() {
 
 # State Machine Main Loop
 run_state_machine() {
-    log_message "$MSG_STATE_MACHINE_STARTED"
+    log_info "$MSG_STATE_MACHINE_STARTED"
     
     transition_to_state "$STATE_INITIALIZING" "Initialisiere Service..."
     
@@ -539,17 +546,17 @@ run_state_machine() {
             "$STATE_ANALYZING")
                 # Erkenne Disc-Typ
                 detect_disc_type
-                log_message "$MSG_DISC_TYPE_DETECTED $disc_type"
+                log_info "$MSG_DISC_TYPE_DETECTED $disc_type"
                 
                 # Generiere Label (für Audio-CDs wird Label in copy_audio_cd() gesetzt)
                 if [[ "$disc_type" != "audio-cd" ]]; then
                     get_disc_label
-                    log_message "$MSG_VOLUME_LABEL $disc_label"
+                    log_info "$MSG_VOLUME_LABEL $disc_label"
                 fi
                 
                 # Unmounte Disc falls sie auto-gemountet wurde
                 if mount | grep -q "$CD_DEVICE"; then
-                    log_message "$MSG_UNMOUNTING_DISC"
+                    log_info "$MSG_UNMOUNTING_DISC"
                     umount "$CD_DEVICE" 2>/dev/null || sudo umount "$CD_DEVICE" 2>/dev/null
                     sleep 1
                 fi
@@ -592,7 +599,7 @@ run_state_machine() {
                 
             *)
                 # Unbekannter State - zurück zum Anfang
-                log_message "$MSG_ERROR_UNKNOWN_STATE $CURRENT_STATE"
+                log_info "$MSG_ERROR_UNKNOWN_STATE $CURRENT_STATE"
                 transition_to_state "$STATE_INITIALIZING"
                 ;;
         esac
@@ -681,20 +688,20 @@ main() {
     
     # Prüfe ob OUTPUT_DIR existiert
     if [[ ! -d "$OUTPUT_DIR" ]]; then
-        log_message "$MSG_ERROR_OUTPUT_DIR_NOT_EXIST_MAIN $OUTPUT_DIR"
-        log_message "$MSG_CONFIG_OUTPUT_DIR"
+        log_info "$MSG_ERROR_OUTPUT_DIR_NOT_EXIST_MAIN $OUTPUT_DIR"
+        log_info "$MSG_CONFIG_OUTPUT_DIR"
         exit 1
     fi
     
     # Prüfe Schreibrechte
     if [[ ! -w "$OUTPUT_DIR" ]]; then
-        log_message "$MSG_ERROR_NO_WRITE_PERMISSION $OUTPUT_DIR"
-        log_message "$MSG_FIX_PERMISSIONS $OUTPUT_DIR"
+        log_info "$MSG_ERROR_NO_WRITE_PERMISSION $OUTPUT_DIR"
+        log_info "$MSG_FIX_PERMISSIONS $OUTPUT_DIR"
         exit 1
     fi
     
-    log_message "$MSG_DISK2ISO_STARTED"
-    log_message "$MSG_OUTPUT_DIRECTORY $OUTPUT_DIR"
+    log_info "$MSG_DISK2ISO_STARTED"
+    log_info "$MSG_OUTPUT_DIRECTORY $OUTPUT_DIR"
     
     # Abhängigkeiten wurden bereits beim Modul-Loading geprüft
     # Kern-Abhängigkeiten: check_common_dependencies()
@@ -708,7 +715,7 @@ main() {
 
 # Signal-Handler für sauberes Service-Beenden
 cleanup_service() {
-    log_message "$MSG_SERVICE_STOPPING"
+    log_info "$MSG_SERVICE_STOPPING"
     
     # MQTT: Offline setzen
     if [[ "$MQTT_SUPPORT" == "true" ]]; then

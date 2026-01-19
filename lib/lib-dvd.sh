@@ -121,16 +121,16 @@ check_video_dvd_dependencies() {
     
     # Logging
     if [[ ${#available_methods[@]} -gt 0 ]]; then
-        log_message "$MSG_VIDEO_SUPPORT_AVAILABLE ${available_methods[*]}"
+        log_info "$MSG_VIDEO_SUPPORT_AVAILABLE ${available_methods[*]}"
         
         if [[ ${#missing_methods[@]} -gt 0 ]]; then
-            log_message "$MSG_EXTENDED_METHODS_AVAILABLE ${missing_methods[*]}"
-            log_message "$MSG_INSTALLATION_DVD"
+            log_error "$MSG_EXTENDED_METHODS_AVAILABLE ${missing_methods[*]}"
+            log_info "$MSG_INSTALLATION_DVD"
         fi
         
         return 0
     else
-        log_message "$MSG_ERROR_NO_VIDEO_METHOD"
+        log_error "$MSG_ERROR_NO_VIDEO_METHOD"
         return 1
     fi
 }
@@ -143,19 +143,23 @@ check_video_dvd_dependencies() {
 # Nutzt dvdbackup (mit libdvdcss) + genisoimage
 # Mit intelligentem Fallback: dvdbackup → ddrescue → Ablehnung
 copy_video_dvd() {
+    # Initialisiere Kopiervorgang-Log
+    init_copy_log "$disc_label" "dvd"
+    
     local dvd_id=$(get_dvd_identifier)
     local failure_count=$(get_dvd_failure_count "$dvd_id")
     
     # Prüfe Fehler-Historie
     if [[ $failure_count -ge 2 ]]; then
         # DVD ist bereits 2x fehlgeschlagen → Ablehnung
-        log_message "$MSG_ERROR_DVD_REJECTED"
-        log_message "$MSG_ERROR_DVD_REJECTED_HINT"
+        log_error "$MSG_ERROR_DVD_REJECTED"
+        log_error "$MSG_ERROR_DVD_REJECTED_HINT"
+        finish_copy_log
         return 1
     elif [[ $failure_count -eq 1 ]]; then
         # DVD ist bereits 1x fehlgeschlagen → Automatischer Fallback auf ddrescue
-        log_message "$MSG_WARNING_DVD_FAILED_BEFORE"
-        log_message "$MSG_FALLBACK_TO_DDRESCUE"
+        log_warning "$MSG_WARNING_DVD_FAILED_BEFORE"
+        log_copying "$MSG_FALLBACK_TO_DDRESCUE"
         
         # Update COPY_METHOD für API/MQTT Anzeige
         export COPY_METHOD="ddrescue"
@@ -165,7 +169,7 @@ copy_video_dvd() {
     fi
     
     # Erste Versuch: Normale dvdbackup-Methode
-    log_message "$MSG_METHOD_DVDBACKUP"
+    log_copying "$MSG_METHOD_DVDBACKUP"
     
     # Erstelle temporäres Verzeichnis für DVD-Struktur (unter temp_pathname)
     # dvdbackup erstellt automatisch Unterordner, daher nutzen wir temp_pathname direkt
@@ -176,7 +180,7 @@ copy_video_dvd() {
     get_disc_size
     if [[ $total_bytes -gt 0 ]]; then
         dvd_size_mb=$((total_bytes / 1024 / 1024))
-        log_message "$MSG_DVD_SIZE: ${dvd_size_mb} $MSG_PROGRESS_MB"
+        log_copying "$MSG_DVD_SIZE: ${dvd_size_mb} $MSG_PROGRESS_MB"
     fi
     
     # Prüfe Speicherplatz (DVD-Größe + 5% Puffer)
@@ -189,8 +193,8 @@ copy_video_dvd() {
     
     # Starte dvdbackup im Hintergrund mit Fortschrittsanzeige
     # -M = Mirror (komplette DVD), -n = Name override (direkt VIDEO_TS)
-    log_message "$MSG_EXTRACT_DVD_STRUCTURE"
-    dvdbackup -M -n "dvd" -i "$CD_DEVICE" -o "$temp_dvd" >>"$log_filename" 2>&1 &
+    log_copying "$MSG_EXTRACT_DVD_STRUCTURE"
+    dvdbackup -M -n "dvd" -i "$CD_DEVICE" -o "$temp_dvd" >>"$copy_log_filename" 2>&1 &
     local dvdbackup_pid=$!
     
     # Überwache Fortschritt (alle 60 Sekunden)
@@ -235,31 +239,33 @@ copy_video_dvd() {
     
     # Prüfe Ergebnis
     if [[ $dvdbackup_exit -ne 0 ]]; then
-        log_message "$MSG_ERROR_DVDBACKUP_FAILED (Exit-Code: $dvdbackup_exit)"
+        log_error "$MSG_ERROR_DVDBACKUP_FAILED (Exit-Code: $dvdbackup_exit)"
         
         # Registriere Fehlschlag für automatischen Fallback
         local dvd_id=$(get_dvd_identifier)
         register_dvd_failure "$dvd_id" "dvdbackup"
-        log_message "$MSG_DVD_MARKED_FOR_RETRY"
+        log_warning "$MSG_DVD_MARKED_FOR_RETRY"
         
         rm -rf "$temp_dvd"
+        finish_copy_log
         return 1
     fi
     
-    log_message "$MSG_DVD_STRUCTURE_EXTRACTED"
+    log_copying "$MSG_DVD_STRUCTURE_EXTRACTED"
     
     # VIDEO_TS ist jetzt direkt unter temp_dvd/dvd/VIDEO_TS
     local video_ts_dir="${temp_dvd}/dvd/VIDEO_TS"
     
     if [[ ! -d "$video_ts_dir" ]]; then
-        log_message "$MSG_ERROR_NO_VIDEO_TS"
+        log_error "$MSG_ERROR_NO_VIDEO_TS"
+        finish_copy_log
         return 1
     fi
     
     # Erstelle ISO aus VIDEO_TS Struktur
-    log_message "$MSG_CREATE_DECRYPTED_ISO"
-    if genisoimage -dvd-video -V "$disc_label" -o "$iso_filename" "$(dirname "$video_ts_dir")" 2>>"$log_filename"; then
-        log_message "$MSG_DECRYPTED_DVD_SUCCESS"
+    log_copying "$MSG_CREATE_DECRYPTED_ISO"
+    if genisoimage -dvd-video -V "$disc_label" -o "$iso_filename" "$(dirname "$video_ts_dir")" 2>>"$copy_log_filename"; then
+        log_copying "$MSG_DECRYPTED_DVD_SUCCESS"
         
         # Erfolg → Lösche eventuelle Fehler-Historie
         local dvd_id=$(get_dvd_identifier)
@@ -272,15 +278,17 @@ copy_video_dvd() {
         fi
         
         rm -rf "$temp_dvd"
+        finish_copy_log
         return 0
     else
-        log_message "$MSG_ERROR_GENISOIMAGE_FAILED"
+        log_error "$MSG_ERROR_GENISOIMAGE_FAILED"
         
         # Registriere Fehlschlag (genisoimage-Fehler)
         local dvd_id=$(get_dvd_identifier)
         register_dvd_failure "$dvd_id" "genisoimage"
         
         rm -rf "$temp_dvd"
+        finish_copy_log
         return 1
     fi
 }
@@ -293,7 +301,12 @@ copy_video_dvd() {
 # Schneller als dd bei Lesefehlern, ISO bleibt verschlüsselt
 # KEIN Fallback - Methode wird zu Beginn gewählt
 copy_video_dvd_ddrescue() {
-    log_message "$MSG_METHOD_DDRESCUE_ENCRYPTED"
+    # Initialisiere Kopiervorgang-Log (falls noch nicht von copy_video_dvd initialisiert)
+    if [[ -z "$copy_log_filename" ]]; then
+        init_copy_log "$disc_label" "dvd"
+    fi
+    
+    log_copying "$MSG_METHOD_DDRESCUE_ENCRYPTED"
     
     # ddrescue benötigt Map-Datei (im .temp Verzeichnis, wird auto-gelöscht)
     local mapfile="${temp_pathname}/$(basename "${iso_filename}").mapfile"
@@ -301,7 +314,7 @@ copy_video_dvd_ddrescue() {
     # Ermittle Disc-Größe mit isoinfo
     get_disc_size
     if [[ $total_bytes -gt 0 ]]; then
-        log_message "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
+        log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
     fi
     
     # Prüfe Speicherplatz (ISO-Größe + 5% Puffer)
@@ -317,9 +330,9 @@ copy_video_dvd_ddrescue() {
     # Kopiere mit ddrescue
     # Starte ddrescue im Hintergrund
     if [[ $total_bytes -gt 0 ]]; then
-        ddrescue -b 2048 -s "$total_bytes" -n "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+        ddrescue -b 2048 -s "$total_bytes" -n "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
     else
-        ddrescue -b 2048 -n "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$log_filename" &
+        ddrescue -b 2048 -n "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
     fi
     local ddrescue_pid=$!
     
@@ -353,7 +366,7 @@ copy_video_dvd_ddrescue() {
     
     # Prüfe Ergebnis
     if [[ $ddrescue_exit -eq 0 ]]; then
-        log_message "$MSG_VIDEO_DVD_DDRESCUE_SUCCESS"
+        log_copying "$MSG_VIDEO_DVD_DDRESCUE_SUCCESS"
         
         # Erfolg → Lösche eventuelle Fehler-Historie
         local dvd_id=$(get_dvd_identifier)
@@ -366,16 +379,18 @@ copy_video_dvd_ddrescue() {
         fi
         
         # Mapfile wird mit temp_pathname automatisch gelöscht
+        finish_copy_log
         return 0
     else
-        log_message "$MSG_ERROR_DDRESCUE_FAILED"
+        log_error "$MSG_ERROR_DDRESCUE_FAILED"
         
         # Registriere Fehlschlag für finale Ablehnung
         local dvd_id=$(get_dvd_identifier)
         register_dvd_failure "$dvd_id" "ddrescue"
-        log_message "$MSG_DVD_FINAL_FAILURE"
+        log_error "$MSG_DVD_FINAL_FAILURE"
         
         # Mapfile wird mit temp_pathname automatisch gelöscht
+        finish_copy_log
         return 1
     fi
 }

@@ -83,15 +83,15 @@ check_all_optional_tools() {
     check_ddrescue && available+=("ddrescue") || missing+=("ddrescue (Paket: gddrescue)")
     
     if [[ ${#available[@]} -gt 0 ]]; then
-        log_message "$MSG_AVAILABLE_OPTIONAL_TOOLS ${available[*]}"
+        log_warning "$MSG_AVAILABLE_OPTIONAL_TOOLS ${available[*]}"
     fi
     
     if [[ ${#missing[@]} -gt 0 ]]; then
-        log_message "$MSG_MISSING_OPTIONAL_TOOLS ${missing[*]}"
-        log_message "$MSG_VIDEO_DVD_OPTIONS"
-        log_message "$MSG_DVD_OPTION_1"
-        log_message "$MSG_DVD_OPTION_2"
-        log_message "$MSG_DVD_OPTION_3"
+        log_error "$MSG_MISSING_OPTIONAL_TOOLS ${missing[*]}"
+        log_info "$MSG_VIDEO_DVD_OPTIONS"
+        log_info "$MSG_DVD_OPTION_1"
+        log_info "$MSG_DVD_OPTION_2"
+        log_info "$MSG_DVD_OPTION_3"
         return 1
     fi
     

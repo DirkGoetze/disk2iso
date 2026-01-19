@@ -37,8 +37,8 @@ check_systeminfo_dependencies() {
     command -v blkid >/dev/null 2>&1 || missing+=("blkid")
     
     if [[ ${#missing[@]} -gt 0 ]]; then
-        log_message "$MSG_ERROR_SYSTEM_TOOLS_MISSING ${missing[*]}"
-        log_message "$MSG_INSTALLATION_SYSTEM_TOOLS"
+        log_error "$MSG_ERROR_SYSTEM_TOOLS_MISSING ${missing[*]}"
+        log_info "$MSG_INSTALLATION_SYSTEM_TOOLS"
         return 1
     fi
     
@@ -62,17 +62,17 @@ detect_container_environment() {
         if echo "$env_content" | grep -q "^container=lxc$"; then
             IS_CONTAINER=true
             CONTAINER_TYPE="lxc"
-            log_message "$MSG_CONTAINER_DETECTED LXC"
+            log_info "$MSG_CONTAINER_DETECTED LXC"
             return 0
         elif echo "$env_content" | grep -q "^container=docker$"; then
             IS_CONTAINER=true
             CONTAINER_TYPE="docker"
-            log_message "$MSG_CONTAINER_DETECTED Docker"
+            log_info "$MSG_CONTAINER_DETECTED Docker"
             return 0
         elif echo "$env_content" | grep -q "^container=podman$"; then
             IS_CONTAINER=true
             CONTAINER_TYPE="podman"
-            log_message "$MSG_CONTAINER_DETECTED Podman"
+            log_info "$MSG_CONTAINER_DETECTED Podman"
             return 0
         fi
     fi
@@ -81,7 +81,7 @@ detect_container_environment() {
     if [[ -f /.dockerenv ]]; then
         IS_CONTAINER=true
         CONTAINER_TYPE="docker"
-        log_message "$MSG_CONTAINER_DETECTED Docker"
+        log_info "$MSG_CONTAINER_DETECTED Docker"
         return 0
     fi
     
@@ -90,18 +90,18 @@ detect_container_environment() {
         if grep -q ":/lxc/" /proc/1/cgroup 2>/dev/null; then
             IS_CONTAINER=true
             CONTAINER_TYPE="lxc"
-            log_message "$MSG_CONTAINER_DETECTED LXC"
+            log_info "$MSG_CONTAINER_DETECTED LXC"
             return 0
         elif grep -q ":/docker/" /proc/1/cgroup 2>/dev/null; then
             IS_CONTAINER=true
             CONTAINER_TYPE="docker"
-            log_message "$MSG_CONTAINER_DETECTED Docker"
+            log_info "$MSG_CONTAINER_DETECTED Docker"
             return 0
         fi
     fi
     
     # Keine Container-Umgebung erkannt
-    log_message "$MSG_NATIVE_ENVIRONMENT_DETECTED"
+    log_info "$MSG_NATIVE_ENVIRONMENT_DETECTED"
     return 0
 }
 
@@ -119,14 +119,14 @@ check_disk_space() {
     local available_mb=$(df -BM "$OUTPUT_DIR" 2>/dev/null | tail -1 | awk '{print $4}' | sed 's/M//')
     
     if [[ -z "$available_mb" ]] || [[ ! "$available_mb" =~ ^[0-9]+$ ]]; then
-        log_message "$MSG_WARNING_DISK_SPACE_CHECK_FAILED"
+        log_error "$MSG_WARNING_DISK_SPACE_CHECK_FAILED"
         return 0  # Fahre fort, wenn Prüfung fehlschlägt
     fi
     
-    log_message "$MSG_DISK_SPACE_INFO ${available_mb} $MSG_DISK_SPACE_MB_AVAILABLE ${required_mb} $MSG_DISK_SPACE_MB_REQUIRED"
+    log_info "$MSG_DISK_SPACE_INFO ${available_mb} $MSG_DISK_SPACE_MB_AVAILABLE ${required_mb} $MSG_DISK_SPACE_MB_REQUIRED"
     
     if [[ $available_mb -lt $required_mb ]]; then
-        log_message "$MSG_ERROR_INSUFFICIENT_DISK_SPACE ${required_mb} $MSG_DISK_SPACE_MB_AVAILABLE_SHORT ${available_mb} MB"
+        log_error "$MSG_ERROR_INSUFFICIENT_DISK_SPACE ${required_mb} $MSG_DISK_SPACE_MB_AVAILABLE_SHORT ${available_mb} MB"
         return 1
     fi
     
@@ -204,14 +204,14 @@ wait_for_medium_change() {
         return 0  # Native Hardware: eject funktioniert, kein Warten nötig
     fi
     
-    log_message "$MSG_CONTAINER_MANUAL_EJECT"
-    log_message "$MSG_WAITING_FOR_MEDIUM_CHANGE"
+    log_info "$MSG_CONTAINER_MANUAL_EJECT"
+    log_info "$MSG_WAITING_FOR_MEDIUM_CHANGE"
     
     # Ermittle aktuelles Medium
     local old_identifier=$(get_medium_identifier "$device")
     
     if [[ -z "$old_identifier" ]]; then
-        log_message "$MSG_WARNING_NO_MEDIUM_IDENTIFIER"
+        log_warning "$MSG_WARNING_NO_MEDIUM_IDENTIFIER"
         # Fallback: Warte auf beliebiges Medium
         old_identifier="::"
     fi
@@ -228,18 +228,18 @@ wait_for_medium_change() {
         
         # Vergleiche Identifier
         if [[ -n "$new_identifier" ]] && [[ "$new_identifier" != "$old_identifier" ]]; then
-            log_message "$MSG_NEW_MEDIUM_DETECTED"
+            log_info "$MSG_NEW_MEDIUM_DETECTED"
             return 0
         fi
         
         # Log alle 30 Sekunden
         if (( elapsed % 30 == 0 )); then
-            log_message "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
+            log_info "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
         fi
     done
     
     # Timeout erreicht
-    log_message "$MSG_TIMEOUT_WAITING_FOR_MEDIUM"
+    log_info "$MSG_TIMEOUT_WAITING_FOR_MEDIUM"
     return 1
 }
 
@@ -263,8 +263,8 @@ wait_for_medium_change_lxc_safe() {
     local original_disc_type="${disc_type:-}"
     local original_disc_label="${disc_label:-}"
     
-    log_message "$MSG_CONTAINER_MANUAL_EJECT"
-    log_message "$MSG_WAITING_FOR_MEDIUM_CHANGE"
+    log_info "$MSG_CONTAINER_MANUAL_EJECT"
+    log_info "$MSG_WAITING_FOR_MEDIUM_CHANGE"
     
     while [[ $elapsed -lt $timeout ]]; do
         sleep "$poll_interval"
@@ -274,7 +274,7 @@ wait_for_medium_change_lxc_safe() {
         if ! is_disc_inserted; then
             # Keine Disk → weiter warten
             if (( elapsed % 30 == 0 )); then
-                log_message "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
+                log_info "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
             fi
             continue
         fi
@@ -288,7 +288,7 @@ wait_for_medium_change_lxc_safe() {
         
         # Prüfe ob target_dir erfolgreich ermittelt wurde
         if [[ -z "$target_dir" ]]; then
-            log_message "$MSG_ERROR_TARGET_DIR $disc_type"
+            log_error "$MSG_ERROR_TARGET_DIR $disc_type"
             # Stelle ursprüngliche Werte wieder her und fahre fort
             disc_type="$original_disc_type"
             disc_label="$original_disc_label"
@@ -314,19 +314,19 @@ wait_for_medium_change_lxc_safe() {
         
         if $iso_exists; then
             # Disk wurde bereits konvertiert → weiter warten
-            log_message "$MSG_DISC_ALREADY_CONVERTED ${disc_label}.iso $MSG_WAITING_FOR_NEW_DISC"
+            log_info "$MSG_DISC_ALREADY_CONVERTED ${disc_label}.iso $MSG_WAITING_FOR_NEW_DISC"
             
             # Stelle ursprüngliche Werte wieder her
             disc_type="$original_disc_type"
             disc_label="$original_disc_label"
             
             if (( elapsed % 30 == 0 )); then
-                log_message "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
+                log_info "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
             fi
         else
             # Neue Disk gefunden! (ISO existiert noch nicht)
             # Globale Variablen bleiben auf neue Werte gesetzt (disc_type und disc_label)
-            log_message "$MSG_NEW_MEDIUM_DETECTED (${disc_type}: ${disc_label})"
+            log_info "$MSG_NEW_MEDIUM_DETECTED (${disc_type}: ${disc_label})"
             return 0
         fi
     done
@@ -334,7 +334,7 @@ wait_for_medium_change_lxc_safe() {
     # Timeout erreicht - stelle ursprüngliche Werte wieder her
     disc_type="$original_disc_type"
     disc_label="$original_disc_label"
-    log_message "$MSG_TIMEOUT_WAITING_FOR_MEDIUM"
+    log_info "$MSG_TIMEOUT_WAITING_FOR_MEDIUM"
     return 1
 }
 

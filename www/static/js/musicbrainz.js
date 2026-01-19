@@ -3,14 +3,17 @@
  * Filepath: www/static/js/musicbrainz.js
  * 
  * Verwaltet die Auswahl bei mehrdeutigen MusicBrainz-Treffern
+ * BEFORE Copy Strategy: Modal erscheint VOR dem Ripping
  */
 
 let currentReleases = [];
 let selectedIndex = 0;
 let mbCheckInterval = null;
+let countdownInterval = null;
+let timeoutRemaining = 0;
 
 /**
- * Prüft ob MusicBrainz-Auswahl erforderlich ist
+ * Prüft ob Metadata-Auswahl erforderlich ist (BEFORE Copy)
  */
 async function checkMusicBrainzStatus() {
     try {
@@ -21,23 +24,24 @@ async function checkMusicBrainzStatus() {
             return;
         }
         
-        const response = await fetch('/api/musicbrainz/releases');
+        // Neuer Endpoint: /api/metadata/pending
+        const response = await fetch('/api/metadata/pending');
         
-        if (response.status === 404) {
-            // Keine Releases vorhanden
+        if (!response.ok) {
             return;
         }
         
         const data = await response.json();
         
-        if (data.status === 'waiting_user_input') {
+        if (data.pending && data.disc_type === 'audio-cd') {
             currentReleases = data.releases || [];
-            selectedIndex = data.selected_index || 0;
+            selectedIndex = 0;
+            timeoutRemaining = data.timeout || 60;
             
             showMusicBrainzModal(data);
         }
     } catch (error) {
-        console.error('MusicBrainz Status Check fehlgeschlagen:', error);
+        console.error('Metadata Status Check fehlgeschlagen:', error);
     }
 }
 
@@ -118,16 +122,58 @@ function showMusicBrainzModal(data) {
         listEl.appendChild(releaseDiv);
     });
     
-    // Bestätigen-Button hinzufügen
-    const confirmBtn = document.createElement('button');
-    confirmBtn.className = 'btn btn-primary';
-    confirmBtn.textContent = 'Album bestätigen';
-    confirmBtn.onclick = confirmMusicBrainzSelection;
+    // Countdown-Timer und Buttons Container
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.className = 'mb-buttons-container';
+    buttonsDiv.innerHTML = `
+        <div class="mb-countdown" id="mb-countdown">
+            ⏱️ Noch <span id="mb-countdown-seconds">${timeoutRemaining}</span> Sekunden...
+        </div>
+        <div class="mb-buttons">
+            <button class="btn btn-secondary" onclick="skipMusicBrainzSelection()">Überspringen</button>
+            <button class="btn btn-primary" onclick="confirmMusicBrainzSelection()">Album bestätigen</button>
+        </div>
+    `;
     
-    listEl.appendChild(confirmBtn);
+    listEl.appendChild(buttonsDiv);
     
     // Modal anzeigen
     modal.style.display = 'flex';
+    
+    // Starte Countdown
+    startCountdown();
+}
+
+/**
+ * Startet den Countdown-Timer
+ */
+function startCountdown() {
+    // Clear existing countdown
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+    }
+    
+    const secondsEl = document.getElementById('mb-countdown-seconds');
+    if (!secondsEl) return;
+    
+    countdownInterval = setInterval(() => {
+        timeoutRemaining--;
+        
+        if (timeoutRemaining <= 0) {
+            clearInterval(countdownInterval);
+            // Auto-Skip bei Timeout
+            skipMusicBrainzSelection();
+        } else {
+            secondsEl.textContent = timeoutRemaining;
+            
+            // Warnung bei wenig Zeit
+            const countdownDiv = document.getElementById('mb-countdown');
+            if (timeoutRemaining <= 10 && countdownDiv) {
+                countdownDiv.style.color = '#ff6b6b';
+                countdownDiv.style.fontWeight = 'bold';
+            }
+        }
+    }, 1000);
 }
 
 /**
@@ -139,6 +185,12 @@ function closeMusicBrainzModal() {
         modal.style.display = 'none';
     }
     
+    // Clear countdown
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
+    
     // Starte Interval-Prüfung wieder (falls gestoppt)
     if (!mbCheckInterval) {
         mbCheckInterval = setInterval(checkMusicBrainzStatus, 5000);
@@ -146,11 +198,48 @@ function closeMusicBrainzModal() {
 }
 
 /**
- * Bestätigt die ausgewählte MusicBrainz-Release
+ * Überspringt die Metadata-Auswahl (generische Namen)
+ */
+async function skipMusicBrainzSelection() {
+    try {
+        // Lese disc_id aus pending-data
+        const pendingResponse = await fetch('/api/metadata/pending');
+        const pendingData = await pendingResponse.json();
+        
+        const response = await fetch('/api/metadata/select', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                disc_id: pendingData.disc_id,
+                index: 'skip',
+                disc_type: 'audio-cd'
+            })
+        });
+        
+        if (response.ok) {
+            closeMusicBrainzModal();
+            showNotification('Metadaten übersprungen - verwende generische Namen', 'info');
+        } else {
+            throw new Error('Skip fehlgeschlagen');
+        }
+    } catch (error) {
+        console.error('Skip Metadata fehlgeschlagen:', error);
+        showNotification('Fehler beim Überspringen', 'error');
+    }
+}
+
+/**
+ * Bestätigt die ausgewählte MusicBrainz-Release (BEFORE Copy)
  */
 async function confirmMusicBrainzSelection() {
     try {
-        const response = await fetch('/api/musicbrainz/select', {
+        // Lese disc_id aus pending-data
+        const pendingResponse = await fetch('/api/metadata/pending');
+        const pendingData = await pendingResponse.json();
+        
+        const response = await fetch('/api/metadata/select', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -46,17 +46,17 @@ init_musicbrainz_cache_dirs() {
     if [[ -z "$MUSICBRAINZ_CACHE_DIR" ]]; then
         # Prüfen ob ensure_subfolder Funktion geladen ist
         if ! declare -f ensure_subfolder >/dev/null 2>&1; then
-            log_message "MusicBrainz: Fehler - lib-folders.sh nicht geladen" >&2
+            log_error "MusicBrainz: Fehler - lib-folders.sh nicht geladen" >&2
             return 1
         fi
 
         # MusicBrainz Cache-Verzeichnis erstellen (relativ zu OUTPUT_DIR)
         MUSICBRAINZ_CACHE_DIR=$(ensure_subfolder ".temp/${MUSICBRAINZ_TMP_DIR}") || return 1
-        log_message "MusicBrainz: Cache-Verzeichnis initialisiert: $MUSICBRAINZ_CACHE_DIR" >&2
+        log_info "MusicBrainz: Cache-Verzeichnis initialisiert: $MUSICBRAINZ_CACHE_DIR" >&2
 
         # MusicBrainz Covers Verzeichnis erstellen
         MUSICBRAINZ_COVERS_DIR_PATH=$(ensure_subfolder ".temp/${MUSICBRAINZ_TMP_DIR}/${MUSICBRAINZ_COVERS_DIR}") || return 1
-        log_message "MusicBrainz: Covers-Verzeichnis initialisiert: $MUSICBRAINZ_COVERS_DIR_PATH" >&2
+        log_info "MusicBrainz: Covers-Verzeichnis initialisiert: $MUSICBRAINZ_COVERS_DIR_PATH" >&2
     fi
     return 0
 }
@@ -105,11 +105,11 @@ populate_musicbrainz_cache() {
     local release_count=$(echo "$raw_json" | jq -r '.releases | length')
     
     if [[ "$release_count" -eq 0 ]]; then
-        log_message "MusicBrainz: Keine Releases zum Cachen" >&2
+        log_info "MusicBrainz: Keine Releases zum Cachen" >&2
         return 0
     fi
     
-    log_message "MusicBrainz: Cache $release_count Releases..." >&2
+    log_info "MusicBrainz: Cache $release_count Releases..." >&2
     
     local cached=0
     for i in $(seq 0 $((release_count - 1))); do
@@ -141,7 +141,7 @@ populate_musicbrainz_cache() {
         
         # Prüfe ob bereits gecacht
         if [[ -f "$nfo_file" ]]; then
-            log_message "MusicBrainz: Cache-Hit - überspringe ${nfo_name:0:40}..." >&2
+            log_info "MusicBrainz: Cache-Hit - überspringe ${nfo_name:0:40}..." >&2
             continue
         fi
         
@@ -165,16 +165,16 @@ EOF
         # Lade Cover-Thumbnail (falls verfügbar, folge Redirects mit -L)
         if [[ -n "$cover_url" ]]; then
             if curl -L -s -f -m 5 -H "User-Agent: ${MUSICBRAINZ_USER_AGENT}" "$cover_url" -o "$thumb_file" 2>/dev/null; then
-                log_message "MusicBrainz: Cover gecacht für ${nfo_name:0:40}..." >&2
+                log_info "MusicBrainz: Cover gecacht für ${nfo_name:0:40}..." >&2
             else
-                log_message "MusicBrainz: Cover-Download fehlgeschlagen für ${nfo_name:0:40}..." >&2
+                log_error "MusicBrainz: Cover-Download fehlgeschlagen für ${nfo_name:0:40}..." >&2
             fi
         fi
         
         cached=$((cached + 1))
     done
     
-    log_message "MusicBrainz: $cached von $release_count Releases neu gecacht" >&2
+    log_info "MusicBrainz: $cached von $release_count Releases neu gecacht" >&2
     return 0
 }
 
@@ -193,8 +193,8 @@ check_audio_metadata_dependencies() {
     command -v curl >/dev/null 2>&1 || missing_critical+=("curl")
     
     if [[ ${#missing_critical[@]} -gt 0 ]]; then
-        log_message "MusicBrainz: Metadata-Support nicht verfügbar - fehlende Tools: ${missing_critical[*]}"
-        log_message "MusicBrainz: Installieren Sie: apt-get install ${missing_critical[*]}"
+        log_error "MusicBrainz: Metadata-Support nicht verfügbar - fehlende Tools: ${missing_critical[*]}"
+        log_error "MusicBrainz: Installieren Sie: apt-get install ${missing_critical[*]}"
         return 1
     fi
     
@@ -205,11 +205,11 @@ check_audio_metadata_dependencies() {
     command -v mkisofs >/dev/null 2>&1 || missing_optional+=("mkisofs")
     
     if [[ ${#missing_optional[@]} -gt 0 ]]; then
-        log_message "MusicBrainz: Erweiterte Funktionen eingeschränkt - optionale Tools fehlen: ${missing_optional[*]}"
-        log_message "MusicBrainz: Für ISO-Remastering installieren Sie: apt-get install ${missing_optional[*]}"
+        log_error "MusicBrainz: Erweiterte Funktionen eingeschränkt - optionale Tools fehlen: ${missing_optional[*]}"
+        log_error "MusicBrainz: Für ISO-Remastering installieren Sie: apt-get install ${missing_optional[*]}"
     fi
     
-    log_message "MusicBrainz: Metadata-Support verfügbar"
+    log_info "MusicBrainz: Metadata-Support verfügbar"
     return 0
 }
 
@@ -230,7 +230,7 @@ fetch_musicbrainz_raw() {
     
     # Validierung
     if [[ -z "$artist" ]] && [[ -z "$album" ]]; then
-        log_message "MusicBrainz-Request: Artist oder Album erforderlich"
+        log_info "MusicBrainz-Request: Artist oder Album erforderlich"
         return 1
     fi
     
@@ -239,7 +239,7 @@ fetch_musicbrainz_raw() {
     
     local cache_file="${MUSICBRAINZ_CACHE_DIR}/${iso_basename}_raw.json"
     
-    log_message "MusicBrainz-Request: Suche Artist='$artist', Album='$album'"
+    log_info "MusicBrainz-Request: Suche Artist='$artist', Album='$album'"
     
     # Baue Query
     local query_parts=()
@@ -253,24 +253,24 @@ fetch_musicbrainz_raw() {
     
     local url="${MUSICBRAINZ_API_BASE_URL}/release/?query=${encoded_query}&fmt=json&limit=10&inc=artists+labels+recordings+media"
     
-    log_message "MusicBrainz-Request: URL = $url" >&2
+    log_info "MusicBrainz-Request: URL = $url" >&2
     
     # API-Anfrage - speichere direkt in Datei (vermeidet Bash String-Length-Limits)
     if ! curl -s -f -m 10 -H "User-Agent: ${MUSICBRAINZ_USER_AGENT}" "$url" -o "$cache_file" 2>/dev/null; then
         local curl_exit=$?
-        log_message "MusicBrainz-Request: API-Anfrage fehlgeschlagen (exit $curl_exit)" >&2
+        log_error "MusicBrainz-Request: API-Anfrage fehlgeschlagen (exit $curl_exit)" >&2
         echo '{"error": "API request failed"}' > "$cache_file"
         return 1
     fi
     
     # Prüfe ob Response JSON ist (mindestens '{}')
     if [[ ! -s "$cache_file" ]]; then
-        log_message "MusicBrainz-Request: Leere Response erhalten"
+        log_info "MusicBrainz-Request: Leere Response erhalten"
         echo '{"error": "Empty response"}' > "$cache_file"
         return 1
     fi
     
-    log_message "MusicBrainz-Request: Raw response gespeichert: $(basename "$cache_file")"
+    log_info "MusicBrainz-Request: Raw response gespeichert: $(basename "$cache_file")"
     return 0
 }
 
@@ -302,7 +302,7 @@ fetch_coverart() {
     local cached_thumb=$(find "$MUSICBRAINZ_COVERS_DIR_PATH" -name "*_${release_id_short}-thumb.jpg" 2>/dev/null | head -1)
     
     if [[ -n "$cached_thumb" && -f "$cached_thumb" ]]; then
-        log_message "MusicBrainz: Cover aus populate_cache: $(basename "$cached_thumb")" >&2
+        log_info "MusicBrainz: Cover aus populate_cache: $(basename "$cached_thumb")" >&2
         echo "{\"success\": true, \"path\": \"${cached_thumb}\", \"cached\": true}"
         return 0
     fi
@@ -311,7 +311,7 @@ fetch_coverart() {
     local cover_file="${MUSICBRAINZ_COVERS_DIR_PATH}/cover_${release_id}.jpg"
     
     if [[ -f "$cover_file" ]]; then
-        log_message "MusicBrainz: Cover aus Legacy-Cache: $(basename "$cover_file")" >&2
+        log_info "MusicBrainz: Cover aus Legacy-Cache: $(basename "$cover_file")" >&2
         echo "{\"success\": true, \"path\": \"${cover_file}\", \"cached\": true}"
         return 0
     fi
@@ -319,12 +319,12 @@ fetch_coverart() {
     # Lade Cover von CoverArtArchive
     local cover_url="${COVERART_API_BASE_URL}/release/${release_id}/front-250"
     
-    log_message "MusicBrainz: Lade Cover für Release-ID: $release_id"
+    log_info "MusicBrainz: Lade Cover für Release-ID: $release_id"
     
     if curl -s -f -m 10 -o "$cover_file" "$cover_url" 2>/dev/null; then
         # Prüfe ob Download erfolgreich (Datei > 0 Bytes)
         if [[ -s "$cover_file" ]]; then
-            log_message "MusicBrainz: Cover heruntergeladen: $(basename "$cover_file")"
+            log_info "MusicBrainz: Cover heruntergeladen: $(basename "$cover_file")"
             echo "{\"success\": true, \"path\": \"${cover_file}\", \"cached\": false}"
             return 0
         else
@@ -355,7 +355,7 @@ search_and_cache_musicbrainz() {
     local album="${3:-}"
     local iso_basename="${iso_filename%.iso}"
     
-    log_message "MusicBrainz: Starte Suche für: $iso_filename"
+    log_info "MusicBrainz: Starte Suche für: $iso_filename"
     
     # Falls Artist/Album nicht übergeben, versuche aus Dateinamen zu extrahieren
     if [[ -z "$artist" ]] && [[ -z "$album" ]]; then
@@ -363,20 +363,20 @@ search_and_cache_musicbrainz() {
         if [[ "$iso_basename" =~ ^([^_]+)_(.+)$ ]]; then
             artist="${BASH_REMATCH[1]}"
             album="${BASH_REMATCH[2]}"
-            log_message "MusicBrainz: Extrahiert aus Dateinamen - Artist: '$artist', Album: '$album'"
+            log_info "MusicBrainz: Extrahiert aus Dateinamen - Artist: '$artist', Album: '$album'"
         else
-            log_message "MusicBrainz: Kann Artist/Album nicht aus Dateinamen extrahieren"
+            log_info "MusicBrainz: Kann Artist/Album nicht aus Dateinamen extrahieren"
             return 1
         fi
     fi
     
     # MusicBrainz-Anfrage durchführen (nur raw API call)
     if ! fetch_musicbrainz_raw "$artist" "$album" "$iso_basename"; then
-        log_message "MusicBrainz: Anfrage fehlgeschlagen"
+        log_error "MusicBrainz: Anfrage fehlgeschlagen"
         return 1
     fi
     
-    log_message "MusicBrainz: Raw response bereit - Python übernimmt Verarbeitung"
+    log_info "MusicBrainz: Raw response bereit - Python übernimmt Verarbeitung"
     return 0
 }
 
@@ -483,7 +483,7 @@ search_musicbrainz_json() {
         return 1
     fi
     
-    log_message "MusicBrainz: API-Response gespeichert in $(basename "$cache_file")" >&2
+    log_info "MusicBrainz: API-Response gespeichert in $(basename "$cache_file")" >&2
     
     # NEU: Befülle lokale .nfo-Cache-Datenbank
     if [[ -n "$iso_path" ]]; then
@@ -503,7 +503,7 @@ search_musicbrainz_json() {
         local min_tracks=$((track_count - 1))
         local max_tracks=$((track_count + 1))
         jq_filter=".releases | [.[] | select(.media[0].\"track-count\" >= $min_tracks and .media[0].\"track-count\" <= $max_tracks)][:10]"
-        log_message "MusicBrainz: Filtere nach $track_count Tracks (±1 Toleranz: ${min_tracks}-${max_tracks})" >&2
+        log_info "MusicBrainz: Filtere nach $track_count Tracks (±1 Toleranz: ${min_tracks}-${max_tracks})" >&2
     fi
     
     # Bestimme bevorzugte Länder basierend auf User-Sprache
@@ -516,7 +516,7 @@ search_musicbrainz_json() {
         *) preferred_countries="" ;;
     esac
     
-    log_message "MusicBrainz: Bevorzugte Länder für Sprache '$LANGUAGE': $preferred_countries" >&2
+    log_info "MusicBrainz: Bevorzugte Länder für Sprache '$LANGUAGE': $preferred_countries" >&2
     
     # Extrahiere und sortiere Ergebnisse
     # 1. Erst Releases aus bevorzugten Ländern
@@ -573,19 +573,19 @@ remaster_audio_iso_with_metadata() {
     
     # Validierung
     if [[ ! -f "$iso_path" ]]; then
-        log_message "Audio-Remaster: ISO-Datei nicht gefunden: $iso_path"
+        log_error "Audio-Remaster: ISO-Datei nicht gefunden: $iso_path"
         return 1
     fi
     
     if [[ -z "$mb_release_id" ]]; then
-        log_message "Audio-Remaster: Keine MusicBrainz Release-ID angegeben"
+        log_info "Audio-Remaster: Keine MusicBrainz Release-ID angegeben"
         return 1
     fi
     
-    log_message "Audio-Remaster: Starte ISO-Remaster für: $(basename "$iso_path")"
+    log_info "Audio-Remaster: Starte ISO-Remaster für: $(basename "$iso_path")"
     
     # Debug: Zeige ISO-Pfad
-    log_message "Audio-Remaster: Vollständiger ISO-Pfad: $iso_path"
+    log_info "Audio-Remaster: Vollständiger ISO-Pfad: $iso_path"
     
     # Erstelle temporäre Verzeichnisse in .temp (gleicher Parent wie ISO)
     # Verwende bash-interne String-Operationen statt dirname (robuster)
@@ -593,7 +593,7 @@ remaster_audio_iso_with_metadata() {
     local iso_parent="${iso_dir%/*}"  # Entfernt das audio-Verzeichnis
     local temp_base="${iso_parent}/.temp"
     
-    log_message "Audio-Remaster: iso_dir=$iso_dir, iso_parent=$iso_parent, temp_base=$temp_base"
+    log_info "Audio-Remaster: iso_dir=$iso_dir, iso_parent=$iso_parent, temp_base=$temp_base"
     
     local temp_extract="${temp_base}/disk2iso_remaster_$$"
     local temp_tagged="${temp_base}/disk2iso_tagged_$$"
@@ -601,18 +601,18 @@ remaster_audio_iso_with_metadata() {
     mkdir -p "$temp_extract" "$temp_tagged"
     
     # Schritt 1: ISO extrahieren/mounten
-    log_message "Audio-Remaster: [1/4] Extrahiere ISO..."
+    log_info "Audio-Remaster: [1/4] Extrahiere ISO..."
     if ! extract_iso_to_temp "$iso_path" "$temp_extract"; then
         cleanup_remaster_temp "$temp_extract" "$temp_tagged"
         return 1
     fi
     
     # Schritt 2: MusicBrainz-Metadaten abrufen
-    log_message "Audio-Remaster: [2/4] Hole MusicBrainz-Metadaten..."
+    log_info "Audio-Remaster: [2/4] Hole MusicBrainz-Metadaten..."
     local mb_data=$(get_musicbrainz_release_details "$mb_release_id")
     
     if [[ -z "$mb_data" ]]; then
-        log_message "Audio-Remaster: Konnte MusicBrainz-Daten nicht abrufen"
+        log_info "Audio-Remaster: Konnte MusicBrainz-Daten nicht abrufen"
         cleanup_remaster_temp "$temp_extract" "$temp_tagged"
         return 1
     fi
@@ -624,7 +624,7 @@ remaster_audio_iso_with_metadata() {
     local track_count=$(echo "$mb_data" | jq -r '.media[0]."track-count" // 0')
     local cover_url=$(echo "$mb_data" | jq -r '.["cover-art-archive"].front // empty')
     
-    log_message "Audio-Remaster: Album: $artist - $album ($year)"
+    log_info "Audio-Remaster: Album: $artist - $album ($year)"
     
     # Lade Cover von Cover Art Archive (mit redirect-follow)
     local cover_file=""
@@ -633,21 +633,21 @@ remaster_audio_iso_with_metadata() {
     
     cover_file="${temp_extract}/cover.jpg"
     if curl -L -s -f "$cover_url" -o "$cover_file" 2>/dev/null; then
-        log_message "Audio-Remaster: Cover heruntergeladen"
+        log_info "Audio-Remaster: Cover heruntergeladen"
     else
-        log_message "Audio-Remaster: Cover-Download fehlgeschlagen (kein Cover verfügbar)"
+        log_error "Audio-Remaster: Cover-Download fehlgeschlagen (kein Cover verfügbar)"
         cover_file=""
     fi
     
     # Schritt 3: MP3-Tags aktualisieren
-    log_message "Audio-Remaster: [3/4] Aktualisiere MP3-Tags..."
+    log_info "Audio-Remaster: [3/4] Aktualisiere MP3-Tags..."
     if ! update_mp3_tags_from_musicbrainz "$temp_extract" "$temp_tagged" "$mb_data" "$cover_file"; then
         cleanup_remaster_temp "$temp_extract" "$temp_tagged"
         return 1
     fi
     
     # Schritt 4: Neue ISO erstellen
-    log_message "Audio-Remaster: [4/4] Erstelle neue ISO..."
+    log_info "Audio-Remaster: [4/4] Erstelle neue ISO..."
     
     # Nutze .temp Verzeichnis im gleichen Parent wie die ISO
     local iso_dir=$(dirname "$iso_path")
@@ -661,7 +661,7 @@ remaster_audio_iso_with_metadata() {
     
     # Ersetze alte ISO durch neue
     if mv -f "$temp_iso" "$iso_path"; then
-        log_message "Audio-Remaster: ISO erfolgreich aktualisiert: $(basename "$iso_path")"
+        log_info "Audio-Remaster: ISO erfolgreich aktualisiert: $(basename "$iso_path")"
         
         # Erstelle .nfo mit Metadaten
         create_audio_nfo "$iso_path" "$artist" "$album" "$year" "$track_count" "$cover_file"
@@ -677,7 +677,7 @@ remaster_audio_iso_with_metadata() {
         # Benenne um wenn Name anders ist
         if [[ "$iso_path" != "$new_path" ]]; then
             if mv -f "$iso_path" "$new_path"; then
-                log_message "Audio-Remaster: ISO umbenannt: $(basename "$new_path")"
+                log_info "Audio-Remaster: ISO umbenannt: $(basename "$new_path")"
                 
                 # Benenne auch .md5 und .nfo um
                 local old_md5="${iso_path%.iso}.md5"
@@ -699,17 +699,17 @@ remaster_audio_iso_with_metadata() {
                 # MD5 neu berechnen für umbenannte ISO
                 if command -v md5sum >/dev/null 2>&1; then
                     md5sum "$new_path" | cut -d' ' -f1 > "$new_md5"
-                    log_message "Audio-Remaster: MD5 aktualisiert"
+                    log_info "Audio-Remaster: MD5 aktualisiert"
                 fi
             else
-                log_message "Audio-Remaster: Warnung - ISO-Umbenennung fehlgeschlagen"
+                log_error "Audio-Remaster: Warnung - ISO-Umbenennung fehlgeschlagen"
             fi
         else
             # Nur MD5 neu berechnen und .mbquery löschen
             local md5_file="${iso_path%.iso}.md5"
             if command -v md5sum >/dev/null 2>&1; then
                 md5sum "$iso_path" | cut -d' ' -f1 > "$md5_file"
-                log_message "Audio-Remaster: MD5 aktualisiert"
+                log_info "Audio-Remaster: MD5 aktualisiert"
             fi
             
             # Lösche .mbquery Datei
@@ -720,7 +720,7 @@ remaster_audio_iso_with_metadata() {
         cleanup_remaster_temp "$temp_extract" "$temp_tagged"
         return 0
     else
-        log_message "Audio-Remaster: Fehler beim Ersetzen der ISO"
+        log_error "Audio-Remaster: Fehler beim Ersetzen der ISO"
         rm -f "$temp_iso"
         cleanup_remaster_temp "$temp_extract" "$temp_tagged"
         return 1
@@ -736,20 +736,20 @@ extract_iso_to_temp() {
     local iso_path="$1"
     local temp_dir="$2"
     
-    log_message "Audio-Remaster: Extrahiere nach: $temp_dir"
+    log_info "Audio-Remaster: Extrahiere nach: $temp_dir"
     
     # Loop-Mount verwenden (Service läuft als root, mount sollte funktionieren)
     local mount_point="${temp_dir}_mount"
     mkdir -p "$mount_point"
     
-    log_message "Audio-Remaster: Mounte ISO mit /bin/mount..."
+    log_info "Audio-Remaster: Mounte ISO mit /bin/mount..."
     
     # Verwende absoluten Pfad zu mount und capture stderr
     local mount_output=$(/bin/mount -o loop,ro "$iso_path" "$mount_point" 2>&1)
     local mount_result=$?
     
     if [[ $mount_result -eq 0 ]]; then
-        log_message "Audio-Remaster: ISO erfolgreich gemountet, kopiere Dateien..."
+        log_info "Audio-Remaster: ISO erfolgreich gemountet, kopiere Dateien..."
         
         # Kopiere alle Dateien
         local copy_output=$(cp -r "$mount_point"/* "$temp_dir/" 2>&1)
@@ -758,16 +758,16 @@ extract_iso_to_temp() {
         if [[ $copy_result -eq 0 ]]; then
             /bin/umount "$mount_point"
             rmdir "$mount_point"
-            log_message "Audio-Remaster: Extraktion erfolgreich ($(ls -1 "$temp_dir" | wc -l) Dateien kopiert)"
+            log_info "Audio-Remaster: Extraktion erfolgreich ($(ls -1 "$temp_dir" | wc -l) Dateien kopiert)"
             return 0
         else
-            log_message "Audio-Remaster: Fehler beim Kopieren: $copy_output"
+            log_error "Audio-Remaster: Fehler beim Kopieren: $copy_output"
             /bin/umount "$mount_point" 2>/dev/null
             rmdir "$mount_point" 2>/dev/null
             return 1
         fi
     else
-        log_message "Audio-Remaster: Mount fehlgeschlagen (Exit: $mount_result): $mount_output"
+        log_error "Audio-Remaster: Mount fehlgeschlagen (Exit: $mount_result): $mount_output"
         rmdir "$mount_point" 2>/dev/null
         return 1
     fi
@@ -793,7 +793,7 @@ update_mp3_tags_from_musicbrainz() {
     elif command -v id3v2 >/dev/null 2>&1; then
         tag_tool="id3v2"
     else
-        log_message "Audio-Remaster: Kein ID3-Tagging-Tool gefunden (eyeD3/id3v2)"
+        log_info "Audio-Remaster: Kein ID3-Tagging-Tool gefunden (eyeD3/id3v2)"
         return 1
     fi
     
@@ -815,11 +815,11 @@ update_mp3_tags_from_musicbrainz() {
     local mp3_count=${#mp3_files[@]}
     
     if [[ $mp3_count -eq 0 ]]; then
-        log_message "Audio-Remaster: Keine MP3-Dateien in ISO gefunden"
+        log_info "Audio-Remaster: Keine MP3-Dateien in ISO gefunden"
         return 1
     fi
     
-    log_message "Audio-Remaster: Gefunden: $mp3_count MP3s, MusicBrainz: $track_count Tracks"
+    log_info "Audio-Remaster: Gefunden: $mp3_count MP3s, MusicBrainz: $track_count Tracks"
     
     # Tagge jede MP3 und benenne um
     local track_num=1
@@ -870,7 +870,7 @@ update_mp3_tags_from_musicbrainz() {
                 "$target_file" >/dev/null 2>&1
         fi
         
-        log_message "Audio-Remaster: Getaggt: $track_num. $track_title -> $new_filename"
+        log_info "Audio-Remaster: Getaggt: $track_num. $track_title -> $new_filename"
         track_num=$((track_num + 1))
     done
     
@@ -898,24 +898,24 @@ rebuild_audio_iso() {
     elif command -v mkisofs >/dev/null 2>&1; then
         iso_tool="mkisofs"
     else
-        log_message "Audio-Remaster: Kein ISO-Tool gefunden (genisoimage/mkisofs)"
+        log_info "Audio-Remaster: Kein ISO-Tool gefunden (genisoimage/mkisofs)"
         return 1
     fi
     
     # Prüfe ob Quellverzeichnis Dateien enthält
     if [[ -z "$(ls -A "$source_dir" 2>/dev/null)" ]]; then
-        log_message "Audio-Remaster: Quellverzeichnis ist leer: $source_dir"
+        log_info "Audio-Remaster: Quellverzeichnis ist leer: $source_dir"
         return 1
     fi
     
     # Erstelle ISO mit UDF + Joliet (maximale Kompatibilität)
     local iso_errors=$(mktemp)
     if $iso_tool -r -J -o "$output_iso" "$source_dir" 2>"$iso_errors"; then
-        log_message "Audio-Remaster: ISO erfolgreich erstellt: $(basename "$output_iso")"
+        log_info "Audio-Remaster: ISO erfolgreich erstellt: $(basename "$output_iso")"
         rm -f "$iso_errors"
         return 0
     else
-        log_message "Audio-Remaster: ISO-Erstellung fehlgeschlagen: $(cat "$iso_errors")"
+        log_error "Audio-Remaster: ISO-Erstellung fehlgeschlagen: $(cat "$iso_errors")"
         rm -f "$iso_errors"
         return 1
     fi
@@ -956,7 +956,7 @@ EOF
         cp "$cover_file" "$thumb_file"
     fi
     
-    log_message "Audio-Remaster: .nfo erstellt"
+    log_info "Audio-Remaster: .nfo erstellt"
 }
 
 # Funktion: Hole MusicBrainz Release-Details

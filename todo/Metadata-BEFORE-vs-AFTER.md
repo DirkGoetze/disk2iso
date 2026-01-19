@@ -100,16 +100,23 @@ Soll die Metadata-Abfrage (MusicBrainz/TMDB) **VOR** oder **NACH** dem Kopiervor
 1. CD detected → State: "waiting_for_metadata"
 2. MusicBrainz Query (2-5 Sek)
 3. Modal anzeigen (Web-UI)
-4. User wählt Release ODER Timeout (30 Sek)
-5. disc_label = "ronan_keating_destination"
+4. User wählt Release ODER Timeout (60 Sek Default, konfigurierbar)
+   - Countdown-Timer im Modal sichtbar
+   - Skip-Button für sofortigen Generic-Modus
+5. disc_label = "ronan_keating_destination" (oder Generic bei Skip/Timeout)
 6. State: "copying" → Ripping mit schönen Namen
 7. Anzeige: "Ronan Keating - Destination"
            "Come Be My Baby (4/14)"
 ```
 
 ### Absicherung für Automatik:
-- **Timeout:** 30 Sek → Fallback auf `audio_cd_cb0cd60e`
-- **Skip-Button:** "Metadaten überspringen"
+- **Timeout:** 60 Sek (konfigurierbar) → Fallback auf `audio_cd_cb0cd60e`
+  - Normal-User: 60 Sek (Zeit für CD-Hülle checken, Publisher/Jahr vergleichen)
+  - Schnelle User: 15-20 Sek (wissen was sie wollen)
+  - Automatisierung: 5-10 Sek (schnell → Generic)
+  - Gründliche Prüfer: 90-120 Sek (alle Releases durchgehen)
+  - 0 = Kein Timeout (immer auf User warten)
+- **Skip-Button:** "Metadaten überspringen" (sofort Generic)
 - **Offline-Fallback:** Wenn MusicBrainz nicht erreichbar
 
 ### Implementierungs-Aufwand:
@@ -143,11 +150,12 @@ Soll die Metadata-Abfrage (MusicBrainz/TMDB) **VOR** oder **NACH** dem Kopiervor
 
 ---
 
-## Implementierungs-Roadmap (Vorschlag)
-
-### Phase 1: API-Erweiterung
+## ImplementiConfig & API-Erweiterung
+- [ ] Config-Parameter: `METADATA_SELECTION_TIMEOUT=60` (konfigurierbar 0-300)
 - [ ] Neuer State: `waiting_for_metadata`
 - [ ] API-Endpunkt: `/api/metadata/query` (initiiert Query)
+- [ ] API-Endpunkt: `/api/metadata/select` (User-Auswahl oder Skip)
+- [ ] Timeout-Mechanismus im Service (aus Config lesennitiiert Query)
 - [ ] API-Endpunkt: `/api/metadata/select` (User-Auswahl oder Skip)
 - [ ] Timeout-Mechanismus im Service (30 Sek)
 
@@ -158,9 +166,10 @@ Soll die Metadata-Abfrage (MusicBrainz/TMDB) **VOR** oder **NACH** dem Kopiervor
 - [ ] Fallback auf Generic wenn keine Metadata
 
 ### Phase 3: Frontend
-- [ ] Modal für Release-Auswahl (wie bisher)
-- [ ] Countdown-Timer anzeigen (30 Sek)
-- [ ] Skip-Button prominent platzieren
+- [ ] Modal für Release-Auswahl dynamisch aus Config, z.B. 60 Sek)
+- [ ] Skip-Button prominent platzieren ("Metadaten überspringen")
+- [ ] Auto-Close bei Auswahl
+- [ ] Visuelles Feedback: "Zeit für CD-Hülle checken, Publisher vergleichen..."platzieren
 - [ ] Auto-Close bei Auswahl
 
 ### Phase 4: Testing
@@ -170,7 +179,51 @@ Soll die Metadata-Abfrage (MusicBrainz/TMDB) **VOR** oder **NACH** dem Kopiervor
 - [ ] Test: Skip-Button
 
 ---
+---
 
-**Datum:** 19. Januar 2026  
-**Status:** Analyse, noch nicht implementiert  
+## Timeout-Konfiguration (Ergänzung 20.01.2026)
+
+### Config-Parameter in `disk2iso.conf`:
+```bash
+# Wartezeit für Metadaten-Auswahl (Sekunden)
+# Gibt dem User Zeit für:
+# - CD-Hülle rausholen und Publisher/Jahr prüfen (oft Schriftgröße 5-6)
+# - Mehrere Releases durchscrollen und vergleichen
+# - Gründliche Entscheidung bei unklaren Fällen
+#
+# Werte:
+#   0     = Kein Timeout, immer auf User warten (für Perfektionisten)
+#   5-10  = Schnell (Automatisierung, User kennt seine CDs)
+#   60    = Standard (entspannte Auswahl, empfohlen)
+#   90-120 = Gründlich (Zeit für detaillierte CD-Hüllen-Prüfung)
+#   300   = Maximum (5 Minuten, für sehr unentschlossene User)
+METADATA_SELECTION_TIMEOUT=60
+```
+
+### Use Cases:
+- **Heimanwender (Standard):** 60 Sek - Zeit für CD rausholen, Cover vergleichen
+- **CD-Sammler:** 90-120 Sek - Gründlicher Vergleich, viele Releases
+- **Automatisierung:** 5-10 Sek - Schneller Fallback, keine User-Interaktion
+- **Perfektionisten:** 0 Sek - Wartet immer, bis User wählt (kein Timeout)
+
+### Frontend-Anzeige:
+```
+┌─────────────────────────────────────────────┐
+│ MusicBrainz: 8 Releases gefunden            │
+│                                             │
+│ [Cover 1]  Ronan Keating - Destination     │
+│            2002, Universal Music (DE)       │
+│                                             │
+│ [Cover 2]  Ronan Keating - Destination     │
+│            2002, Polydor (UK)               │
+│                                             │
+│ ⏱️  Noch 45 Sekunden...                     │
+│                                             │
+│ [Auswählen]  [Überspringen]                │
+└─────────────────────────────────────────────┘
+```
+
+**Datum:** 19./20. Januar 2026  
+**Status:** Analyse aktualisiert, Implementierung folgt  
+**Priorität:** Mittel-Hoch (wichtiges UX-Featurert  
 **Priorität:** Mittel (nach aktuellen Tests)

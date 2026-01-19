@@ -723,6 +723,134 @@ def api_archive_thumbnail(filename):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# ============================================================================
+# METADATA BEFORE COPY - NEW ENDPOINTS
+# ============================================================================
+
+@app.route('/api/metadata/pending')
+def api_metadata_pending():
+    """
+    Check if metadata selection is pending
+    Returns: {
+        'pending': bool,
+        'disc_type': str,
+        'disc_id': str,
+        'timeout': int (seconds remaining),
+        'releases': [...] (if audio-cd)
+    }
+    """
+    try:
+        # Prüfe ob .mbquery oder .tmdbquery Datei existiert
+        config = get_config()
+        output_dir = config.get('output_dir', '/media/iso')
+        
+        # Suche nach .mbquery Dateien (Audio-CD)
+        mbquery_files = list(Path(output_dir).glob('**/*.mbquery'))
+        if mbquery_files:
+            mbquery_file = mbquery_files[0]
+            with open(mbquery_file, 'r') as f:
+                releases_data = json.load(f)
+            
+            # Lese Timeout-Startzeit aus Datei-Metadaten
+            file_mtime = mbquery_file.stat().st_mtime
+            elapsed = int(time.time() - file_mtime)
+            
+            # Lese Timeout aus Config
+            bash_cmd = f'source {CONFIG_FILE} && echo "$METADATA_SELECTION_TIMEOUT"'
+            result = subprocess.run(
+                ['bash', '-c', bash_cmd],
+                capture_output=True, text=True, timeout=5
+            )
+            timeout_total = int(result.stdout.strip() or '60')
+            timeout_remaining = max(0, timeout_total - elapsed)
+            
+            return jsonify({
+                'pending': True,
+                'disc_type': 'audio-cd',
+                'disc_id': mbquery_file.stem.replace('_mb', ''),
+                'timeout': timeout_remaining,
+                'releases': releases_data.get('releases', []),
+                'track_count': releases_data.get('track_count', 0)
+            })
+        
+        # Suche nach .tmdbquery Dateien (DVD/Blu-ray)
+        tmdbquery_files = list(Path(output_dir).glob('**/*.tmdbquery'))
+        if tmdbquery_files:
+            tmdbquery_file = tmdbquery_files[0]
+            with open(tmdbquery_file, 'r') as f:
+                results_data = json.load(f)
+            
+            file_mtime = tmdbquery_file.stat().st_mtime
+            elapsed = int(time.time() - file_mtime)
+            
+            bash_cmd = f'source {CONFIG_FILE} && echo "$METADATA_SELECTION_TIMEOUT"'
+            result = subprocess.run(
+                ['bash', '-c', bash_cmd],
+                capture_output=True, text=True, timeout=5
+            )
+            timeout_total = int(result.stdout.strip() or '60')
+            timeout_remaining = max(0, timeout_total - elapsed)
+            
+            return jsonify({
+                'pending': True,
+                'disc_type': results_data.get('media_type', 'dvd'),
+                'disc_id': tmdbquery_file.stem.replace('_tmdb', ''),
+                'timeout': timeout_remaining,
+                'results': results_data.get('results', [])
+            })
+        
+        # Keine Metadaten-Auswahl pending
+        return jsonify({'pending': False})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/metadata/select', methods=['POST'])
+def api_metadata_select():
+    """
+    Select metadata (BEFORE copy starts)
+    Body: {
+        'disc_id': str,
+        'index': int,  # or 'skip' for skip/timeout
+        'disc_type': 'audio-cd' | 'dvd-video' | 'bd-video'
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data or 'disc_id' not in data:
+            return jsonify({'success': False, 'message': 'disc_id missing'}), 400
+        
+        disc_id = data['disc_id']
+        index = data.get('index', 'skip')
+        disc_type = data.get('disc_type', 'audio-cd')
+        
+        config = get_config()
+        output_dir = config.get('output_dir', '/media/iso')
+        
+        # Erstelle Selection-Datei
+        selection_data = {
+            'disc_id': disc_id,
+            'selected_index': index if index != 'skip' else -1,
+            'skipped': index == 'skip',
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        if disc_type == 'audio-cd':
+            # .mbselect Datei für Service
+            selection_file = Path(output_dir) / f'{disc_id}_mb.mbselect'
+        else:
+            # .tmdbselect Datei
+            selection_file = Path(output_dir) / f'{disc_id}_tmdb.tmdbselect'
+        
+        with open(selection_file, 'w') as f:
+            json.dump(selection_data, f, indent=2)
+        
+        return jsonify({'success': True, 'disc_id': disc_id, 'index': index})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @app.route('/api/config', methods=['GET', 'POST'])
 def api_config():
     """API-Endpoint für Konfigurations-Verwaltung (via Bash)"""

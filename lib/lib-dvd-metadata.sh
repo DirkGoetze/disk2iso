@@ -48,21 +48,21 @@ init_tmdb_cache_dirs() {
     if [[ -z "$TMDB_CACHE_DIR" ]]; then
         # Prüfen ob ensure_subfolder Funktion geladen ist
         if ! declare -f ensure_subfolder >/dev/null 2>&1; then
-            log_message "TMDB: Fehler - lib-folders.sh nicht geladen"
+            log_error "TMDB: Fehler - lib-folders.sh nicht geladen"
             return 1
         fi
 
         # Metadaten Cache-Verzeichnis erstellen (relativ zu OUTPUT_DIR)
         TMDB_CACHE_DIR=$(ensure_subfolder ".temp/${METADATA_TMP_DIR}") || return 1
-        log_message "TMDB: Cache-Verzeichnis initialisiert: $TMDB_CACHE_DIR"
+        log_info "TMDB: Cache-Verzeichnis initialisiert: $TMDB_CACHE_DIR"
 
         # Metadaten Thumbnails Verzeichnis erstellen
         TMDB_THUMBS_DIR=$(ensure_subfolder ".temp/${METADATA_TMP_DIR}/${METADATA_THUMBS_DIR}") || return 1 
         if [[ ! -d "$TMDB_THUMBS_DIR" ]]; then
-            log_message "TMDB: Thumbnail-Verzeichnis ungültig: $TMDB_THUMBS_DIR"
+            log_info "TMDB: Thumbnail-Verzeichnis ungültig: $TMDB_THUMBS_DIR"
             return 1
         fi
-        log_message "TMDB: Thumbnail-Verzeichnis initialisiert: $TMDB_THUMBS_DIR"
+        log_info "TMDB: Thumbnail-Verzeichnis initialisiert: $TMDB_THUMBS_DIR"
     fi
     return 0
 }
@@ -82,19 +82,19 @@ check_dvd_metadata_dependencies() {
     command -v curl >/dev/null 2>&1 || missing_critical+=("curl")
     
     if [[ ${#missing_critical[@]} -gt 0 ]]; then
-        log_message "TMDB: Metadata-Support nicht verfügbar - fehlende Tools: ${missing_critical[*]}"
-        log_message "TMDB: Installieren Sie: apt-get install ${missing_critical[*]}"
+        log_error "TMDB: Metadata-Support nicht verfügbar - fehlende Tools: ${missing_critical[*]}"
+        log_error "TMDB: Installieren Sie: apt-get install ${missing_critical[*]}"
         return 1
     fi
     
     # Prüfe ob TMDB_API_KEY konfiguriert ist
     if [[ -z "$TMDB_API_KEY" ]]; then
-        log_message "TMDB: API-Key nicht konfiguriert - Metadata-Funktionen deaktiviert"
-        log_message "TMDB: Konfigurieren Sie TMDB_API_KEY in disk2iso.conf"
+        log_info "TMDB: API-Key nicht konfiguriert - Metadata-Funktionen deaktiviert"
+        log_info "TMDB: Konfigurieren Sie TMDB_API_KEY in disk2iso.conf"
         return 1
     fi
     
-    log_message "TMDB: Metadata-Support verfügbar"
+    log_info "TMDB: Metadata-Support verfügbar"
     return 0
 }
 
@@ -110,7 +110,7 @@ search_tmdb_movie() {
     
     # Prüfe ob API-Key konfiguriert ist
     if [[ -z "$TMDB_API_KEY" ]]; then
-        log_message "TMDB: API-Key nicht konfiguriert"
+        log_info "TMDB: API-Key nicht konfiguriert"
         return 1
     fi
     
@@ -126,7 +126,7 @@ search_tmdb_movie() {
         echo "$response"
         return 0
     else
-        log_message "TMDB: Fehler bei der Film-Suche nach '$query'"
+        log_error "TMDB: Fehler bei der Film-Suche nach '$query'"
         return 1
     fi
 }
@@ -150,7 +150,7 @@ get_tmdb_movie_details() {
         echo "$response"
         return 0
     else
-        log_message "TMDB: Fehler beim Abrufen der Details für Movie-ID $movie_id"
+        log_error "TMDB: Fehler beim Abrufen der Details für Movie-ID $movie_id"
         return 1
     fi
 }
@@ -166,7 +166,7 @@ search_tmdb_tv() {
     local query="$1"
     
     if [[ -z "$TMDB_API_KEY" ]]; then
-        log_message "TMDB: API-Key nicht konfiguriert"
+        log_info "TMDB: API-Key nicht konfiguriert"
         return 1
     fi
     
@@ -179,7 +179,7 @@ search_tmdb_tv() {
         echo "$response"
         return 0
     else
-        log_message "TMDB: Fehler bei der TV-Suche nach '$query'"
+        log_error "TMDB: Fehler bei der TV-Suche nach '$query'"
         return 1
     fi
 }
@@ -204,7 +204,7 @@ get_tmdb_tv_season_details() {
         echo "$response"
         return 0
     else
-        log_message "TMDB: Fehler beim Abrufen von TV-ID $tv_id Season $season_number"
+        log_error "TMDB: Fehler beim Abrufen von TV-ID $tv_id Season $season_number"
         return 1
     fi
 }
@@ -223,7 +223,7 @@ download_tmdb_poster() {
     
     # Prüfe ob Poster-Pfad vorhanden
     if [[ -z "$poster_path" ]] || [[ "$poster_path" == "null" ]]; then
-        log_message "TMDB: Kein Poster verfügbar"
+        log_info "TMDB: Kein Poster verfügbar"
         return 1
     fi
     
@@ -231,10 +231,10 @@ download_tmdb_poster() {
     
     # Lade Poster herunter
     if curl -s -f -H "User-Agent: ${TMDB_USER_AGENT}" "$poster_url" -o "$output_file" 2>/dev/null; then
-        log_message "TMDB: Poster heruntergeladen: $(basename "$output_file")"
+        log_info "TMDB: Poster heruntergeladen: $(basename "$output_file")"
         return 0
     else
-        log_message "TMDB: Fehler beim Herunterladen des Posters"
+        log_error "TMDB: Fehler beim Herunterladen des Posters"
         return 1
     fi
 }
@@ -346,7 +346,7 @@ create_movie_nfo() {
         [[ -n "$overview" ]] && echo "OVERVIEW=$overview"
     } > "$nfo_file"
     
-    log_message "Metadaten erstellt: $(basename "$nfo_file")"
+    log_info "Metadaten erstellt: $(basename "$nfo_file")"
 }
 
 # Funktion: Interaktive Film-Auswahl aus TMDB-Suchergebnissen
@@ -359,7 +359,7 @@ select_tmdb_movie() {
     local result_count=$(echo "$search_results" | jq -r '.results | length')
     
     if [[ "$result_count" -eq 0 ]]; then
-        log_message "TMDB: Keine Ergebnisse gefunden"
+        log_info "TMDB: Keine Ergebnisse gefunden"
         return 1
     fi
     
@@ -370,8 +370,8 @@ select_tmdb_movie() {
     echo "$search_results" | jq '.' > "${api_dir}/tmdb_results.json"
     
     # Zeige Auswahl-Optionen
-    log_message "TMDB: $result_count Ergebnis(se) gefunden"
-    log_message "Bitte wählen Sie einen Film im Web-Interface aus..."
+    log_info "TMDB: $result_count Ergebnis(se) gefunden"
+    log_info "Bitte wählen Sie einen Film im Web-Interface aus..."
     
     # Warte auf Benutzer-Auswahl (max 5 Minuten)
     local selection_file="${api_dir}/tmdb_selection.json"
@@ -389,7 +389,7 @@ select_tmdb_movie() {
                 local movie_id=$(echo "$search_results" | jq -r ".results[$selected_index].id // empty")
                 
                 if [[ -n "$movie_id" ]]; then
-                    log_message "TMDB: Film ausgewählt (Index: $selected_index, ID: $movie_id)"
+                    log_info "TMDB: Film ausgewählt (Index: $selected_index, ID: $movie_id)"
                     echo "$movie_id"
                     return 0
                 fi
@@ -400,7 +400,7 @@ select_tmdb_movie() {
         elapsed=$((elapsed + 2))
     done
     
-    log_message "TMDB: Timeout - keine Auswahl getroffen"
+    log_info "TMDB: Timeout - keine Auswahl getroffen"
     return 1
 }
 
@@ -416,37 +416,37 @@ create_dvd_archive_metadata() {
     local season_number=""
     if [[ "$disc_label" =~ season[_[:space:]]*([0-9]+) ]]; then
         season_number="${BASH_REMATCH[1]}"
-        log_message "TV-Serie erkannt: Season $season_number"
+        log_info "TV-Serie erkannt: Season $season_number"
         
         # Entferne Season/Disc aus Suchbegriff für bessere Treffer
         search_query=$(echo "$search_query" | sed -E 's/[Ss]eason[[:space:]]*[0-9]+//g' | sed -E 's/[Dd]is[ck][[:space:]]*[0-9]+//g' | sed 's/  / /g' | xargs)
         
         # TV-Serie Workflow
-        log_message "Suche TV-Serie: $search_query"
+        log_info "Suche TV-Serie: $search_query"
         local tv_results=$(search_tmdb_tv "$search_query")
         
         if [[ -z "$tv_results" ]]; then
-            log_message "TMDB: TV-Suche fehlgeschlagen - keine Metadaten erstellt"
+            log_error "TMDB: TV-Suche fehlgeschlagen - keine Metadaten erstellt"
             return 1
         fi
         
         local result_count=$(echo "$tv_results" | jq -r '.results | length')
         
         if [[ "$result_count" -eq 0 ]]; then
-            log_message "TMDB: Keine TV-Serie gefunden"
+            log_info "TMDB: Keine TV-Serie gefunden"
             return 1
         fi
         
         # Nehme erstes Ergebnis (meist beste Übereinstimmung)
         local tv_id=$(echo "$tv_results" | jq -r '.results[0].id')
         local tv_name=$(echo "$tv_results" | jq -r '.results[0].name')
-        log_message "TMDB: TV-Serie gefunden: $tv_name (ID: $tv_id)"
+        log_info "TMDB: TV-Serie gefunden: $tv_name (ID: $tv_id)"
         
         # Hole Season-Details
         local season_details=$(get_tmdb_tv_season_details "$tv_id" "$season_number")
         
         if [[ -z "$season_details" ]]; then
-            log_message "TMDB: Fehler beim Abrufen der Season-Details"
+            log_error "TMDB: Fehler beim Abrufen der Season-Details"
             return 1
         fi
         
@@ -477,28 +477,28 @@ create_dvd_archive_metadata() {
             [[ -n "$overview" ]] && echo "OVERVIEW=$overview"
         } > "$nfo_file"
         
-        log_message "TV-Metadaten erstellt: $(basename "$nfo_file")"
+        log_info "TV-Metadaten erstellt: $(basename "$nfo_file")"
         
         # Lade Season-Poster
         local poster_path=$(echo "$season_details" | jq -r '.poster_path // empty')
         local thumb_file="${iso_filename%.iso}-thumb.jpg"
         
         if download_tmdb_poster "$poster_path" "$thumb_file"; then
-            log_message "Season-Poster heruntergeladen"
+            log_info "Season-Poster heruntergeladen"
             return 0
         else
-            log_message "TV-Metadaten erstellt (ohne Poster)"
+            log_info "TV-Metadaten erstellt (ohne Poster)"
             return 0
         fi
         
     else
         # Film Workflow (wie bisher)
-        log_message "Suche Film-Metadaten: $search_query"
+        log_info "Suche Film-Metadaten: $search_query"
         
         local search_results=$(search_tmdb_movie "$search_query")
         
         if [[ -z "$search_results" ]]; then
-            log_message "TMDB: Suche fehlgeschlagen - keine Metadaten erstellt"
+            log_error "TMDB: Suche fehlgeschlagen - keine Metadaten erstellt"
             return 1
         fi
         
@@ -510,13 +510,13 @@ create_dvd_archive_metadata() {
             # Automatische Auswahl bei eindeutigem Ergebnis
             movie_id=$(echo "$search_results" | jq -r '.results[0].id')
             local movie_title=$(echo "$search_results" | jq -r '.results[0].title')
-            log_message "TMDB: Eindeutiges Ergebnis gefunden: $movie_title"
+            log_info "TMDB: Eindeutiges Ergebnis gefunden: $movie_title"
         else
             # Mehrere Ergebnisse → Benutzer-Auswahl erforderlich
             movie_id=$(select_tmdb_movie "$search_results")
             
             if [[ -z "$movie_id" ]]; then
-                log_message "TMDB: Keine Auswahl getroffen - keine Metadaten erstellt"
+                log_info "TMDB: Keine Auswahl getroffen - keine Metadaten erstellt"
                 return 1
             fi
         fi
@@ -525,7 +525,7 @@ create_dvd_archive_metadata() {
         local movie_details=$(get_tmdb_movie_details "$movie_id")
         
         if [[ -z "$movie_details" ]]; then
-            log_message "TMDB: Fehler beim Abrufen der Film-Details"
+            log_error "TMDB: Fehler beim Abrufen der Film-Details"
             return 1
         fi
         
@@ -538,10 +538,10 @@ create_dvd_archive_metadata() {
         local thumb_file="${iso_filename%.iso}-thumb.jpg"
         
         if download_tmdb_poster "$poster_path" "$thumb_file"; then
-            log_message "Film-Metadaten erfolgreich erstellt"
+            log_info "Film-Metadaten erfolgreich erstellt"
             return 0
         else
-            log_message "Film-Metadaten erstellt (ohne Poster)"
+            log_info "Film-Metadaten erstellt (ohne Poster)"
             return 0
         fi
     fi
@@ -558,7 +558,7 @@ prepare_search_string() {
     local filename="$1"
     local basename="${filename%.iso}"
     
-    log_message "TMDB-Prepare: Input = '$basename'" >&2
+    log_info "TMDB-Prepare: Input = '$basename'" >&2
     
     # Entferne gängige Suffixe
     basename=$(echo "$basename" | sed -E 's/_disc_?[0-9]+$//i')
@@ -583,7 +583,7 @@ prepare_search_string() {
     # Entferne mehrfache Leerzeichen
     basename=$(echo "$basename" | sed 's/  */ /g' | xargs)
     
-    log_message "TMDB-Prepare: Output = '$basename'" >&2
+    log_info "TMDB-Prepare: Output = '$basename'" >&2
     echo "$basename"
 }
 
@@ -629,7 +629,7 @@ fetch_tmdb_raw() {
     
     # Validierung
     if [[ -z "$TMDB_API_KEY" ]]; then
-        log_message "TMDB-Request: API-Key nicht konfiguriert"
+        log_info "TMDB-Request: API-Key nicht konfiguriert"
         return 1
     fi
     
@@ -638,7 +638,7 @@ fetch_tmdb_raw() {
     
     local cache_file="${TMDB_CACHE_DIR}/${iso_basename}_raw.json"
     
-    log_message "TMDB-Request: Suche '$search_term' (Typ: $media_type)"
+    log_info "TMDB-Request: Suche '$search_term' (Typ: $media_type)"
     
     # URL-Encode des Suchbegriffs
     local encoded_query=$(echo "$search_term" | sed 's/ /%20/g' | sed 's/&/%26/g')
@@ -652,23 +652,23 @@ fetch_tmdb_raw() {
     fi
     
     # API-Anfrage - speichere direkt in Datei (vermeidet Bash String-Length-Limits)
-    log_message "TMDB-Request: URL = $url" >&2
+    log_info "TMDB-Request: URL = $url" >&2
     
     if ! curl -s -f -H "User-Agent: ${TMDB_USER_AGENT}" "$url" -o "$cache_file" 2>/dev/null; then
         local curl_exit=$?
-        log_message "TMDB-Request: API-Anfrage fehlgeschlagen (exit $curl_exit)" >&2
+        log_error "TMDB-Request: API-Anfrage fehlgeschlagen (exit $curl_exit)" >&2
         echo '{"error": "API request failed"}' > "$cache_file"
         return 1
     fi
     
     # Prüfe ob Response JSON ist (mindestens '{}')
     if [[ ! -s "$cache_file" ]]; then
-        log_message "TMDB-Request: Leere Response erhalten"
+        log_info "TMDB-Request: Leere Response erhalten"
         echo '{"error": "Empty response"}' > "$cache_file"
         return 1
     fi
     
-    log_message "TMDB-Request: Raw response gespeichert: $(basename "$cache_file")"
+    log_info "TMDB-Request: Raw response gespeichert: $(basename "$cache_file")"
     return 0
 }
 
@@ -679,13 +679,13 @@ search_and_cache_tmdb() {
     local iso_filename="$1"
     local iso_basename="${iso_filename%.iso}"
     
-    log_message "TMDB: Starte Suche für: $iso_filename"
+    log_info "TMDB: Starte Suche für: $iso_filename"
     
     # Schritt 1: Suchbegriff vorbereiten
     local search_term=$(prepare_search_string "$iso_filename")
     
     if [[ -z "$search_term" ]]; then
-        log_message "TMDB: Fehler bei Suchbegriff-Extraktion"
+        log_error "TMDB: Fehler bei Suchbegriff-Extraktion"
         return 1
     fi
     
@@ -693,16 +693,16 @@ search_and_cache_tmdb() {
     local media_type="movie"
     if [[ "$iso_filename" =~ season[_[:space:]]*[0-9]+ ]] || [[ "$iso_filename" =~ _s[0-9]{2} ]]; then
         media_type="tv"
-        log_message "TMDB: TV-Serie erkannt"
+        log_info "TMDB: TV-Serie erkannt"
     fi
     
     # Schritt 2: TMDB-Anfrage durchführen (nur raw API call)
     if ! fetch_tmdb_raw "$search_term" "$iso_basename" "$media_type"; then
-        log_message "TMDB: Anfrage fehlgeschlagen"
+        log_error "TMDB: Anfrage fehlgeschlagen"
         return 1
     fi
     
-    log_message "TMDB: Raw response bereit - Python übernimmt Verarbeitung"
+    log_info "TMDB: Raw response bereit - Python übernimmt Verarbeitung"
     return 0
 }
 
@@ -725,12 +725,12 @@ add_metadata_to_existing_iso() {
     
     # Validierung
     if [[ ! -f "$iso_path" ]]; then
-        log_message "TMDB: ISO-Datei nicht gefunden: $iso_path"
+        log_error "TMDB: ISO-Datei nicht gefunden: $iso_path"
         return 1
     fi
     
     if [[ -z "$TMDB_API_KEY" ]]; then
-        log_message "TMDB: API-Key nicht konfiguriert"
+        log_info "TMDB: API-Key nicht konfiguriert"
         return 1
     fi
     
@@ -739,7 +739,7 @@ add_metadata_to_existing_iso() {
     local nfo_file="${base_path}.nfo"
     local thumb_file="${base_path}-thumb.jpg"
     
-    log_message "TMDB: Füge Metadaten hinzu für: $(basename "$iso_path")"
+    log_info "TMDB: Füge Metadaten hinzu für: $(basename "$iso_path")"
     
     # Wenn TMDB-ID bereits bekannt, hole Details direkt
     if [[ -n "$tmdb_id" ]]; then
@@ -751,14 +751,14 @@ add_metadata_to_existing_iso() {
             fi
             
             if [[ -z "$season_num" ]]; then
-                log_message "TMDB: Keine Season-Nummer im Dateinamen gefunden"
+                log_info "TMDB: Keine Season-Nummer im Dateinamen gefunden"
                 return 1
             fi
             
             local tv_details=$(get_tmdb_tv_season_details "$tmdb_id" "$season_num")
             
             if [[ -z "$tv_details" ]]; then
-                log_message "TMDB: Konnte TV-Details nicht abrufen"
+                log_info "TMDB: Konnte TV-Details nicht abrufen"
                 return 1
             fi
             
@@ -787,7 +787,7 @@ EOF
             
             # Lade Season-Poster
             if [[ -n "$poster_path" ]] && download_tmdb_poster "$poster_path" "$thumb_file"; then
-                log_message "TMDB: TV-Metadaten erfolgreich hinzugefügt"
+                log_info "TMDB: TV-Metadaten erfolgreich hinzugefügt"
                 return 0
             fi
             
@@ -796,7 +796,7 @@ EOF
             local movie_details=$(get_tmdb_movie_details "$tmdb_id")
             
             if [[ -z "$movie_details" ]]; then
-                log_message "TMDB: Konnte Film-Details nicht abrufen"
+                log_info "TMDB: Konnte Film-Details nicht abrufen"
                 return 1
             fi
             
@@ -831,17 +831,17 @@ EOF
             
             # Lade Poster
             if [[ -n "$poster_path" ]] && download_tmdb_poster "$poster_path" "$thumb_file"; then
-                log_message "TMDB: Film-Metadaten erfolgreich hinzugefügt"
+                log_info "TMDB: Film-Metadaten erfolgreich hinzugefügt"
                 return 0
             fi
         fi
         
-        log_message "TMDB: Metadaten erstellt (ohne Poster)"
+        log_info "TMDB: Metadaten erstellt (ohne Poster)"
         return 0
     fi
     
     # Wenn keine TMDB-ID: Suche zuerst
-    log_message "TMDB: Suche nach: $title ($media_type)"
+    log_info "TMDB: Suche nach: $title ($media_type)"
     
     if [[ "$media_type" == "tv" ]]; then
         local search_results=$(search_tmdb_tv "$title")
@@ -850,7 +850,7 @@ EOF
     fi
     
     if [[ -z "$search_results" ]]; then
-        log_message "TMDB: Keine Suchergebnisse gefunden"
+        log_info "TMDB: Keine Suchergebnisse gefunden"
         return 1
     fi
     
@@ -858,7 +858,7 @@ EOF
     local first_id=$(echo "$search_results" | jq -r '.results[0].id // empty')
     
     if [[ -z "$first_id" ]]; then
-        log_message "TMDB: Keine gültige ID in Suchergebnissen"
+        log_info "TMDB: Keine gültige ID in Suchergebnissen"
         return 1
     fi
     
@@ -889,7 +889,7 @@ rename_iso_with_metadata() {
     
     # Prüfe ob Datei bereits existiert
     if [[ -f "$new_path" ]] && [[ "$new_path" != "$old_path" ]]; then
-        log_message "TMDB: Datei existiert bereits: $(basename "$new_path")"
+        log_info "TMDB: Datei existiert bereits: $(basename "$new_path")"
         echo "$old_path"
         return 1
     fi
@@ -900,11 +900,11 @@ rename_iso_with_metadata() {
         [[ -f "${old_path%.iso}.md5" ]] && mv "${old_path%.iso}.md5" "${new_path%.iso}.md5" 2>/dev/null
         
         # .nfo und -thumb.jpg werden mit neuem Namen erstellt
-        log_message "TMDB: ISO umbenannt: $(basename "$old_path") → $(basename "$new_path")"
+        log_info "TMDB: ISO umbenannt: $(basename "$old_path") → $(basename "$new_path")"
         echo "$new_path"
         return 0
     else
-        log_message "TMDB: Umbenennung fehlgeschlagen"
+        log_error "TMDB: Umbenennung fehlgeschlagen"
         echo "$old_path"
         return 1
     fi
