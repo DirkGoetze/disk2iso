@@ -62,6 +62,9 @@ function updateLiveStatus() {
             } else if (live.status === 'waiting') {
                 statusText = window.i18n?.STATUS_ANALYZING || 'Analyzing media...';
                 statusClass = 'stopped';
+            } else if (live.status === 'waiting_for_metadata') {
+                statusText = window.i18n?.STATUS_WAITING_FOR_METADATA || 'Waiting for metadata selection...';
+                statusClass = 'stopped';
             } else if (live.status === 'copying') {
                 statusText = window.i18n?.STATUS_COPYING || 'Copying...';
                 statusClass = 'copying';
@@ -177,6 +180,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Alle 5 Sekunden aktualisieren
     updateInterval = setInterval(updateLiveStatus, 5000);
+    
+    // MusicBrainz/TMDB Metadata-Auswahl prüfen (für BEFORE Copy Strategy)
+    if (typeof checkMusicBrainzStatus === 'function') {
+        checkMusicBrainzStatus();
+        setInterval(checkMusicBrainzStatus, 3000); // Alle 3 Sekunden prüfen
+    }
 });
 
 /**

@@ -150,33 +150,43 @@ Soll die Metadata-Abfrage (MusicBrainz/TMDB) **VOR** oder **NACH** dem Kopiervor
 
 ---
 
-## ImplementiConfig & API-Erweiterung
-- [ ] Config-Parameter: `METADATA_SELECTION_TIMEOUT=60` (konfigurierbar 0-300)
-- [ ] Neuer State: `waiting_for_metadata`
-- [ ] API-Endpunkt: `/api/metadata/query` (initiiert Query)
-- [ ] API-Endpunkt: `/api/metadata/select` (User-Auswahl oder Skip)
-- [ ] Timeout-Mechanismus im Service (aus Config lesennitiiert Query)
-- [ ] API-Endpunkt: `/api/metadata/select` (User-Auswahl oder Skip)
-- [ ] Timeout-Mechanismus im Service (30 Sek)
+## Implementierungs-Checkliste
 
-### Phase 2: Service-Logik
-- [ ] State Machine erweitern
-- [ ] MusicBrainz/TMDB Query vor Kopie
-- [ ] Warten auf User-Auswahl oder Timeout
-- [ ] Fallback auf Generic wenn keine Metadata
+### Phase 1: Config & API ✅ COMPLETED
+- [x] Config-Parameter: `METADATA_SELECTION_TIMEOUT=60` (konfigurierbar 0-300) ✅
+- [x] Neuer State: `waiting_for_metadata` ✅
+- [x] API-Endpunkt: `/api/metadata/pending` ✅
+- [x] API-Endpunkt: `/api/metadata/select` ✅
+- [x] Timeout-Mechanismus im Service (aus Config lesbar) ✅
 
-### Phase 3: Frontend
-- [ ] Modal für Release-Auswahl dynamisch aus Config, z.B. 60 Sek)
-- [ ] Skip-Button prominent platzieren ("Metadaten überspringen")
-- [ ] Auto-Close bei Auswahl
-- [ ] Visuelles Feedback: "Zeit für CD-Hülle checken, Publisher vergleichen..."platzieren
-- [ ] Auto-Close bei Auswahl
+### Phase 2: Service-Logik ✅ COMPLETED
+- [x] State Machine erweitern ✅
+- [x] MusicBrainz Query vor Kopie (Audio-CD) ✅
+- [x] TMDB Query vor Kopie (DVD/Blu-ray) ✅ (20.01.2026)
+- [x] Warten auf User-Auswahl oder Timeout ✅
+- [x] Fallback auf Generic wenn keine Metadata ✅
 
-### Phase 4: Testing
-- [ ] Test: Normal-Flow (mit Auswahl)
-- [ ] Test: Timeout-Flow (keine Auswahl)
-- [ ] Test: Offline-Flow (MusicBrainz down)
-- [ ] Test: Skip-Button
+### Phase 3: Frontend ✅ COMPLETED
+- [x] Modal für Audio-CD Release-Auswahl (musicbrainz.js) ✅
+- [x] Modal für DVD/Blu-ray Film-Auswahl (tmdb-modal.js) ✅ (20.01.2026)
+- [x] Countdown-Timer mit Timeout-Anzeige ✅
+- [x] Skip-Button ("Metadaten überspringen") ✅
+- [x] Auto-Close bei Auswahl ✅
+- [x] Visuelles Feedback (⏱️ Icon, rote Warnung bei <10 Sek) ✅
+- [x] Index.js: waiting_for_metadata Status-Anzeige ✅ (20.01.2026)
+- [x] Index.js: Auto-Check Intervall (alle 3 Sek) ✅ (20.01.2026)
+
+### Phase 4: Testing ⏳ PENDING
+- [ ] Test: Audio-CD Normal-Flow (mit MusicBrainz Auswahl)
+- [ ] Test: Audio-CD Timeout-Flow (keine Auswahl → Generic)
+- [ ] Test: Audio-CD Skip-Button
+- [ ] Test: Audio-CD Offline-Flow (MusicBrainz down)
+- [ ] Test: DVD/Blu-ray Normal-Flow (mit TMDB Auswahl)
+- [ ] Test: DVD/Blu-ray Timeout-Flow (keine Auswahl → Generic)
+- [ ] Test: DVD/Blu-ray Skip-Button
+- [ ] Test: DVD/Blu-ray Offline-Flow (TMDB down)
+- [ ] Test: Config METADATA_SELECTION_TIMEOUT=0 (kein Timeout)
+- [ ] Test: Config METADATA_SELECTION_TIMEOUT=300 (5 Min)
 
 ---
 ---
@@ -224,6 +234,17 @@ METADATA_SELECTION_TIMEOUT=60
 ```
 
 **Datum:** 19./20. Januar 2026  
-**Status:** Analyse aktualisiert, Implementierung folgt  
-**Priorität:** Mittel-Hoch (wichtiges UX-Featurert  
-**Priorität:** Mittel (nach aktuellen Tests)
+**Status:** ✅ **Implementierung abgeschlossen** (Phase 1-3), Tests ausstehend (Phase 4)  
+**Priorität:** Mittel-Hoch (wichtiges UX-Feature)
+
+## Implementierungsstand 20.01.2026
+
+### ✅ Vollständig implementiert:
+- **Audio-CD (MusicBrainz):** BEFORE Copy mit Modal, Countdown, Skip-Button
+- **DVD/Blu-ray (TMDB):** BEFORE Copy mit Modal, Countdown, Skip-Button  
+- **Frontend:** index.js Status-Handling, Auto-Polling alle 3 Sek
+- **Config:** METADATA_SELECTION_TIMEOUT (0-300 Sek, Default: 60)
+
+### ⏳ Ausstehend:
+- Systematische Tests aller Flows (Normal/Timeout/Skip/Offline)
+- Produktiv-Validierung mit echten Discs
