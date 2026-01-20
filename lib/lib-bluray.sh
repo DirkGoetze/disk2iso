@@ -42,7 +42,7 @@ load_module_language "bluray"
 
 # Funktion: Prüfe Blu-ray Abhängigkeiten
 # Rückgabe: 0 = Mindestens eine Methode verfügbar, 1 = Keine Methode verfügbar
-check_bluray_dependencies() {
+check_dependencies_bluray() {
     local available_methods=()
     local missing_methods=()
     

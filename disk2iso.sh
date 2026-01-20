@@ -119,7 +119,7 @@ AUDIO_CD_SUPPORT=false
 if [[ -f "${SCRIPT_DIR}/lib/lib-cd.sh" ]]; then
     source "${SCRIPT_DIR}/lib/lib-cd.sh"
     
-    if check_audio_cd_dependencies; then
+    if check_dependencies_cd; then
         AUDIO_CD_SUPPORT=true
         log_info "$MSG_AUDIO_CD_SUPPORT_ENABLED"
     else
@@ -134,7 +134,7 @@ VIDEO_DVD_SUPPORT=false
 if [[ -f "${SCRIPT_DIR}/lib/lib-dvd.sh" ]]; then
     source "${SCRIPT_DIR}/lib/lib-dvd.sh"
     
-    if check_video_dvd_dependencies; then
+    if check_dependencies_dvd; then
         VIDEO_DVD_SUPPORT=true
         log_info "$MSG_VIDEO_DVD_SUPPORT_ENABLED"
     else
@@ -144,42 +144,52 @@ else
     log_info "$MSG_VIDEO_DVD_NOT_INSTALLED"
 fi
 
-# DVD/Blu-ray Metadata Support (optional, benötigt TMDB API-Key + jq)
-DVD_METADATA_SUPPORT=false
-if [[ -f "${SCRIPT_DIR}/lib/lib-dvd-metadata.sh" ]]; then
-    source "${SCRIPT_DIR}/lib/lib-dvd-metadata.sh"
+# ============================================================================
+# METADATA MODULE LOADING
+# ============================================================================
+# Metadata-Support (optional, benötigt jq + curl + API-Keys)
+# Lädt: lib-metadata.sh (Core) + lib-musicbrainz.sh + lib-tmdb.sh
+
+METADATA_SUPPORT=false
+
+# Prüfe ob Metadata-Modul via Config aktiviert ist
+if [[ "${METADATA_ENABLED:-true}" == "true" ]]; then
     
-    if check_dvd_metadata_dependencies; then
-        DVD_METADATA_SUPPORT=true
-        log_info "TMDB: Metadaten-Support aktiviert"
+    # Lade Core Framework
+    if [[ -f "${SCRIPT_DIR}/lib/lib-metadata.sh" ]]; then
+        source "${SCRIPT_DIR}/lib/lib-metadata.sh"
+        
+        # Prüfe Dependencies (jq, curl)
+        if check_dependencies_metadata; then
+            METADATA_SUPPORT=true
+            
+            # Lade Provider-Module (registrieren sich automatisch beim Laden)
+            [[ -f "${SCRIPT_DIR}/lib/lib-musicbrainz.sh" ]] && source "${SCRIPT_DIR}/lib/lib-musicbrainz.sh"
+            [[ -f "${SCRIPT_DIR}/lib/lib-tmdb.sh" ]] && source "${SCRIPT_DIR}/lib/lib-tmdb.sh"
+            
+            log_info "Metadata: Framework aktiv (Core + Provider geladen)"
+        else
+            log_info "Metadata: Dependencies fehlen (jq, curl) - deaktiviert"
+        fi
     else
-        log_info "TMDB: Metadaten-Support deaktiviert"
+        log_info "Metadata: lib-metadata.sh nicht gefunden - deaktiviert"
     fi
 else
-    log_info "TMDB: Modul nicht installiert"
+    log_info "Metadata: Deaktiviert via Config (METADATA_ENABLED=false)"
 fi
 
-# Audio-CD Metadata Support (optional, benötigt jq + curl)
-AUDIO_METADATA_SUPPORT=false
-if [[ -f "${SCRIPT_DIR}/lib/lib-cd-metadata.sh" ]]; then
-    source "${SCRIPT_DIR}/lib/lib-cd-metadata.sh"
-    
-    if check_audio_metadata_dependencies; then
-        AUDIO_METADATA_SUPPORT=true
-        log_info "MusicBrainz: Metadaten-Support aktiviert"
-    else
-        log_info "MusicBrainz: Metadaten-Support deaktiviert"
-    fi
-else
-    log_info "MusicBrainz: Modul nicht installiert"
-fi
+# Legacy-Variablen für bestehende Checks in Copy-Modulen
+# TODO: Diese werden entfernt sobald alle Module auf METADATA_SUPPORT umgestellt sind
+DVD_METADATA_SUPPORT=$METADATA_SUPPORT
+AUDIO_METADATA_SUPPORT=$METADATA_SUPPORT
+# ============================================================================
 
 # Blu-ray Support (optional)
 BLURAY_SUPPORT=false
 if [[ -f "${SCRIPT_DIR}/lib/lib-bluray.sh" ]]; then
     source "${SCRIPT_DIR}/lib/lib-bluray.sh"
     
-    if check_bluray_dependencies; then
+    if check_dependencies_bluray; then
         BLURAY_SUPPORT=true
         log_info "$MSG_BLURAY_SUPPORT_ENABLED"
     else

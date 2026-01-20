@@ -99,8 +99,7 @@
 {% endblock %}
 
 {% block scripts %}
-    <script src="{{ url_for('static', filename='js/tmdb.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/musicbrainz.js') }}"></script>
+    <!-- Modul-spezifische Scripts (tmdb.js, musicbrainz.js) werden dynamisch über module-loader.js geladen -->
     <script src="{{ url_for('static', filename='js/archive.js') }}"></script>
 {% endblock %}
 

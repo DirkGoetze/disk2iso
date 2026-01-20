@@ -98,7 +98,7 @@ load_module_language "dvd"
 
 # Funktion: Prüfe Video-DVD/BD Abhängigkeiten
 # Rückgabe: 0 = Mindestens eine Methode verfügbar, 1 = Keine Methode verfügbar
-check_video_dvd_dependencies() {
+check_dependencies_dvd() {
     local available_methods=()
     local missing_methods=()
     
@@ -148,6 +148,75 @@ copy_video_dvd() {
     
     local dvd_id=$(get_dvd_identifier)
     local failure_count=$(get_dvd_failure_count "$dvd_id")
+    
+    # ========================================================================
+    # TMDB METADATA BEFORE COPY (wenn verfügbar)
+    # ========================================================================
+    
+    local skip_tmdb=false
+    
+    # Prüfe ob TMDB BEFORE Copy verfügbar ist
+    if declare -f query_tmdb_before_copy >/dev/null 2>&1; then
+        # Extrahiere Filmtitel aus disc_label
+        local movie_title
+        if declare -f extract_movie_title_from_label >/dev/null 2>&1; then
+            movie_title=$(extract_movie_title_from_label "$disc_label")
+        else
+            # Fallback: Einfache Konvertierung
+            movie_title=$(echo "$disc_label" | tr '_' ' ' | sed 's/\b\(.\)/\u\1/g')
+        fi
+        
+        log_info "TMDB: Suche nach '$movie_title'..."
+        
+        # Query TMDB
+        if query_tmdb_before_copy "$movie_title" "$disc_type" "$dvd_id"; then
+            # TMDB Query erfolgreich - warte auf User-Auswahl
+            log_info "TMDB: Warte auf User-Auswahl..."
+            
+            # Hole TMDB Response (aus .tmdbquery Datei)
+            local output_base
+            output_base=$(get_type_subfolder "$disc_type")
+            local tmdbquery_file="${output_base}/${dvd_id}_tmdb.tmdbquery"
+            
+            if [[ -f "$tmdbquery_file" ]]; then
+                local tmdb_json
+                tmdb_json=$(cat "$tmdbquery_file")
+                
+                # Warte auf Auswahl
+                if declare -f wait_for_tmdb_selection >/dev/null 2>&1; then
+                    if wait_for_tmdb_selection "$dvd_id" "$tmdb_json"; then
+                        # User hat ausgewählt - disc_label wurde aktualisiert
+                        log_info "TMDB: Metadata-Auswahl erfolgreich - neues Label: $disc_label"
+                        
+                        # Update dvd_id mit neuem Label
+                        dvd_id=$(get_dvd_identifier)
+                        
+                        # Re-initialisiere Log mit neuem Label
+                        init_copy_log "$disc_label" "dvd"
+                    else
+                        log_info "TMDB: Metadata übersprungen - verwende generisches Label"
+                        skip_tmdb=true
+                    fi
+                else
+                    log_warning "TMDB: wait_for_tmdb_selection() nicht verfügbar"
+                    skip_tmdb=true
+                fi
+            else
+                log_warning "TMDB: Query-Datei nicht gefunden"
+                skip_tmdb=true
+            fi
+        else
+            log_info "TMDB: Keine Treffer oder Abfrage fehlgeschlagen"
+            skip_tmdb=true
+        fi
+    else
+        log_info "TMDB: BEFORE Copy nicht verfügbar - verwende generisches Label"
+        skip_tmdb=true
+    fi
+    
+    # ========================================================================
+    # DVD COPY WORKFLOW
+    # ========================================================================
     
     # Prüfe Fehler-Historie
     if [[ $failure_count -ge 2 ]]; then

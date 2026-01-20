@@ -45,6 +45,11 @@ def get_config():
         "mqtt_user": "",
         "mqtt_password": "",
         "tmdb_api_key": "",
+        # Module-Schalter (Standard: alle aktiviert)
+        "metadata_enabled": True,
+        "cd_enabled": True,
+        "dvd_enabled": True,
+        "bluray_enabled": True,
     }
     
     try:
@@ -106,6 +111,15 @@ def get_config():
                             value = value.split('#')[0]
                         value = value.strip().strip('"').strip()
                         config['tmdb_api_key'] = value
+                    # Module-Schalter
+                    elif line.startswith('METADATA_ENABLED='):
+                        config['metadata_enabled'] = 'true' in line.lower()
+                    elif line.startswith('CD_ENABLED='):
+                        config['cd_enabled'] = 'true' in line.lower()
+                    elif line.startswith('DVD_ENABLED='):
+                        config['dvd_enabled'] = 'true' in line.lower()
+                    elif line.startswith('BLURAY_ENABLED='):
+                        config['bluray_enabled'] = 'true' in line.lower()
     except Exception as e:
         print(f"Fehler beim Lesen der Konfiguration: {e}", file=sys.stderr)
     
@@ -483,6 +497,29 @@ def help_page():
         active_page='help',
         page_title='HELP_TITLE'
     )
+
+@app.route('/api/modules')
+def api_modules():
+    """API-Endpoint für Modul-Status (für dynamisches JS-Loading)
+    
+    Liest Konfiguration und gibt zurück welche Module aktiviert sind.
+    Frontend nutzt dies um nur benötigte JS-Dateien zu laden.
+    """
+    config = get_config()
+    
+    # Parse module-specific settings from config
+    enabled_modules = {
+        'metadata': config.get('metadata_enabled', True),  # METADATA_ENABLED
+        'cd': config.get('cd_enabled', True),              # CD_ENABLED
+        'dvd': config.get('dvd_enabled', True),            # DVD_ENABLED
+        'bluray': config.get('bluray_enabled', True),      # BLURAY_ENABLED
+        'mqtt': config.get('mqtt_enabled', False)          # MQTT_ENABLED
+    }
+    
+    return jsonify({
+        'enabled_modules': enabled_modules,
+        'timestamp': datetime.now().isoformat()
+    })
 
 @app.route('/api/live_status')
 def api_live_status():

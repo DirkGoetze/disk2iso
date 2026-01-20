@@ -19,6 +19,8 @@
             STATUS_UNKNOWN: "{{ t.STATUS_UNKNOWN }}"
         };
     </script>
+    <!-- Zentraler Modul-Loader (lädt Module dynamisch basierend auf Konfiguration) -->
+    <script src="{{ url_for('static', filename='js/module-loader.js') }}?v={{ version }}"></script>
     {% block head %}{% endblock %}
 </head>
 <body>
