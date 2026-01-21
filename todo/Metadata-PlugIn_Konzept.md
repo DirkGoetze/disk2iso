@@ -20,10 +20,10 @@ Statt monolithischer Architektur → **Echtes Plugin-System für ALLE Module**
 
 | Modul | Aktivierung | Config-Schalter | Self-Check | Sprachdatei-Loading |
 |-------|-------------|----------------|------------|---------------------|
-| **metadata** | ✅ Config | ✅ `METADATA_ENABLED` | ✅ `check_dependencies_metadata()` | ✅ Nach Check |
-| **cd** | ❌ Dateipräsenz | ❌ Keiner | ✅ `check_dependencies_cd()` | ⚠️ **VOR** Check |
-| **dvd** | ❌ Dateipräsenz | ❌ Keiner | ✅ `check_dependencies_dvd()` | ⚠️ **VOR** Check |
-| **bluray** | ❌ Dateipräsenz | ❌ Keiner | ✅ `check_dependencies_bluray()` | ⚠️ **VOR** Check |
+| **metadata** | ✅ Config | ✅ `METADATA_ENABLED` | ✅ `check_dependencies_metadata()` | ✅ IN Check (1. Zeile) |
+| **cd** | ❌ Dateipräsenz | ❌ Keiner | ✅ `check_dependencies_cd()` | ⚠️ **VOR** Check (sollte IN Check) |
+| **dvd** | ❌ Dateipräsenz | ❌ Keiner | ✅ `check_dependencies_dvd()` | ⚠️ **VOR** Check (sollte IN Check) |
+| **bluray** | ❌ Dateipräsenz | ❌ Keiner | ✅ `check_dependencies_bluray()` | ⚠️ **VOR** Check (sollte IN Check) |
 
 ### 2. **Fehlende Frontend-Modularität**
 - Web-UI ist monolithisch - keine optionalen UI-Komponenten
@@ -42,7 +42,7 @@ Statt monolithischer Architektur → **Echtes Plugin-System für ALLE Module**
 
 ### 5. **Naming-Inkonsistenz**
 - `check_audio_cd_dependencies()` vs. `check_dependencies_cd()`
-- Sprachdatei-Loading inkonsistent (mal vor, mal nach Check)
+- Sprachdatei-Loading inkonsistent (mal VOR Check, sollte aber IN Check sein - 1. Zeile)
 - Support-Flags folgen keinem einheitlichen Pattern
 
 ---
@@ -1233,7 +1233,7 @@ def register_<name>_routes(app):
 |--------|-------------------|---------------------|
 | **Modul-Aktivierung** | ⚠️ Dateipräsenz + Config (inkonsistent) | ✅ Config-Schalter (einheitlich) |
 | **Dependency-Check** | ✅ Vorhanden, aber inkonsistent benannt | ✅ Standardisiert: `check_dependencies_<name>()` |
-| **Sprachdatei-Loading** | ⚠️ Mal vor, mal nach Check | ✅ Immer nach erfolgreichem Check |
+| **Sprachdatei-Loading** | ⚠️ Mal VOR Check (außerhalb) | ✅ IN Check als erste Zeile |
 | **Frontend-Modularität** | ❌ Monolithisch | ✅ DOM-Injection pro Modul |
 | **Backend-Routen** | ❌ Zentral, nicht modular | ✅ Pro Modul separierbar |
 | **Modul-Abhängigkeiten** | ❌ BD braucht DVD | ✅ Alle unabhängig |
@@ -1256,19 +1256,253 @@ def register_<name>_routes(app):
    - `CD_ENABLED=true`, `DVD_ENABLED=true`, `BLURAY_ENABLED=true`
    
 3. ✅ **Sprachdatei-Loading verschieben**
-   - Aus lib-*.sh raus → In disk2iso.sh (nach Check)
+   - Als erste Zeile IN `check_dependencies_xxx()` (damit Log-Meldungen übersetzt sind)
    
 4. ✅ **Lade-Logik vereinheitlichen**
    - Alle Module: Config → Source → Check → Language → Activate
 
 ### **Phase 2: Metadata-Plugin fertigstellen (In Progress)**
 
-**Ziel**: Metadata als eigenständiges Plugin
+**Ziel**: Metadata als eigenständiges **optionales Modul** etablieren, das Copy-Modulen Metadaten-Funktionalität bereitstellt
 
-1. ✅ **Core-Framework** (`lib-metadata.sh`)
-2. ✅ **Provider** (`lib-musicbrainz.sh`, `lib-tmdb.sh`)
-3. ⏳ **Copy-Module migrieren** (lib-cd.sh, lib-dvd.sh, lib-bluray.sh)
-4. ⏳ **Obsolete Dateien löschen** (lib-*-metadata*.sh)
+#### **Ist-Stand (Analyse)**
+
+✅ **Framework vorhanden:**
+- `lib-metadata.sh` - Provider-System, Query/Wait/Apply Workflow, Cache-Management
+- `lib-musicbrainz.sh` - MusicBrainz API Provider (Audio-CD)
+- `lib-tmdb.sh` - TMDB API Provider (DVD/Blu-ray)
+- `disk2iso.sh` lädt Metadata-Modul optional via `METADATA_ENABLED`
+
+⚠️ **Probleme:**
+- **Provider registrieren sich nicht** beim Framework
+- **lib-cd.sh hat eigene MusicBrainz-Logik** (90+ Zeilen duplizierter Code)
+  - `get_musicbrainz_metadata()` - Eigene API-Calls
+  - `download_cover_art()` - Eigene Cover-Downloads
+  - `create_album_nfo()` - Eigene NFO-Erstellung
+- **lib-dvd.sh ruft nicht-existente Funktion auf** (`create_dvd_archive_metadata()`)
+- **lib-bluray.sh ruft nicht-existente Funktion auf** (`create_dvd_archive_metadata()`)
+
+#### **Migration Tasks**
+
+**2.1 Provider-Registrierung aktivieren**
+- [ ] lib-musicbrainz.sh: `metadata_register_provider()` Aufruf hinzufügen
+  - [ ] Parse-Funktion implementieren (`musicbrainz_parse()`)
+  - [ ] Apply-Funktion implementieren (`musicbrainz_apply()`)
+- [ ] lib-tmdb.sh: `metadata_register_provider()` Aufruf hinzufügen
+  - [ ] Parse-Funktion implementieren (`tmdb_parse()`)
+  - [ ] Apply-Funktion implementieren (`tmdb_apply()`)
+
+**2.2 lib-cd.sh Migration (Audio-CD)**
+- [ ] **Entfernen**: `get_musicbrainz_metadata()` (Zeile ~163-350)
+- [ ] **Entfernen**: `download_cover_art()` (Zeile ~361-410)
+- [ ] **Entfernen**: `create_album_nfo()` (Zeile ~440-490)
+- [ ] **Ersetzen** durch:
+  ```bash
+  if [[ "$METADATA_SUPPORT" == true ]]; then
+      metadata_query_and_wait "audio-cd" "$cd_artist - $cd_album" "$cd_discid"
+      # Provider setzt: disc_label, Cover-Datei, NFO-Datei
+  fi
+  ```
+- [ ] Anpassung von `copy_audio_cd()` an neue Metadata-Integration
+- [ ] Test: Audio-CD mit/ohne Metadata-Modul
+
+**2.3 lib-dvd.sh Migration (Video-DVD)**
+- [ ] **Entfernen**: Aufrufe von `create_dvd_archive_metadata()` (2 Stellen)
+  - Zeile ~346 in `copy_video_dvd()`
+  - Zeile ~447 in `copy_video_dvd_ddrescue()`
+- [ ] **Ersetzen** durch:
+  ```bash
+  if [[ "$METADATA_SUPPORT" == true ]]; then
+      metadata_query_and_wait "dvd-video" "$movie_title" "$disc_id"
+      # TMDB Provider liefert besseres Label
+  fi
+  ```
+- [ ] Test: Video-DVD mit/ohne Metadata-Modul
+
+**2.4 lib-bluray.sh Migration (Blu-ray)**
+- [ ] **Entfernen**: Aufruf von `create_dvd_archive_metadata()` (1 Stelle)
+  - Zeile ~234 in `copy_bluray_ddrescue()`
+- [ ] **Ersetzen** durch:
+  ```bash
+  if [[ "$METADATA_SUPPORT" == true ]]; then
+      metadata_query_and_wait "bd-video" "$movie_title" "$disc_id"
+      # TMDB Provider liefert besseres Label
+  fi
+  ```
+- [ ] Test: Blu-ray mit/ohne Metadata-Modul
+
+**2.5 Obsolete Dateien**
+- [x] ✅ **Keine vorhanden!** Alle `lib-*-metadata*.sh` bereits entfernt
+
+**Abschluss-Kriterium:** 
+- Copy-Module nutzen ausschließlich lib-metadata.sh Framework
+- Keine duplizierten Metadata-API-Calls mehr in lib-cd.sh
+- Alle Tests laufen mit METADATA_ENABLED=true/false
+
+---
+
+## 🔄 Workflow-Analyse: ISO-Erstellung (Vollständige Installation)
+
+### **Übersicht: State Machine Workflow**
+
+| Phase | State | Aktion | Beteiligte Module | Notizen |
+|-------|-------|--------|-------------------|---------|
+| **1. Service Start** | `INITIALIZING` | System-Check, Modul-Loading | Core, lib-systeminfo, lib-config | Lädt alle optionalen Module |
+| **2. Laufwerk suchen** | `WAITING_FOR_DRIVE` | Optisches Laufwerk erkennen | lib-drivestat | Polling alle 20s |
+| **3. Laufwerk bereit** | `DRIVE_DETECTED` | Laufwerk-Status prüfen | lib-drivestat | Device-Ready-Check |
+| **4. Medium warten** | `WAITING_FOR_MEDIA` | Auf Medium-Einlage warten | lib-drivestat | Polling alle 2s |
+| **5. Medium erkannt** | `MEDIA_DETECTED` | Spin-Up abwarten (3s) | lib-drivestat | Medium wird lesbar |
+| **6. Analyse** | `ANALYZING` | Disc-Typ + Label ermitteln | lib-diskinfos | **Kritischer Punkt!** |
+| **7. Metadaten (opt.)** | `WAITING_FOR_METADATA` | User-Auswahl bei mehreren Treffern | lib-metadata, Provider | Nur wenn aktiviert |
+| **8. Kopieren** | `COPYING` | ISO erstellen | lib-cd/dvd/bluray/common | Modul-spezifisch |
+| **9. Abschluss** | `COMPLETED` / `ERROR` | MD5, Cleanup, Status-Update | lib-common, lib-api | API + MQTT Update |
+| **10. Entfernung warten** | `WAITING_FOR_REMOVAL` | Auf Medium-Entnahme warten | lib-drivestat | Polling alle 5s |
+| **11. Bereit** | `IDLE` → zurück zu 4 | Zurück zum Warten | - | Endlos-Schleife |
+
+---
+
+### **Detaillierter Workflow nach Medium-Typ**
+
+#### **Audio-CD Workflow**
+
+| Schritt | Funktion | Modul | Beschreibung | Zu standardisierende API |
+|---------|----------|-------|--------------|-------------------------|
+| **Typ-Erkennung** | `detect_disc_type()` | lib-diskinfos | Prüft TOC → `audio-cd` | ✅ Bereits einheitlich |
+| **Label-Erkennung** | `get_cdtext()` | lib-cd | CD-TEXT auslesen (Fallback) | ⚠️ Modul-spezifisch |
+| **Disc-ID lesen** | `cd-discid` | lib-cd | DiscID + TOC für MusicBrainz | ⚠️ Modul-spezifisch |
+| **Metadaten-Query** | `get_musicbrainz_metadata()` | lib-cd | **WIRD ERSETZT** durch lib-metadata | 🔴 Migration nötig |
+| **User-Auswahl** | `wait_for_metadata_selection()` | lib-cd | **WIRD ERSETZT** durch lib-metadata | 🔴 Migration nötig |
+| **Cover-Download** | `download_cover_art()` | lib-cd | **WIRD ERSETZT** durch lib-musicbrainz | 🔴 Migration nötig |
+| **NFO erstellen** | `create_album_nfo()` | lib-cd | **WIRD ERSETZT** durch lib-musicbrainz | 🔴 Migration nötig |
+| **Ripping** | `cdparanoia` | lib-cd | Audio → WAV | ✅ Modul-spezifisch (OK) |
+| **Encoding** | `lame` | lib-cd | WAV → MP3 (VBR V2) | ✅ Modul-spezifisch (OK) |
+| **ISO erstellen** | `genisoimage` | lib-cd | MP3s → ISO | ✅ Modul-spezifisch (OK) |
+| **MD5-Summe** | `md5sum` | lib-common | Checksumme berechnen | ✅ Bereits einheitlich |
+| **Größe ermitteln** | `du -b` | lib-common | ISO-Größe für API | ✅ Bereits einheitlich |
+
+---
+
+#### **Video-DVD Workflow**
+
+| Schritt | Funktion | Modul | Beschreibung | Zu standardisierende API |
+|---------|----------|-------|--------------|-------------------------|
+| **Typ-Erkennung** | `detect_disc_type()` | lib-diskinfos | Prüft VIDEO_TS/ → `dvd-video` | ✅ Bereits einheitlich |
+| **Label-Erkennung** | `get_disc_label()` | lib-diskinfos | UDF/ISO9660 Volume-ID | ✅ Bereits einheitlich |
+| **Disc-ID lesen** | `blkid` / `isoinfo` | lib-diskinfos | Volume Serial | ✅ Bereits einheitlich |
+| **Metadaten-Query** | `create_dvd_archive_metadata()` | lib-dvd | **EXISTIERT NICHT!** → lib-metadata | 🔴 Migration nötig |
+| **TMDB-Suche** | - | lib-tmdb | **NEU:** TMDB-Provider Integration | 🔴 Migration nötig |
+| **User-Auswahl** | - | lib-metadata | Workflow via Framework | 🔴 Migration nötig |
+| **Label verbessern** | - | lib-tmdb | Besseres Label aus TMDB | 🔴 Migration nötig |
+| **Ripping (Methode 1)** | `dvdbackup` + `genisoimage` | lib-dvd | Entschlüsselt, schnell | ✅ Modul-spezifisch (OK) |
+| **Ripping (Methode 2)** | `ddrescue` | lib-dvd | Verschlüsselt, robust | ⚠️ Shared mit lib-common |
+| **Ripping (Fallback)** | `dd` | lib-common | Verschlüsselt, langsam | ✅ Bereits einheitlich |
+| **MD5-Summe** | `md5sum` | lib-common | Checksumme berechnen | ✅ Bereits einheitlich |
+| **Größe ermitteln** | `du -b` | lib-common | ISO-Größe für API | ✅ Bereits einheitlich |
+
+---
+
+#### **Blu-ray Workflow**
+
+| Schritt | Funktion | Modul | Beschreibung | Zu standardisierende API |
+|---------|----------|-------|--------------|-------------------------|
+| **Typ-Erkennung** | `detect_disc_type()` | lib-diskinfos | Prüft BDMV/ → `bd-video` | ✅ Bereits einheitlich |
+| **Label-Erkennung** | `get_disc_label()` | lib-diskinfos | UDF Volume-ID | ✅ Bereits einheitlich |
+| **Disc-ID lesen** | `blkid` | lib-diskinfos | Volume Serial | ✅ Bereits einheitlich |
+| **Metadaten-Query** | `create_dvd_archive_metadata()` | lib-bluray | **EXISTIERT NICHT!** → lib-metadata | 🔴 Migration nötig |
+| **TMDB-Suche** | - | lib-tmdb | **NEU:** TMDB-Provider Integration | 🔴 Migration nötig |
+| **User-Auswahl** | - | lib-metadata | Workflow via Framework | 🔴 Migration nötig |
+| **Label verbessern** | - | lib-tmdb | Besseres Label aus TMDB | 🔴 Migration nötig |
+| **Ripping (Methode 1)** | `ddrescue` | lib-bluray | Robust, schnell | ⚠️ Shared mit lib-common |
+| **Ripping (Fallback)** | `dd` | lib-common | Langsam | ✅ Bereits einheitlich |
+| **MD5-Summe** | `md5sum` | lib-common | Checksumme berechnen | ✅ Bereits einheitlich |
+| **Größe ermitteln** | `du -b` | lib-common | ISO-Größe für API | ✅ Bereits einheitlich |
+
+---
+
+### **Einheitliche API-Funktionen (Zu standardisierende Schnittstellen)**
+
+#### **Kernfunktionen (bereits einheitlich)** ✅
+
+| Funktion | Modul | Zweck | Verfügbar für |
+|----------|-------|-------|---------------|
+| `detect_disc_type()` | lib-diskinfos | Medium-Typ ermitteln | Alle |
+| `get_disc_label()` | lib-diskinfos | Volume-Label auslesen | DVD, BD, Daten-CD |
+| `md5sum` | lib-common | Checksumme erstellen | Alle |
+| `du -b` | lib-common | Datei-Größe ermitteln | Alle |
+| `init_filenames()` | lib-common | ISO/MD5/LOG-Namen generieren | Alle |
+| `cleanup_disc_operation()` | lib-common | Temp-Dateien löschen | Alle |
+
+#### **Metadata-Funktionen (zu vereinheitlichen)** 🔴
+
+| Ist-Funktion | Modul | Soll-Funktion | Neues Modul | Zweck |
+|--------------|-------|---------------|-------------|-------|
+| `get_musicbrainz_metadata()` | lib-cd | `metadata_query_and_wait()` | lib-metadata | API-Abfrage + Warten |
+| `download_cover_art()` | lib-cd | `musicbrainz_download_cover()` | lib-musicbrainz | Cover-Download |
+| `create_album_nfo()` | lib-cd | `musicbrainz_create_nfo()` | lib-musicbrainz | NFO-Datei erstellen |
+| `create_dvd_archive_metadata()` | lib-dvd | `metadata_query_and_wait()` | lib-metadata | API-Abfrage + Warten |
+| `create_dvd_archive_metadata()` | lib-bluray | `metadata_query_and_wait()` | lib-metadata | API-Abfrage + Warten |
+| - | - | `tmdb_download_poster()` | lib-tmdb | Poster-Download |
+| - | - | `tmdb_create_nfo()` | lib-tmdb | NFO für Kodi/Jellyfin |
+
+#### **Disc-ID-Funktionen (modul-spezifisch, zu dokumentieren)** ⚠️
+
+| Medium | Funktion | Tool | Rückgabe | Standard-Kandidat? |
+|--------|----------|------|----------|-------------------|
+| Audio-CD | `cd-discid` | cd-discid | MusicBrainz DiscID + TOC | Nein (CD-spezifisch) |
+| DVD | `blkid -s LABEL` | blkid | Volume-ID | Ja (generisch) |
+| Blu-ray | `blkid -s LABEL` | blkid | Volume-ID | Ja (generisch) |
+
+**Vorschlag:** Einheitliche Funktion `get_disc_id()` in lib-diskinfos:
+```bash
+get_disc_id() {
+    case "$disc_type" in
+        audio-cd)
+            cd-discid "$CD_DEVICE" | cut -d' ' -f1
+            ;;
+        *)
+            blkid -s LABEL -o value "$CD_DEVICE" 2>/dev/null || echo "unknown"
+            ;;
+    esac
+}
+```
+
+---
+
+### **Optimierungsvorschläge für einheitliche Plugin-API**
+
+**1. Standard-Funktionen pro Copy-Modul:**
+```bash
+# Jedes Modul implementiert:
+module_get_disc_id()        # Eindeutige ID ermitteln
+module_get_label()          # Label/Titel auslesen
+module_get_metadata()       # Metadata via lib-metadata Framework
+module_copy()               # Kopiervorgang durchführen
+module_verify()             # Verifikation (MD5, etc.)
+module_cleanup()            # Aufräumen
+```
+
+**2. Metadata-Integration (standardisiert):**
+```bash
+# In lib-cd.sh, lib-dvd.sh, lib-bluray.sh:
+if [[ "$METADATA_SUPPORT" == true ]]; then
+    metadata_query_and_wait "$disc_type" "$search_term" "$disc_id"
+    # Setzt globale Variablen:
+    # - disc_label (verbessertes Label)
+    # - METADATA_RESULT (JSON mit allen Infos)
+fi
+```
+
+**3. Provider-Interface (standardisiert):**
+```bash
+# Jeder Provider implementiert:
+${provider}_query()         # API-Abfrage
+${provider}_parse()         # User-Auswahl verarbeiten
+${provider}_apply()         # Metadaten anwenden (Label, Cover, NFO)
+${provider}_download_artwork()  # Cover/Poster laden
+${provider}_create_nfo()    # NFO-Datei erstellen
+```
+
+---
 
 ### **Phase 3: Frontend-Modularisierung (TODO)**
 
@@ -1888,14 +2122,14 @@ export function validateDvdMetadataConfig(values) {
 #### 1.2 Bash: Modul-Lade-Logik standardisieren
 - [ ] `disk2iso.sh` - Modul-Loading für CD anpassen
   - [ ] Config-Check hinzufügen: `if [[ "${CD_ENABLED:-true}" == "true" ]]`
-  - [ ] Sprachdatei-Loading NACH `check_dependencies_cd()` verschieben
-  - [ ] Pattern: Config → Source → Check → Language → Activate
+  - [ ] Sprachdatei-Loading als erste Zeile IN `check_dependencies_cd()` verschieben
+  - [ ] Pattern: Config → Source → Check (mit Language als 1. Zeile) → Activate
 - [ ] `disk2iso.sh` - Modul-Loading für DVD anpassen
   - [ ] Config-Check hinzufügen: `if [[ "${DVD_ENABLED:-true}" == "true" ]]`
-  - [ ] Sprachdatei-Loading NACH `check_dependencies_dvd()` verschieben
+  - [ ] Sprachdatei-Loading als erste Zeile IN `check_dependencies_dvd()` verschieben
 - [ ] `disk2iso.sh` - Modul-Loading für Bluray anpassen
   - [ ] Config-Check hinzufügen: `if [[ "${BLURAY_ENABLED:-true}" == "true" ]]`
-  - [ ] Sprachdatei-Loading NACH `check_dependencies_bluray()` verschieben
+  - [ ] Sprachdatei-Loading als erste Zeile IN `check_dependencies_bluray()` verschieben
 
 #### 1.3 Bash: Naming-Konsistenz (falls noch nötig)
 - [ ] Prüfe alle `check_dependencies_*()` Funktionen auf korrekte Benennung

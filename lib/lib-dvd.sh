@@ -20,60 +20,6 @@ readonly DVD_DIR="dvd"
 readonly FAILED_DISCS_FILE=".failed_dvds"
 
 # ============================================================================
-# FEHLER-TRACKING SYSTEM
-# ============================================================================
-
-# Funktion: Ermittle eindeutigen Identifier für DVD
-# Rückgabe: String mit disc_label und disc_type (z.B. "supernatural_season_10_disc_3:dvd-video")
-get_dvd_identifier() {
-    echo "${disc_label}:${disc_type}"
-}
-
-# Funktion: Prüfe ob DVD bereits fehlgeschlagen ist
-# Parameter: $1 = DVD-Identifier
-# Rückgabe: Anzahl der bisherigen Fehlversuche (0-2)
-get_dvd_failure_count() {
-    local identifier="$1"
-    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
-    
-    if [[ ! -f "$failed_file" ]]; then
-        echo 0
-        return
-    fi
-    
-    local count=$(grep -c "^${identifier}|" "$failed_file" 2>/dev/null || true)
-    if [[ -z "$count" || "$count" == "0" ]]; then
-        echo 0
-    else
-        echo "$count"
-    fi
-}
-
-# Funktion: Registriere DVD-Fehlschlag
-# Parameter: $1 = DVD-Identifier
-#            $2 = Fehlgeschlagene Methode (dvdbackup/ddrescue)
-register_dvd_failure() {
-    local identifier="$1"
-    local method="$2"
-    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    
-    # Format: identifier|timestamp|method
-    echo "${identifier}|${timestamp}|${method}" >> "$failed_file"
-}
-
-# Funktion: Entferne DVD aus Fehler-Liste (nach erfolgreichem Kopieren)
-# Parameter: $1 = DVD-Identifier
-clear_dvd_failures() {
-    local identifier="$1"
-    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
-    
-    if [[ -f "$failed_file" ]]; then
-        sed -i "/^${identifier}|/d" "$failed_file"
-    fi
-}
-
-# ============================================================================
 # PATH GETTER
 # ============================================================================
 
@@ -132,6 +78,60 @@ check_dependencies_dvd() {
     else
         log_error "$MSG_ERROR_NO_VIDEO_METHOD"
         return 1
+    fi
+}
+
+# ============================================================================
+# FEHLER-TRACKING SYSTEM
+# ============================================================================
+
+# Funktion: Ermittle eindeutigen Identifier für DVD
+# Rückgabe: String mit disc_label und disc_type (z.B. "supernatural_season_10_disc_3:dvd-video")
+get_dvd_identifier() {
+    echo "${disc_label}:${disc_type}"
+}
+
+# Funktion: Prüfe ob DVD bereits fehlgeschlagen ist
+# Parameter: $1 = DVD-Identifier
+# Rückgabe: Anzahl der bisherigen Fehlversuche (0-2)
+get_dvd_failure_count() {
+    local identifier="$1"
+    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
+    
+    if [[ ! -f "$failed_file" ]]; then
+        echo 0
+        return
+    fi
+    
+    local count=$(grep -c "^${identifier}|" "$failed_file" 2>/dev/null || true)
+    if [[ -z "$count" || "$count" == "0" ]]; then
+        echo 0
+    else
+        echo "$count"
+    fi
+}
+
+# Funktion: Registriere DVD-Fehlschlag
+# Parameter: $1 = DVD-Identifier
+#            $2 = Fehlgeschlagene Methode (dvdbackup/ddrescue)
+register_dvd_failure() {
+    local identifier="$1"
+    local method="$2"
+    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # Format: identifier|timestamp|method
+    echo "${identifier}|${timestamp}|${method}" >> "$failed_file"
+}
+
+# Funktion: Entferne DVD aus Fehler-Liste (nach erfolgreichem Kopieren)
+# Parameter: $1 = DVD-Identifier
+clear_dvd_failures() {
+    local identifier="$1"
+    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
+    
+    if [[ -f "$failed_file" ]]; then
+        sed -i "/^${identifier}|/d" "$failed_file"
     fi
 }
 

@@ -19,7 +19,7 @@
 # ============================================================================
 
 # Assoziative Arrays für Provider-Registrierung
-declare -A METADATA_PROVIDERS           # Provider-Name → Disc-Types
+declare -A METADATA_PROVIDERS          # Provider-Name → Disc-Types
 declare -A METADATA_QUERY_FUNCS        # Provider-Name → Query-Funktion
 declare -A METADATA_PARSE_FUNCS        # Provider-Name → Parse-Funktion
 declare -A METADATA_APPLY_FUNCS        # Provider-Name → Apply-Funktion
