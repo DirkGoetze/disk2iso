@@ -1,0 +1,21 @@
+#!/bin/bash
+################################################################################
+# disk2iso - English Language File for lib-musicbrainz.sh
+# Filepath: lang/lib-musicbrainz.en
+#
+# Description:
+#   Message texts for MusicBrainz Provider
+#
+################################################################################
+
+# ============================================================================
+# DEPENDENCIES
+# ============================================================================
+# Note: Tool check messages come from lib-config.en (MSG_CONFIG_*)
+# Only module-specific messages here
+
+readonly MSG_MUSICBRAINZ_SUPPORT_AVAILABLE="MusicBrainz Provider available"
+
+# ============================================================================
+# END lib-musicbrainz.en
+# ============================================================================

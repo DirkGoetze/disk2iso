@@ -13,6 +13,38 @@
 ################################################################################
 
 # ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+# Globale Variable für Modulname
+readonly MODULE_NAME_BLURAY="bluray"
+# Globale Variable für Verfügbarkeit
+BLURAY_SUPPORT=false
+
+# ===========================================================================
+# check_dependencies_bluray
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe alle Blu-ray Modul-Abhängigkeiten (Modul-Dateien, 
+# .........  Ausgabe-Ordner, kritische und optionale Software), lädt bei 
+# .........  erfolgreicher Prüfung die Sprachdatei für das Modul.
+# Parameter: keine
+# Rückgabe.: 0 = Verfügbar (Modul nutzbar)
+# .........  1 = Nicht verfügbar (Modul deaktiviert)
+# Extras...: Setzt BLURAY_SUPPORT=true bei erfolgreicher Prüfung
+# ===========================================================================
+check_dependencies_bluray() {
+
+    #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
+    check_module_dependencies "$MODULE_NAME_BLURAY" || return 1
+
+    #-- Setze Verfügbarkeit -------------------------------------------------
+    BLURAY_SUPPORT=true
+    
+    #-- Abhängigkeiten erfüllt ----------------------------------------------
+    log_info "$MSG_BLURAY_SUPPORT_AVAILABLE"
+    return 0
+}
+
+# ============================================================================
 # PATH CONSTANTS
 # ============================================================================
 
@@ -30,45 +62,6 @@ get_path_bd() {
     else
         # Fallback auf data/ wenn Blu-ray-Modul nicht geladen
         echo "${OUTPUT_DIR}/data"
-    fi
-}
-
-# ============================================================================
-# DEPENDENCY CHECK
-# ============================================================================
-
-# Lade Sprachdatei für dieses Modul
-load_module_language "bluray"
-
-# Funktion: Prüfe Blu-ray Abhängigkeiten
-# Rückgabe: 0 = Mindestens eine Methode verfügbar, 1 = Keine Methode verfügbar
-check_dependencies_bluray() {
-    local available_methods=()
-    local missing_methods=()
-    
-    # Methode 1: ddrescue (robust, verschlüsselt)
-    if command -v ddrescue >/dev/null 2>&1; then
-        available_methods+=("ddrescue (verschlüsselt, robust)")
-    else
-        missing_methods+=("ddrescue")
-    fi
-    
-    # Methode 2: dd (immer verfügbar, bereits in lib-common geprüft)
-    available_methods+=("dd (verschlüsselt, langsam)")
-    
-    # Logging
-    if [[ ${#available_methods[@]} -gt 0 ]]; then
-        log_info "$MSG_BLURAY_SUPPORT_INFO ${available_methods[*]}"
-        
-        if [[ ${#missing_methods[@]} -gt 0 ]]; then
-            log_error "$MSG_RECOMMENDED_INSTALLATION ${missing_methods[*]}"
-            log_info "$MSG_INSTALL_DDRESCUE_INFO"
-        fi
-        
-        return 0
-    else
-        log_error "$MSG_ERROR_NO_BLURAY_METHOD_AVAILABLE"
-        return 1
     fi
 }
 

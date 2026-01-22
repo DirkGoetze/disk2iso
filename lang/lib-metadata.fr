@@ -1,0 +1,14 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Fichier de Langue Français pour lib-metadata.sh
+# Filepath: lang/lib-metadata.fr
+#
+# Description:
+#   Textes de messages pour les fonctions du Module de Métadonnées
+#
+################################################################################
+
+# ============================================================================
+# VÉRIFICATION DES DÉPENDANCES
+# ============================================================================
+readonly MSG_METADATA_SUPPORT_AVAILABLE="Support des Métadonnées disponible"

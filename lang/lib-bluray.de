@@ -11,11 +11,10 @@
 # ============================================================================
 # ABHÄNGIGKEITEN
 # ============================================================================
+# Hinweis: Tool-Check Meldungen kommen aus lib-config.de (MSG_CONFIG_*)
+# Hier nur modul-spezifische Meldungen
 
-readonly MSG_BLURAY_SUPPORT_INFO="Blu-ray Unterstützung verfügbar mit:"
-readonly MSG_RECOMMENDED_INSTALLATION="Empfohlene Installation für bessere Performance:"
-readonly MSG_INSTALL_DDRESCUE_INFO="ddrescue: apt-get install gddrescue"
-readonly MSG_ERROR_NO_BLURAY_METHOD_AVAILABLE="FEHLER: Keine Blu-ray Methode verfügbar"
+readonly MSG_BLURAY_SUPPORT_AVAILABLE="Blu-ray Support verfügbar"
 
 # ============================================================================
 # BLU-RAY KOPIEREN

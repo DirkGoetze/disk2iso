@@ -13,6 +13,38 @@
 ################################################################################
 
 # ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+# Globale Variable für Modulname
+readonly MODULE_NAME_DVD="dvd"
+# Globale Variable für Verfügbarkeit
+VIDEO_DVD_SUPPORT=false
+
+# ===========================================================================
+# check_dependencies_dvd
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe alle Video-DVD Modul-Abhängigkeiten (Modul-Dateien, 
+# .........  Ausgabe-Ordner, kritische und optionale Software), lädt bei 
+# .........  erfolgreicher Prüfung die Sprachdatei für das Modul.
+# Parameter: keine
+# Rückgabe.: 0 = Verfügbar (Modul nutzbar)
+# .........  1 = Nicht verfügbar (Modul deaktiviert)
+# Extras...: Setzt VIDEO_DVD_SUPPORT=true bei erfolgreicher Prüfung
+# ===========================================================================
+check_dependencies_dvd() {
+
+    #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
+    check_module_dependencies "$MODULE_NAME_DVD" || return 1
+
+    #-- Setze Verfügbarkeit -------------------------------------------------
+    VIDEO_DVD_SUPPORT=true
+    
+    #-- Abhängigkeiten erfüllt ----------------------------------------------
+    log_info "$MSG_VIDEO_SUPPORT_AVAILABLE"
+    return 0
+}
+
+# ============================================================================
 # PATH CONSTANTS
 # ============================================================================
 
@@ -32,52 +64,6 @@ get_path_dvd() {
     else
         # Fallback auf data/ wenn DVD-Modul nicht geladen
         ensure_subfolder "data"
-    fi
-}
-
-# ============================================================================
-# DEPENDENCY CHECK
-# ============================================================================
-
-# Lade Sprachdatei für dieses Modul
-load_module_language "dvd"
-
-# Funktion: Prüfe Video-DVD/BD Abhängigkeiten
-# Rückgabe: 0 = Mindestens eine Methode verfügbar, 1 = Keine Methode verfügbar
-check_dependencies_dvd() {
-    local available_methods=()
-    local missing_methods=()
-    
-    # Methode 1: dvdbackup (Entschlüsselung)
-    if command -v dvdbackup >/dev/null 2>&1 && command -v genisoimage >/dev/null 2>&1; then
-        available_methods+=("dvdbackup (entschlüsselt)")
-    else
-        missing_methods+=("dvdbackup+genisoimage")
-    fi
-    
-    # Methode 2: ddrescue (robust)
-    if command -v ddrescue >/dev/null 2>&1; then
-        available_methods+=("ddrescue (verschlüsselt, robust)")
-    else
-        missing_methods+=("ddrescue")
-    fi
-    
-    # Methode 3: dd (immer verfügbar, bereits in lib-common geprüft)
-    available_methods+=("dd (verschlüsselt, langsam)")
-    
-    # Logging
-    if [[ ${#available_methods[@]} -gt 0 ]]; then
-        log_info "$MSG_VIDEO_SUPPORT_AVAILABLE ${available_methods[*]}"
-        
-        if [[ ${#missing_methods[@]} -gt 0 ]]; then
-            log_error "$MSG_EXTENDED_METHODS_AVAILABLE ${missing_methods[*]}"
-            log_info "$MSG_INSTALLATION_DVD"
-        fi
-        
-        return 0
-    else
-        log_error "$MSG_ERROR_NO_VIDEO_METHOD"
-        return 1
     fi
 }
 

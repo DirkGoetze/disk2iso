@@ -11,11 +11,10 @@
 # ============================================================================
 # DEPENDENCIES
 # ============================================================================
+# Note: Tool check messages come from lib-config.en (MSG_CONFIG_*)
+# Only module-specific messages here
 
-readonly MSG_VIDEO_SUPPORT_AVAILABLE="Video-DVD/BD support available with:"
-readonly MSG_EXTENDED_METHODS_AVAILABLE="Extended methods available after installation:"
-readonly MSG_INSTALLATION_DVD="Installation: apt-get install dvdbackup genisoimage gddrescue libdvdcss2"
-readonly MSG_ERROR_NO_VIDEO_METHOD="ERROR: No Video-DVD/BD method available"
+readonly MSG_VIDEO_SUPPORT_AVAILABLE="Video-DVD/BD Support available"
 
 # ============================================================================
 # DVDBACKUP METHOD

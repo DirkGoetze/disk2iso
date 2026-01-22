@@ -13,11 +13,79 @@
 ################################################################################
 
 # ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+# Globale Variable für Modulname
+readonly MODULE_NAME_MUSICBRAINZ="musicbrainz"
+# Globale Variable für Verfügbarkeit
+MUSICBRAINZ_SUPPORT=false
+
+# ===========================================================================
+# check_dependencies_musicbrainz
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe alle MusicBrainz Provider-Abhängigkeiten (Modul-Dateien, 
+# .........  kritische und optionale Software), lädt bei erfolgreicher 
+# .........  Prüfung die Sprachdatei für das Modul.
+# Parameter: keine
+# Rückgabe.: 0 = Verfügbar (Provider nutzbar)
+# .........  1 = Nicht verfügbar (Provider deaktiviert)
+# Extras...: Setzt MUSICBRAINZ_SUPPORT=true bei erfolgreicher Prüfung
+# ===========================================================================
+check_dependencies_musicbrainz() {
+
+    #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
+    check_module_dependencies "$MODULE_NAME_MUSICBRAINZ" || return 1
+
+    #-- Lade API-Konfiguration aus INI ---------------------------------------
+    musicbrainz_load_api_config || return 1
+
+    #-- Setze Verfügbarkeit -------------------------------------------------
+    MUSICBRAINZ_SUPPORT=true
+    
+    #-- Abhängigkeiten erfüllt ----------------------------------------------
+    log_info "$MSG_MUSICBRAINZ_SUPPORT_AVAILABLE"
+    return 0
+}
+
+# ============================================================================
 # MUSICBRAINZ API CONFIGURATION
 # ============================================================================
-readonly MUSICBRAINZ_API_BASE_URL="https://musicbrainz.org/ws/2"
-readonly COVERART_API_BASE_URL="https://coverartarchive.org"
-readonly MUSICBRAINZ_USER_AGENT="disk2iso/1.2.0"
+
+# ===========================================================================
+# musicbrainz_load_api_config
+# ---------------------------------------------------------------------------
+# Funktion.: Lade MusicBrainz API-Konfiguration aus lib-musicbrainz.ini
+# .........  [api] Sektion und setze Defaults falls INI-Werte fehlen
+# Parameter: keine
+# Rückgabe.: 0 = Erfolgreich geladen
+# Setzt....: MUSICBRAINZ_API_BASE_URL, COVERART_API_BASE_URL,
+# .........  MUSICBRAINZ_USER_AGENT, MUSICBRAINZ_TIMEOUT (global)
+# Nutzt....: get_ini_value() aus lib-config.sh
+# Hinweis..: Wird von check_dependencies_musicbrainz() aufgerufen, um Werte
+# .........  zu initialisieren bevor das Modul verwendet wird
+# ===========================================================================
+musicbrainz_load_api_config() {
+    local ini_file="${SCRIPT_DIR}/conf/lib-musicbrainz.ini"
+    
+    # Lese API-Konfiguration mit get_ini_value() aus lib-config.sh (falls INI existiert)
+    local base_url coverart_base_url user_agent timeout
+    
+    if [[ -f "$ini_file" ]]; then
+        base_url=$(get_ini_value "$ini_file" "api" "base_url")
+        coverart_base_url=$(get_ini_value "$ini_file" "api" "coverart_base_url")
+        user_agent=$(get_ini_value "$ini_file" "api" "user_agent")
+        timeout=$(get_ini_value "$ini_file" "api" "timeout")
+    fi
+    
+    # Setze Variablen mit Defaults (INI-Werte überschreiben Defaults)
+    MUSICBRAINZ_API_BASE_URL="${base_url:-https://musicbrainz.org/ws/2}"
+    COVERART_API_BASE_URL="${coverart_base_url:-https://coverartarchive.org}"
+    MUSICBRAINZ_USER_AGENT="${user_agent:-disk2iso/1.2.0}"
+    MUSICBRAINZ_TIMEOUT="${timeout:-10}"
+    
+    log_info "MusicBrainz: API-Konfiguration geladen (Base: $MUSICBRAINZ_API_BASE_URL)"
+    return 0
+}
 
 # ============================================================================
 # CACHE MANAGEMENT
@@ -90,7 +158,7 @@ musicbrainz_query() {
     
     log_info "MusicBrainz: API-Request..."
     
-    local response=$(curl -s -f -m 10 -H "User-Agent: ${MUSICBRAINZ_USER_AGENT}" "$url" 2>/dev/null)
+    local response=$(curl -s -f -m "${MUSICBRAINZ_TIMEOUT}" -H "User-Agent: ${MUSICBRAINZ_USER_AGENT}" "$url" 2>/dev/null)
     
     if [[ $? -ne 0 ]] || [[ -z "$response" ]]; then
         log_error "MusicBrainz: API-Request fehlgeschlagen"

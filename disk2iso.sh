@@ -114,105 +114,59 @@ detect_container_environment
 # OPTIONALE MODULE MIT DEPENDENCY-CHECKS
 # ============================================================================
 
-# Audio-CD Support (optional)
-AUDIO_CD_SUPPORT=false
-if [[ -f "${SCRIPT_DIR}/lib/lib-cd.sh" ]]; then
-    source "${SCRIPT_DIR}/lib/lib-cd.sh"
+# Metadata Framework (sollte zuerst geladen werden, da andere Module davon abhängen können)
+if [[ -f "${SCRIPT_DIR}/lib/lib-metadata.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/lib-metadata.sh"
+    check_dependencies_metadata  # Setzt METADATA_SUPPORT=true bei Erfolg
     
-    if check_dependencies_cd; then
-        AUDIO_CD_SUPPORT=true
-        log_info "$MSG_AUDIO_CD_SUPPORT_ENABLED"
-    else
-        log_info "$MSG_AUDIO_CD_SUPPORT_DISABLED"
-    fi
-else
-    log_info "$MSG_AUDIO_CD_NOT_INSTALLED"
-fi
-
-# Video-DVD Support (optional)
-VIDEO_DVD_SUPPORT=false
-if [[ -f "${SCRIPT_DIR}/lib/lib-dvd.sh" ]]; then
-    source "${SCRIPT_DIR}/lib/lib-dvd.sh"
-    
-    if check_dependencies_dvd; then
-        VIDEO_DVD_SUPPORT=true
-        log_info "$MSG_VIDEO_DVD_SUPPORT_ENABLED"
-    else
-        log_info "$MSG_VIDEO_DVD_SUPPORT_DISABLED"
-    fi
-else
-    log_info "$MSG_VIDEO_DVD_NOT_INSTALLED"
-fi
-
-# ============================================================================
-# METADATA MODULE LOADING
-# ============================================================================
-# Metadata-Support (optional, benötigt jq + curl + API-Keys)
-# Lädt: lib-metadata.sh (Core) + lib-musicbrainz.sh + lib-tmdb.sh
-
-METADATA_SUPPORT=false
-
-# Prüfe ob Metadata-Modul via Config aktiviert ist
-if [[ "${METADATA_ENABLED:-true}" == "true" ]]; then
-    
-    # Lade Core Framework
-    if [[ -f "${SCRIPT_DIR}/lib/lib-metadata.sh" ]]; then
-        source "${SCRIPT_DIR}/lib/lib-metadata.sh"
-        
-        # Prüfe Dependencies (jq, curl)
-        if check_dependencies_metadata; then
-            METADATA_SUPPORT=true
-            
-            # Lade Provider-Module (registrieren sich automatisch beim Laden)
-            [[ -f "${SCRIPT_DIR}/lib/lib-musicbrainz.sh" ]] && source "${SCRIPT_DIR}/lib/lib-musicbrainz.sh"
-            [[ -f "${SCRIPT_DIR}/lib/lib-tmdb.sh" ]] && source "${SCRIPT_DIR}/lib/lib-tmdb.sh"
-            
-            log_info "Metadata: Framework aktiv (Core + Provider geladen)"
-        else
-            log_info "Metadata: Dependencies fehlen (jq, curl) - deaktiviert"
+    # Lade Provider nur wenn Framework verfügbar
+    if [[ "$METADATA_SUPPORT" == "true" ]]; then
+        # MusicBrainz Provider (optional)
+        if [[ -f "${SCRIPT_DIR}/lib/lib-musicbrainz.sh" ]]; then
+            source "${SCRIPT_DIR}/lib/lib-musicbrainz.sh"
+            check_dependencies_musicbrainz  # Setzt MUSICBRAINZ_SUPPORT=true bei Erfolg
         fi
-    else
-        log_info "Metadata: lib-metadata.sh nicht gefunden - deaktiviert"
+        
+        # TMDB Provider (optional)
+        if [[ -f "${SCRIPT_DIR}/lib/lib-tmdb.sh" ]]; then
+            source "${SCRIPT_DIR}/lib/lib-tmdb.sh"
+            check_dependencies_tmdb  # Setzt TMDB_SUPPORT=true bei Erfolg
+        fi
     fi
-else
-    log_info "Metadata: Deaktiviert via Config (METADATA_ENABLED=false)"
 fi
 
 # Legacy-Variablen für bestehende Checks in Copy-Modulen
 # TODO: Diese werden entfernt sobald alle Module auf METADATA_SUPPORT umgestellt sind
 DVD_METADATA_SUPPORT=$METADATA_SUPPORT
 AUDIO_METADATA_SUPPORT=$METADATA_SUPPORT
-# ============================================================================
 
-# Blu-ray Support (optional)
-BLURAY_SUPPORT=false
+# Audio-CD Support (optional)
+if [[ -f "${SCRIPT_DIR}/lib/lib-cd.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/lib-cd.sh"
+    check_dependencies_cd  # Setzt AUDIO_CD_SUPPORT=true bei Erfolg
+fi
+
+# Video-DVD Support (optional)
+if [[ -f "${SCRIPT_DIR}/lib/lib-dvd.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/lib-dvd.sh"
+    check_dependencies_dvd  # Setzt VIDEO_DVD_SUPPORT=true bei Erfolg
+fi
+
+# Video-Bluray Support (optional)
 if [[ -f "${SCRIPT_DIR}/lib/lib-bluray.sh" ]]; then
     source "${SCRIPT_DIR}/lib/lib-bluray.sh"
-    
-    if check_dependencies_bluray; then
-        BLURAY_SUPPORT=true
-        log_info "$MSG_BLURAY_SUPPORT_ENABLED"
-    else
-        log_info "$MSG_BLURAY_SUPPORT_DISABLED"
-    fi
-else
-    log_info "$MSG_BLURAY_NOT_INSTALLED"
+    check_dependencies_bluray  # Setzt BLURAY_SUPPORT=true bei Erfolg
 fi
 
 # MQTT Support (optional)
-MQTT_SUPPORT=false
 if [[ -f "${SCRIPT_DIR}/lib/lib-mqtt.sh" ]]; then
     source "${SCRIPT_DIR}/lib/lib-mqtt.sh"
+    check_dependencies_mqtt  # Setzt MQTT_SUPPORT=true bei Erfolg
     
-    # mqtt_init prüft selbst ob MQTT_ENABLED=true
-    if mqtt_init; then
-        MQTT_SUPPORT=true
-        log_info "$MSG_MQTT_SUPPORT_ENABLED"
-    else
-        log_info "$MSG_MQTT_SUPPORT_DISABLED"
+    # mqtt_init prüft selbst ob MQTT_ENABLED=true und MQTT_SUPPORT verfügbar
+    if [[ "$MQTT_SUPPORT" == "true" ]]; then
+        mqtt_init  # Initialisiert MQTT_AVAILABLE bei Erfolg
     fi
-else
-    log_info "$MSG_MQTT_MODULE_NOT_INSTALLED"
 fi
 
 # Initialisiere API (IMMER, unabhängig von MQTT)

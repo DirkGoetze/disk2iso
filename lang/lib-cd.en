@@ -11,14 +11,11 @@
 # ============================================================================
 # DEPENDENCIES
 # ============================================================================
+# Note: Tool check messages come from lib-config.en (MSG_CONFIG_*)
+# Only module-specific messages here
 
 readonly MSG_CDTEXT_FALLBACK_AVAILABLE="CD-TEXT fallback available"
 readonly MSG_CDTEXT_FALLBACK_INSTALL_HINT="Hint: For CD-TEXT fallback install: icedax or libcdio-utils (cd-info)"
-
-readonly MSG_AUDIO_SUPPORT_NOT_AVAILABLE="Audio-CD support NOT available - missing tools:"
-readonly MSG_INSTALL_AUDIO_TOOLS="Installation: apt-get install cdparanoia lame genisoimage"
-readonly MSG_AUDIO_OPTIONAL_LIMITED="Audio-CD: Optional features limited - missing tools:"
-readonly MSG_INSTALL_MUSICBRAINZ_TOOLS="For MusicBrainz/Cover: apt-get install cd-discid curl jq eyed3"
 readonly MSG_AUDIO_SUPPORT_AVAILABLE="Audio-CD support available"
 
 # ============================================================================

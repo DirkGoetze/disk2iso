@@ -11,11 +11,10 @@
 # ============================================================================
 # DEPENDENCIAS
 # ============================================================================
+# Nota: Mensajes de verificación de herramientas vienen de lib-config.es (MSG_CONFIG_*)
+# Solo mensajes específicos del módulo aquí
 
-readonly MSG_BLURAY_SUPPORT_INFO="Soporte Blu-ray disponible con:"
-readonly MSG_RECOMMENDED_INSTALLATION="Instalación recomendada para mejor rendimiento:"
-readonly MSG_INSTALL_DDRESCUE_INFO="ddrescue: apt-get install gddrescue"
-readonly MSG_ERROR_NO_BLURAY_METHOD_AVAILABLE="ERROR: Ningún método Blu-ray disponible"
+readonly MSG_BLURAY_SUPPORT_AVAILABLE="Soporte de Blu-ray disponible"
 
 # ============================================================================
 # COPIA BLU-RAY

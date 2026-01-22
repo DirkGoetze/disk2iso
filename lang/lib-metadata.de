@@ -1,0 +1,14 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Deutsche Sprachdatei für lib-metadata.sh
+# Filepath: lang/lib-metadata.de
+#
+# Beschreibung:
+#   Meldungstexte für Metadaten Modul Funktionen
+#
+################################################################################
+
+# ============================================================================
+# ABHÄNGIGKEITENPRÜFUNG
+# ============================================================================
+readonly MSG_METADATA_SUPPORT_AVAILABLE="Metadaten Support verfügbar"

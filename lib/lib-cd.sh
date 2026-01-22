@@ -15,77 +15,46 @@
 ################################################################################
 
 # ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+# Globale Variable für Modulname
+readonly MODULE_NAME_CD="cd"
+# Globale Variable für Verfügbarkeit
+AUDIO_CD_SUPPORT=false
+
+# ===========================================================================
+# check_dependencies_cd
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe alle Framework Abhängigkeiten (Modul-Dateien, die Modul 
+# .........  Ausgabe Ordner, kritische und optionale Software für die 
+# .........  Ausführung des Tool), lädt bei erfolgreicher Prüfung die
+# .........  Sprachdatei für das Modul.
+# Parameter: keine
+# Rückgabe.: 0 = Verfügbar (Framework nutzbar)
+# .........  1 = Nicht verfügbar (Framework deaktiviert)
+# Extras...: Sollte so früh wie möglich nach dem Start geprüft werden, da
+# .........  andere Module ggf. auf dieses Framework angewiesen sind. Am 
+# .........  besten direkt im Hauptskript (disk2iso) nach dem
+# .........  Laden der lib-common.sh.
+# ===========================================================================
+check_dependencies_cd() {
+
+    #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
+    check_module_dependencies "$MODULE_NAME_CD" || return 1
+
+    #-- Setze Verfügbarkeit -------------------------------------------------
+    AUDIO_CD_SUPPORT=true
+    
+    #-- Abhängigkeiten erfüllt ----------------------------------------------
+    log_info "$MSG_AUDIO_SUPPORT_AVAILABLE"
+    return 0
+}
+
+# ============================================================================
 # PATH CONSTANTS
 # ============================================================================
 
 readonly AUDIO_DIR="audio"
-
-# ============================================================================
-# PATH GETTER
-# ============================================================================
-
-# Funktion: Ermittle Pfad für Audio-CDs
-# Rückgabe: Vollständiger Pfad zu audio/ oder Fallback zu data/
-# Nutzt ensure_subfolder aus lib-folders.sh für konsistente Ordner-Verwaltung
-get_path_audio() {
-    if [[ "$AUDIO_CD_SUPPORT" == true ]] && [[ -n "$AUDIO_DIR" ]]; then
-        ensure_subfolder "$AUDIO_DIR"
-    else
-        # Fallback auf data/ wenn Audio-Modul nicht geladen
-        ensure_subfolder "data"
-    fi
-}
-
-# ============================================================================
-# DEPENDENCY CHECK
-# ============================================================================
-
-# Lade Sprachdatei für dieses Modul
-load_module_language "cd"
-
-# Funktion: Prüfe Audio-CD Abhängigkeiten
-# Rückgabe: 0 = Alle Tools OK, 1 = Kritische Tools fehlen
-check_dependencies_cd() {
-    local missing=()
-    local optional_missing=()
-    
-    # Kritische Tools für Audio-CD Ripping
-    command -v cdparanoia >/dev/null 2>&1 || missing+=("cdparanoia")
-    command -v lame >/dev/null 2>&1 || missing+=("lame")
-    command -v genisoimage >/dev/null 2>&1 || missing+=("genisoimage")
-    
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_error "$MSG_AUDIO_SUPPORT_NOT_AVAILABLE ${missing[*]}"
-        log_info "$MSG_INSTALL_AUDIO_TOOLS"
-        return 1
-    fi
-    
-    # Optionale Tools für Metadaten
-    command -v cd-discid >/dev/null 2>&1 || optional_missing+=("cd-discid")
-    command -v curl >/dev/null 2>&1 || optional_missing+=("curl")
-    command -v jq >/dev/null 2>&1 || optional_missing+=("jq")
-    command -v eyeD3 >/dev/null 2>&1 || optional_missing+=("eyeD3")
-    
-    # CD-TEXT Tools (Fallback wenn MusicBrainz nicht verfügbar)
-    local cdtext_available=false
-    command -v icedax >/dev/null 2>&1 && cdtext_available=true
-    command -v cd-info >/dev/null 2>&1 && cdtext_available=true
-    command -v cdda2wav >/dev/null 2>&1 && cdtext_available=true
-    
-    if [[ ${#optional_missing[@]} -gt 0 ]]; then
-        log_warning "$MSG_AUDIO_OPTIONAL_LIMITED ${optional_missing[*]}"
-        log_info "$MSG_INSTALL_MUSICBRAINZ_TOOLS"
-        
-        if [[ "$cdtext_available" == "true" ]]; then
-            log_info "$MSG_CDTEXT_FALLBACK_AVAILABLE"
-        else
-            log_info "$MSG_CDTEXT_FALLBACK_INSTALL_HINT"
-        fi
-    fi
-    
-    log_info "$MSG_AUDIO_SUPPORT_AVAILABLE"
-    return 0
-}
 
 # ============================================================================
 # CD-TEXT METADATA FALLBACK

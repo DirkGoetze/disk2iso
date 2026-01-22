@@ -11,11 +11,10 @@
 # ============================================================================
 # ABHÄNGIGKEITEN
 # ============================================================================
+# Hinweis: Tool-Check Meldungen kommen aus lib-config.de (MSG_CONFIG_*)
+# Hier nur modul-spezifische Meldungen
 
-readonly MSG_VIDEO_SUPPORT_AVAILABLE="Video-DVD/BD Support verfügbar mit:"
-readonly MSG_EXTENDED_METHODS_AVAILABLE="Erweiterte Methoden verfügbar nach Installation:"
-readonly MSG_INSTALLATION_DVD="Installation: apt-get install dvdbackup genisoimage gddrescue libdvdcss2"
-readonly MSG_ERROR_NO_VIDEO_METHOD="FEHLER: Keine Video-DVD/BD Methode verfügbar"
+readonly MSG_VIDEO_SUPPORT_AVAILABLE="Video-DVD/BD Support verfügbar"
 
 # ============================================================================
 # DVDBACKUP-METHODE

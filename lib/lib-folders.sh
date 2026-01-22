@@ -229,6 +229,86 @@ get_bd_backup_folder() {
     return 0
 }
 
+# ===========================================================================
+# MODUL-ORDNER KONSTANTEN (für Manifest-Datei-Mapping)
+# ===========================================================================
+
+# Ordner für Modul-Komponenten (relativ zu INSTALL_DIR)
+readonly MODULE_LIB_DIR="lib"                    # Bash-Module
+readonly MODULE_LANG_DIR="lang"                  # Sprachdateien
+readonly MODULE_CONF_DIR="conf"                  # Konfiguration
+readonly MODULE_DOC_DIR="doc"                    # Dokumentation
+
+# Web-Frontend Ordner
+readonly MODULE_HTML_DIR="www/templates"         # HTML-Partials
+readonly MODULE_CSS_DIR="www/static/css"         # Stylesheets
+readonly MODULE_JS_DIR="www/static/js"           # JavaScript
+
+# Backend Ordner
+readonly MODULE_ROUTER_DIR="www/routes"          # Python-Routes
+
+# ===========================================================================
+# get_module_file_path
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittle vollständigen Pfad zu Modul-Datei
+# Parameter: $1 = file_type ("libary", "language", "js", "css", etc.)
+#            $2 = filename (z.B. "lib-metadata.sh")
+# Rückgabe.: Vollständiger Pfad
+# Beispiel.: get_module_file_path "libary" "lib-metadata.sh"
+#            → "/opt/disk2iso/lib/lib-metadata.sh"
+# ===========================================================================
+get_module_file_path() {
+    local file_type="$1"
+    local filename="$2"
+    
+    if [[ -z "$file_type" ]] || [[ -z "$filename" ]]; then
+        return 1
+    fi
+    
+    local base_dir="${INSTALL_DIR:-/opt/disk2iso}"
+    
+    # Mappe file_type zu Ordner
+    case "$file_type" in
+        lib)
+            echo "${base_dir}/${MODULE_LIB_DIR}/${filename}"
+            ;;
+        lang)
+            # Sprachdateien haben Suffix (z.B. .de, .en)
+            # Wenn filename ohne Suffix → nur Basis-Name
+            if [[ "$filename" =~ \.(de|en|es|fr|it)$ ]]; then
+                echo "${base_dir}/${MODULE_LANG_DIR}/${filename}"
+            else
+                # Gib Pattern zurück (für Existenz-Check mit Wildcard)
+                echo "${base_dir}/${MODULE_LANG_DIR}/${filename}.*"
+            fi
+            ;;
+        js)
+            echo "${base_dir}/${MODULE_JS_DIR}/${filename}"
+            ;;
+        css)
+            echo "${base_dir}/${MODULE_CSS_DIR}/${filename}"
+            ;;
+        html)
+            echo "${base_dir}/${MODULE_HTML_DIR}/${filename}"
+            ;;
+        router)
+            # Python-Dateien haben prefix "routes_"
+            if [[ "$filename" == routes_* ]]; then
+                echo "${base_dir}/${MODULE_ROUTER_DIR}/${filename}"
+            else
+                echo "${base_dir}/${MODULE_ROUTER_DIR}/routes_${filename}"
+            fi
+            ;;
+        docu)
+            echo "${base_dir}/${MODULE_DOC_DIR}/${filename}"
+            ;;
+        *)
+            # Unbekannter Typ → Fehler
+            return 1
+            ;;
+    esac
+}
+
 # ============================================================================
 # ENDE DER FOLDER MANAGEMENT LIBRARY
 # ============================================================================

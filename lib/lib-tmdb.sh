@@ -13,11 +13,81 @@
 ################################################################################
 
 # ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+# Globale Variable für Modulname
+readonly MODULE_NAME_TMDB="tmdb"
+# Globale Variable für Verfügbarkeit
+TMDB_SUPPORT=false
+
+# ===========================================================================
+# check_dependencies_tmdb
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe alle TMDB Provider-Abhängigkeiten (Modul-Dateien, 
+# .........  kritische und optionale Software), lädt bei erfolgreicher 
+# .........  Prüfung die Sprachdatei für das Modul.
+# Parameter: keine
+# Rückgabe.: 0 = Verfügbar (Provider nutzbar)
+# .........  1 = Nicht verfügbar (Provider deaktiviert)
+# Extras...: Setzt TMDB_SUPPORT=true bei erfolgreicher Prüfung
+# ===========================================================================
+check_dependencies_tmdb() {
+
+    #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
+    check_module_dependencies "$MODULE_NAME_TMDB" || return 1
+
+    #-- Lade API-Konfiguration aus INI ---------------------------------------
+    tmdb_load_api_config || return 1
+
+    #-- Setze Verfügbarkeit -------------------------------------------------
+    TMDB_SUPPORT=true
+    
+    #-- Abhängigkeiten erfüllt ----------------------------------------------
+    log_info "$MSG_TMDB_SUPPORT_AVAILABLE"
+    return 0
+}
+
+# ============================================================================
 # TMDB API CONFIGURATION
 # ============================================================================
-readonly TMDB_API_BASE_URL="https://api.themoviedb.org/3"
-readonly TMDB_IMAGE_BASE_URL="https://image.tmdb.org/t/p/w500"
-readonly TMDB_USER_AGENT="disk2iso/1.2.0"
+
+# ===========================================================================
+# tmdb_load_api_config
+# ---------------------------------------------------------------------------
+# Funktion.: Lade TMDB API-Konfiguration aus lib-tmdb.ini [api] Sektion
+# .........  und setze Defaults falls INI-Werte fehlen
+# Parameter: keine
+# Rückgabe.: 0 = Erfolgreich geladen
+# Setzt....: TMDB_API_BASE_URL, TMDB_IMAGE_BASE_URL, TMDB_USER_AGENT,
+# .........  TMDB_TIMEOUT, TMDB_LANGUAGE (global)
+# Nutzt....: get_ini_value() aus lib-config.sh
+# Hinweis..: Wird von check_dependencies_tmdb() aufgerufen, um Werte zu
+# .........  initialisieren bevor das Modul verwendet wird
+# ===========================================================================
+tmdb_load_api_config() {
+    local ini_file="${SCRIPT_DIR}/conf/lib-tmdb.ini"
+    
+    # Lese API-Konfiguration mit get_ini_value() aus lib-config.sh (falls INI existiert)
+    local base_url image_base_url user_agent timeout language
+    
+    if [[ -f "$ini_file" ]]; then
+        base_url=$(get_ini_value "$ini_file" "api" "base_url")
+        image_base_url=$(get_ini_value "$ini_file" "api" "image_base_url")
+        user_agent=$(get_ini_value "$ini_file" "api" "user_agent")
+        timeout=$(get_ini_value "$ini_file" "api" "timeout")
+        language=$(get_ini_value "$ini_file" "api" "language")
+    fi
+    
+    # Setze Variablen mit Defaults (INI-Werte überschreiben Defaults)
+    TMDB_API_BASE_URL="${base_url:-https://api.themoviedb.org/3}"
+    TMDB_IMAGE_BASE_URL="${image_base_url:-https://image.tmdb.org/t/p/w500}"
+    TMDB_USER_AGENT="${user_agent:-disk2iso/1.2.0}"
+    TMDB_TIMEOUT="${timeout:-10}"
+    TMDB_LANGUAGE="${language:-de-DE}"
+    
+    log_info "TMDB: API-Konfiguration geladen (Base: $TMDB_API_BASE_URL)"
+    return 0
+}
 
 # ============================================================================
 # CACHE MANAGEMENT
@@ -84,14 +154,14 @@ tmdb_query() {
     # API-Anfrage
     local url
     if [[ "$media_type" == "tv" ]]; then
-        url="${TMDB_API_BASE_URL}/search/tv?api_key=${TMDB_API_KEY}&language=de-DE&query=${encoded_query}&page=1"
+        url="${TMDB_API_BASE_URL}/search/tv?api_key=${TMDB_API_KEY}&language=${TMDB_LANGUAGE}&query=${encoded_query}&page=1"
     else
-        url="${TMDB_API_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&language=de-DE&query=${encoded_query}&page=1"
+        url="${TMDB_API_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&language=${TMDB_LANGUAGE}&query=${encoded_query}&page=1"
     fi
     
     log_info "TMDB: API-Request..."
     
-    local response=$(curl -s -f -H "User-Agent: ${TMDB_USER_AGENT}" "$url" 2>/dev/null)
+    local response=$(curl -s -f -m "${TMDB_TIMEOUT}" -H "User-Agent: ${TMDB_USER_AGENT}" "$url" 2>/dev/null)
     
     if [[ $? -ne 0 ]] || [[ -z "$response" ]]; then
         log_error "TMDB: API-Request fehlgeschlagen"

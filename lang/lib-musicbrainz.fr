@@ -1,0 +1,21 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Fichier de langue française pour lib-musicbrainz.sh
+# Filepath: lang/lib-musicbrainz.fr
+#
+# Description:
+#   Messages pour le fournisseur MusicBrainz
+#
+################################################################################
+
+# ============================================================================
+# DÉPENDANCES
+# ============================================================================
+# Note: Messages de vérification des outils proviennent de lib-config.fr (MSG_CONFIG_*)
+# Seuls messages spécifiques au module ici
+
+readonly MSG_MUSICBRAINZ_SUPPORT_AVAILABLE="Fournisseur MusicBrainz disponible"
+
+# ============================================================================
+# FIN lib-musicbrainz.fr
+# ============================================================================

@@ -11,10 +11,11 @@
 # ============================================================================
 # ABHÄNGIGKEITEN
 # ============================================================================
+# Hinweis: Tool-Check Meldungen kommen aus lib-config.de (MSG_CONFIG_*)
+# Hier nur modul-spezifische Meldungen
 
-readonly MSG_MQTT_NOT_AVAILABLE="MQTT Support nicht verfügbar (mosquitto_pub fehlt)"
-readonly MSG_INSTALL_MQTT_TOOLS="Installation: apt-get install mosquitto-clients"
-readonly MSG_MQTT_AVAILABLE="MQTT Support verfügbar"
+readonly MSG_MQTT_SUPPORT_AVAILABLE="MQTT Support verfügbar"
+readonly MSG_MQTT_NOT_AVAILABLE="MQTT Support nicht verfügbar"
 
 # ============================================================================
 # INITIALISIERUNG

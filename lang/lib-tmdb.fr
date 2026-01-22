@@ -1,0 +1,21 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Fichier de langue française pour lib-tmdb.sh
+# Filepath: lang/lib-tmdb.fr
+#
+# Description:
+#   Messages pour le fournisseur TMDB
+#
+################################################################################
+
+# ============================================================================
+# DÉPENDANCES
+# ============================================================================
+# Note: Messages de vérification des outils proviennent de lib-config.fr (MSG_CONFIG_*)
+# Seuls messages spécifiques au module ici
+
+readonly MSG_TMDB_SUPPORT_AVAILABLE="Fournisseur TMDB disponible"
+
+# ============================================================================
+# FIN lib-tmdb.fr
+# ============================================================================

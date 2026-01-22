@@ -10,9 +10,46 @@
 #   - Cache-Management
 #   - State-Machine Integration
 #
-# Version: 1.2.0
+# Version: 1.2.1
 # Datum: 20.01.2026
 ################################################################################
+
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+# Globale Variable für Modulname
+readonly MODULE_NAME_METADATA="metadata"
+# Globale Variable für Verfügbarkeit
+METADATA_SUPPORT=false
+
+# ===========================================================================
+# check_dependencies_metadata
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe alle Framework Abhängigkeiten (Modul-Dateien, die Modul 
+# .........  Ausgabe Ordner, kritische und optionale Software für die 
+# .........  Ausführung des Tool), lädt bei erfolgreicher Prüfung die
+# .........  Sprachdatei für das Modul.
+# Parameter: keine
+# Rückgabe.: 0 = Verfügbar (Framework nutzbar)
+# .........  1 = Nicht verfügbar (Framework deaktiviert)
+# Extras...: Sollte so früh wie möglich nach dem Start geprüft werden, da
+# .........  andere Module ggf. auf dieses Framework angewiesen sind. Am 
+# .........  besten direkt im Hauptskript (disk2iso) nach dem
+# .........  Laden der lib-common.sh.
+# ===========================================================================
+check_dependencies_metadata() {
+
+    #-- Alle Modul Abhängikeiten prüfen -------------------------------------
+    check_module_dependencies "$MODULE_NAME_METADATA" || return 1
+
+    #-- Setze Verfügbarkeit -------------------------------------------------
+    METADATA_SUPPORT=true
+    
+    #-- Abhängigkeiten erfüllt ----------------------------------------------
+    log_info "$MSG_METADATA_SUPPORT_AVAILABLE"
+    return 0
+}
+
 
 # ============================================================================
 # GLOBALE VARIABLEN
@@ -30,26 +67,14 @@ declare -A METADATA_DISC_PROVIDERS     # Disc-Type → Provider-Name
 # Cache-Verzeichnisse
 METADATA_CACHE_BASE=""
 
-# ============================================================================
-# DEPENDENCY CHECK
-# ============================================================================
+# ===========================================================================
+# PATH CONSTANTS / GETTER
+# ===========================================================================
 
-# Funktion: Prüfe Metadata-Framework Abhängigkeiten
-# Rückgabe: 0 = Verfügbar, 1 = Nicht verfügbar
-check_dependencies_metadata() {
-    local missing=()
-    
-    # Kritische Tools
-    command -v jq >/dev/null 2>&1 || missing+=("jq")
-    command -v curl >/dev/null 2>&1 || missing+=("curl")
-    
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_error "Metadata: Fehlende Tools: ${missing[*]}"
-        return 1
-    fi
-    
-    return 0
-}
+readonly METADATA_DIR="metadata"               # Basisverzeichnis für Metadata
+
+
+
 
 # ============================================================================
 # PROVIDER REGISTRATION SYSTEM

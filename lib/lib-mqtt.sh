@@ -18,6 +18,42 @@
 ################################################################################
 
 # ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+# Globale Variable für Modulname
+readonly MODULE_NAME_MQTT="mqtt"
+# Globale Variable für Verfügbarkeit
+MQTT_SUPPORT=false
+
+# ===========================================================================
+# check_dependencies_mqtt
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe alle MQTT Modul-Abhängigkeiten (Modul-Dateien, 
+# .........  Ausgabe-Ordner, kritische und optionale Software), lädt bei 
+# .........  erfolgreicher Prüfung die Sprachdatei für das Modul.
+# Parameter: keine
+# Rückgabe.: 0 = Verfügbar (Modul nutzbar)
+# .........  1 = Nicht verfügbar (Modul deaktiviert)
+# Extras...: Setzt MQTT_SUPPORT=true bei erfolgreicher Prüfung
+# ===========================================================================
+check_dependencies_mqtt() {
+
+    #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
+    check_module_dependencies "$MODULE_NAME_MQTT" || return 1
+
+    #-- Setze Verfügbarkeit -------------------------------------------------
+    MQTT_SUPPORT=true
+    
+    #-- Abhängigkeiten erfüllt ----------------------------------------------
+    log_info "$MSG_MQTT_SUPPORT_AVAILABLE"
+    return 0
+}
+
+# ============================================================================
+# GLOBALE VARIABLEN
+# ============================================================================
+
+# ============================================================================
 # MQTT CONFIGURATION (aus config.sh)
 # ============================================================================
 
@@ -31,12 +67,8 @@
 # MQTT_CLIENT_ID="disk2iso-${HOSTNAME}"
 # MQTT_QOS=0
 # MQTT_RETAIN=true
+# MQTT-Status (wird durch check_dependencies_mqtt gesetzt)
 
-# ============================================================================
-# GLOBALE VARIABLEN
-# ============================================================================
-
-# MQTT-Status
 MQTT_AVAILABLE=false
 
 # Aktuelle Werte (für Delta-Publishing)
@@ -47,26 +79,6 @@ MQTT_LAST_UPDATE=0
 # API-Verzeichnis wird von lib-api.sh definiert (readonly)
 # API_DIR ist bereits in lib-api.sh als readonly gesetzt
 # NICHT hier nochmal definieren da lib-api.sh VOR lib-mqtt.sh geladen wird
-
-# ============================================================================
-# DEPENDENCY CHECK
-# ============================================================================
-
-# Lade Sprachdatei für dieses Modul
-load_module_language "mqtt"
-
-# Funktion: Prüfe MQTT Abhängigkeiten
-# Rückgabe: 0 = mosquitto_pub verfügbar, 1 = nicht verfügbar
-check_mqtt_dependencies() {
-    if ! command -v mosquitto_pub >/dev/null 2>&1; then
-        log_info "$MSG_MQTT_NOT_AVAILABLE"
-        log_info "$MSG_INSTALL_MQTT_TOOLS"
-        return 1
-    fi
-    
-    log_info "$MSG_MQTT_AVAILABLE"
-    return 0
-}
 
 # ============================================================================
 # MQTT INITIALIZATION
@@ -83,8 +95,9 @@ mqtt_init() {
         return 1
     fi
     
-    # Prüfe Abhängigkeiten
-    if ! check_mqtt_dependencies; then
+    # Prüfe ob MQTT-Support verfügbar ist (wurde bereits von check_dependencies_mqtt geprüft)
+    if [[ "$MQTT_SUPPORT" != "true" ]]; then
+        log_warning "$MSG_MQTT_NOT_AVAILABLE"
         MQTT_AVAILABLE=false
         return 1
     fi

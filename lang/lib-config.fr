@@ -1,0 +1,45 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Fichier de Langue Français pour lib-config.sh
+# Filepath: lang/lib-config.fr
+#
+# Description:
+#   Textes de messages pour les fonctions de configuration et de vérification de manifeste
+#
+################################################################################
+
+# ============================================================================
+# VÉRIFICATION DES DÉPENDANCES BASÉE SUR LE MANIFESTE
+# ============================================================================
+
+# Messages Généraux
+readonly MSG_CONFIG_CHECK_DEPENDENCIES="Vérification des dépendances pour le module"
+
+# Vérification du Manifeste
+readonly MSG_CONFIG_NO_MANIFEST="Aucun manifeste trouvé, vérification des dépendances ignorée"
+readonly MSG_CONFIG_UNKNOWN_FILE_TYPE="Type de fichier inconnu dans le manifeste"
+
+# Vérification des Fichiers du Module
+readonly MSG_CONFIG_MODULE_FILES_MISSING="Fichiers du module manquants (module installé de manière incomplète ou corrompu?)"
+readonly MSG_CONFIG_MODULE_FILES_HINT="Note: Vérifiez l'installation du module ou mettez à jour le manifeste"
+readonly MSG_CONFIG_NO_LANGUAGE_FILES="aucun fichier de langue trouvé"
+
+# Vérification des Dossiers
+readonly MSG_CONFIG_ENSURE_SUBFOLDER_UNAVAILABLE="ensure_subfolder() non disponible - vérification des dossiers ignorée"
+readonly MSG_CONFIG_FOLDER_OK="Dossier OK"
+readonly MSG_CONFIG_FOLDER_CREATION_FAILED="Échec de la création du dossier"
+readonly MSG_CONFIG_CRITICAL_FOLDERS_MISSING="Dossiers critiques manquants et n'ont pas pu être créés"
+readonly MSG_CONFIG_CHECK_WRITE_PERMISSIONS="Vérifiez les permissions d'écriture dans OUTPUT_DIR"
+readonly MSG_CONFIG_FOLDERS_AVAILABLE="Dossiers du module disponibles"
+readonly MSG_CONFIG_FOLDERS_COUNT="dossiers vérifiés/créés"
+
+# Vérification des Outils Externes
+readonly MSG_CONFIG_CRITICAL_TOOLS_MISSING="Outils critiques manquants"
+readonly MSG_CONFIG_INSTALL_TOOLS="Installation: sudo apt install"
+
+# Vérification des Outils Optionnels
+readonly MSG_CONFIG_OPTIONAL_TOOLS_MISSING="Outils optionnels manquants (fonctionnalité réduite)"
+readonly MSG_CONFIG_RECOMMENDED_INSTALL="Recommandé: sudo apt install"
+
+# Succès
+readonly MSG_CONFIG_ALL_DEPENDENCIES_MET="Toutes les dépendances du module sont remplies"

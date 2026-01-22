@@ -11,14 +11,11 @@
 # ============================================================================
 # DÉPENDANCES
 # ============================================================================
+# Note: Messages de vérification des outils proviennent de lib-config.fr (MSG_CONFIG_*)
+# Seuls messages spécifiques au module ici
 
 readonly MSG_CDTEXT_FALLBACK_AVAILABLE="Alternative CD-TEXT disponible"
-readonly MSG_CDTEXT_FALLBACK_INSTALL_HINT="Conseil: Pour l'alternative CD-TEXT installez: icedax ou libcdio-utils (cd-info)"
-
-readonly MSG_AUDIO_SUPPORT_NOT_AVAILABLE="Support Audio-CD NON disponible - outils manquants:"
-readonly MSG_INSTALL_AUDIO_TOOLS="Installation: apt-get install cdparanoia lame genisoimage"
-readonly MSG_AUDIO_OPTIONAL_LIMITED="Audio-CD: Fonctionnalités optionnelles limitées - outils manquants:"
-readonly MSG_INSTALL_MUSICBRAINZ_TOOLS="Pour MusicBrainz/Cover: apt-get install cd-discid curl jq eyed3"
+readonly MSG_CDTEXT_FALLBACK_INSTALL_HINT="Remarque: Pour alternative CD-TEXT installer: icedax ou libcdio-utils (cd-info)"
 readonly MSG_AUDIO_SUPPORT_AVAILABLE="Support Audio-CD disponible"
 
 # ============================================================================

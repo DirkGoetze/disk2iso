@@ -11,10 +11,11 @@
 # ============================================================================
 # DEPENDENCIAS
 # ============================================================================
+# Nota: Mensajes de verificación de herramientas vienen de lib-config.es (MSG_CONFIG_*)
+# Solo mensajes específicos del módulo aquí
 
-readonly MSG_MQTT_NOT_AVAILABLE="Soporte MQTT no disponible (falta mosquitto_pub)"
-readonly MSG_INSTALL_MQTT_TOOLS="Instalación: apt-get install mosquitto-clients"
-readonly MSG_MQTT_AVAILABLE="Soporte MQTT disponible"
+readonly MSG_MQTT_SUPPORT_AVAILABLE="Soporte MQTT disponible"
+readonly MSG_MQTT_NOT_AVAILABLE="Soporte MQTT no disponible"
 
 # ============================================================================
 # INICIALIZACIÓN

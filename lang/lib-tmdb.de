@@ -1,0 +1,21 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Deutsche Sprachdatei für lib-tmdb.sh
+# Filepath: lang/lib-tmdb.de
+#
+# Beschreibung:
+#   Meldungstexte für TMDB Provider
+#
+################################################################################
+
+# ============================================================================
+# ABHÄNGIGKEITEN
+# ============================================================================
+# Hinweis: Tool-Check Meldungen kommen aus lib-config.de (MSG_CONFIG_*)
+# Hier nur modul-spezifische Meldungen
+
+readonly MSG_TMDB_SUPPORT_AVAILABLE="TMDB Provider verfügbar"
+
+# ============================================================================
+# ENDE lib-tmdb.de
+# ============================================================================
