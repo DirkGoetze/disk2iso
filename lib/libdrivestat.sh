@@ -18,6 +18,37 @@
 # Datum: 06.01.2026
 ################################################################################
 
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe Drive-Status-Modul Abhängigkeiten
+# Rückgabe: 0 = OK, 1 = Kritische Tools fehlen
+check_dependencies_drivestat() {
+    local missing=()
+    
+    # Kritische Tools (müssen vorhanden sein)
+    command -v lsblk >/dev/null 2>&1 || missing+=("lsblk")
+    
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        log_error "Kritische Tools für Drive-Erkennung fehlen: ${missing[*]}"
+        log_info "Installation: apt install util-linux"
+        return 1
+    fi
+    
+    # Optionale Tools
+    local optional_missing=()
+    command -v dmesg >/dev/null 2>&1 || optional_missing+=("dmesg")
+    command -v modprobe >/dev/null 2>&1 || optional_missing+=("modprobe")
+    
+    if [[ ${#optional_missing[@]} -gt 0 ]]; then
+        log_warning "Optionale Tools für Drive-Erkennung fehlen: ${optional_missing[*]}"
+        log_info "Drive-Erkennung verwendet Fallback-Methoden"
+    fi
+    
+    return 0
+}
+
 # ===========================================================================
 # GLOBAL VARIABLEN DES MODUL
 # ===========================================================================

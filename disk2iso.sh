@@ -94,14 +94,49 @@ source "${SCRIPT_DIR}/lib/libcommon.sh"
 # Lade Sprachdateien für Hauptskript
 load_module_language "disk2iso"
 
-# Prüfe Kern-Abhängigkeiten (kritisch - Abbruch bei Fehler)
-if ! check_common_dependencies; then
-    log_error "$MSG_ABORT_CRITICAL_DEPENDENCIES"
+# ============================================================================
+# PRÜFE KERN-ABHÄNGIGKEITEN (kritisch - Abbruch bei Fehler)
+# ============================================================================
+# Alle Core-Module müssen ihre Abhängigkeiten erfüllen, sonst kann
+# disk2iso nicht funktionieren. Die Reihenfolge entspricht der Lade-Reihenfolge.
+
+if ! check_dependencies_logging; then
+    echo "FEHLER: Logging-Modul Abhängigkeiten nicht erfüllt" >&2
     exit 1
 fi
 
-if ! check_systeminfo_dependencies; then
+if ! check_dependencies_folders; then
+    log_error "Folders-Modul Abhängigkeiten nicht erfüllt"
+    exit 1
+fi
+
+if ! check_dependencies_files; then
+    log_error "Files-Modul Abhängigkeiten nicht erfüllt"
+    exit 1
+fi
+
+if ! check_dependencies_api; then
+    log_error "API-Modul Abhängigkeiten nicht erfüllt"
+    exit 1
+fi
+
+if ! check_dependencies_diskinfos; then
+    log_error "Disk-Information-Modul Abhängigkeiten nicht erfüllt"
+    exit 1
+fi
+
+if ! check_dependencies_drivestat; then
+    log_error "Drive-Status-Modul Abhängigkeiten nicht erfüllt"
+    exit 1
+fi
+
+if ! check_dependencies_systeminfo; then
     log_error "$MSG_ABORT_SYSTEMINFO_DEPENDENCIES"
+    exit 1
+fi
+
+if ! check_dependencies_common; then
+    log_error "$MSG_ABORT_CRITICAL_DEPENDENCIES"
     exit 1
 fi
 
@@ -645,7 +680,24 @@ main() {
     
     # Ab hier: Nur noch Service-Modus
     
-    # OUTPUT_DIR wurde bereits am Anfang des Scripts gesetzt (siehe Zeile 88)
+    # ========================================================================
+    # DEPENDENCY-CHECK ARCHITEKTUR
+    # ========================================================================
+    # Alle Module (Core + Optional) implementieren check_dependencies_<modul>()
+    # 
+    # Core-Module (Zeile 100-144):
+    #   - Hardcodierte Prüfung (kein INI-Manifest)
+    #   - Return 1 → Script-Abbruch (exit 1)
+    #   - Beispiele: liblogging, libapi, libdiskinfos, libdrivestat
+    # 
+    # Optionale Module (Zeile 148-184):
+    #   - INI-Manifest-basierte Prüfung via check_module_dependencies()
+    #   - Return 1 → Feature deaktiviert (Script läuft weiter)
+    #   - Setzen Feature-Flag (*_SUPPORT=true)
+    #   - Beispiele: libcd, libdvd, libbluray, libmqtt
+    # ========================================================================
+    
+    # OUTPUT_DIR wurde bereits am Anfang des Scripts gesetzt (siehe Zeile 83)
     # Dies verhindert dass Mount-Points im Root / landen
     
     # Prüfe ob OUTPUT_DIR existiert
@@ -666,9 +718,9 @@ main() {
     log_info "$MSG_OUTPUT_DIRECTORY $OUTPUT_DIR"
     
     # Abhängigkeiten wurden bereits beim Modul-Loading geprüft
-    # Kern-Abhängigkeiten: check_common_dependencies()
-    # Audio-CD: check_audio_cd_dependencies() (optional)
-    # Video-DVD/BD: check_video_dvd_dependencies() (optional)
+    # Kern-Abhängigkeiten: check_dependencies_common()
+    # Audio-CD: check_dependencies_cd() (optional)
+    # Video-DVD/BD: check_dependencies_dvd(), check_dependencies_bluray() (optional)
     
     # Starte State Machine (läuft endlos)
     # Die State Machine kümmert sich selbst um Laufwerk-Erkennung und Retry-Logik

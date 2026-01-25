@@ -14,6 +14,30 @@
 ################################################################################
 
 # ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe Logging-Modul Abhängigkeiten
+# Rückgabe: 0 = OK (Modul nutzt nur Bash-Funktionen)
+check_dependencies_logging() {
+    # Logging-Modul benötigt keine externen Tools
+    # Verwendet nur Bash-Funktionen (echo, printf, date)
+    
+    # Prüfe/Erstelle Log-Ordner
+    # ensure_subfolder ist aus libfolders.sh bereits geladen
+    if declare -f ensure_subfolder >/dev/null 2>&1; then
+        if [[ -n "${OUTPUT_DIR:-}" ]]; then
+            if ! ensure_subfolder "$LOG_DIR" >/dev/null 2>&1; then
+                echo "FEHLER: Log-Ordner konnte nicht erstellt werden: $LOG_DIR" >&2
+                return 1
+            fi
+        fi
+    fi
+    
+    return 0
+}
+
+# ============================================================================
 # PATH CONSTANTS
 # ============================================================================
 

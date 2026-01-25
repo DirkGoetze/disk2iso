@@ -13,6 +13,19 @@
 ################################################################################
 
 # ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe Config-Modul Abhängigkeiten
+# Rückgabe: 0 = OK (awk, sed, grep sind POSIX-Standard)
+check_dependencies_config() {
+    # Config-Modul nutzt POSIX-Standard-Tools
+    # Diese sind auf jedem Linux-System verfügbar
+    # Keine explizite Prüfung erforderlich
+    return 0
+}
+
+# ============================================================================
 # GLOBALE LAUFZEIT-VARIABLEN
 # ============================================================================
 # Diese Variablen werden zur Laufzeit gesetzt und sollten NICHT manuell

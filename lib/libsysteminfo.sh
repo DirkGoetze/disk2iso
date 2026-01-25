@@ -24,12 +24,12 @@ CONTAINER_TYPE=""
 # DEPENDENCY CHECK
 # ============================================================================
 
-# Lade Sprachdatei für dieses Modul
-load_module_language "systeminfo"
-
 # Funktion: Prüfe System-Abhängigkeiten
 # Rückgabe: 0 = OK, 1 = Fehler
 check_systeminfo_dependencies() {
+    # Lade Sprachdatei für dieses Modul
+    load_module_language "systeminfo"
+    
     local missing=()
     
     # Basis-Tools für Systeminformationen

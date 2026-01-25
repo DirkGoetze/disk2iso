@@ -13,13 +13,25 @@
 # Datum: 06.01.2026
 ################################################################################
 
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe Folders-Modul Abhängigkeiten
+# Rückgabe: 0 = OK (mkdir ist POSIX-Standard)
+check_dependencies_folders() {
+    # Lade Sprachdatei für dieses Modul
+    load_module_language "folders"
+    
+    # Folders-Modul benötigt nur mkdir
+    # mkdir ist POSIX-Standard und auf jedem System verfügbar
+    return 0
+}
+
 # Globale Flags für Lazy Initialization
 _OUTPUT_DIR_CREATED=false
 _LOG_DIR_CREATED=false
 _TEMP_BASE_CREATED=false
-
-# Lade Sprachdatei für dieses Modul
-load_module_language "folders"
 
 # ============================================================================
 # GENERIC HELPER FUNCTIONS

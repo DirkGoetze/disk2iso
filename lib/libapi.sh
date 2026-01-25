@@ -18,6 +18,18 @@
 #   - api_add_history()       : Füge History-Eintrag hinzu
 #############################################################################
 
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe API-Modul Abhängigkeiten
+# Rückgabe: 0 = OK (Modul schreibt nur JSON-Dateien)
+check_dependencies_api() {
+    # API-Modul benötigt keine externen Tools
+    # Schreibt nur JSON-Dateien mit Bash-Funktionen
+    return 0
+}
+
 # API-Verzeichnis
 readonly API_DIR="${INSTALL_DIR:-/opt/disk2iso}/api"
 
