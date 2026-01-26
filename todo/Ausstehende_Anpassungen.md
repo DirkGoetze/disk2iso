@@ -6,7 +6,21 @@
 
 ---
 
-## 📋 ÜBERSICHT NACH PRIORITÄT
+## � GITHUB ISSUES ZUSAMMENFASSUNG
+
+**Gesamt:** 14 Open, 6 Closed  
+**Davon:**
+- 🔴 **4 kritische Bugs** (#11, #9, #4, #20)
+- 🟡 **8 Verbesserungen/Features** (#15, #19, #8, #13, #12, #10, #22, #21)
+- ⚠️ **2 teilweise behoben** (#5, #7) - Runtime-Tests ausstehend
+- ✅ **4 komplett erledigt** (#18, #17, #16, #14)
+- ❓ **2 Details unklar** (#6, #9)
+
+**Quick-Win:** Issue #20 kann in 5 Minuten gelöst werden! ⭐
+
+---
+
+## �📋 ÜBERSICHT NACH PRIORITÄT
 
 ### 🔴 KRITISCH - Bugs (Sofort beheben)
 
@@ -14,11 +28,13 @@
 **Bereich:** [lib/libmqtt.sh](../lib/libmqtt.sh)  
 **Problem:** MQTT-Nachrichten werden doppelt gesendet  
 **Mögliche Ursachen:**
+
 - `publish_mqtt()` wird zweimal aufgerufen
 - Mehrere MQTT-Clients aktiv
 - Retain-Flag verursacht Echo
 
 **Diagnose nötig:**
+
 - MQTT-Logging aktivieren
 - MQTT-Broker Logs prüfen
 - Alle `publish_mqtt()` Aufrufe durchsuchen
@@ -29,6 +45,7 @@
 **Bereich:** [www/app.py](../www/app.py), [www/templates/archive.html](../www/templates/archive.html)  
 **Problem:** ISO-Dateien werden nicht korrekt angezeigt im Archiv  
 **Betroffene Dateien:**
+
 - `www/app.py` - `/archive` Route
 - `www/templates/archive.html`
 - Möglicherweise `get_iso_files_by_type()` Funktion
@@ -41,6 +58,7 @@
 **Bereich:** [www/app.py](../www/app.py) - Archiv-Management  
 **Problem:** Nachträgliches Hinzufügen von Metadaten über Web-UI schlägt fehl  
 **Betroffene Dateien:**
+
 - `www/app.py` - Metadata-Update Endpoints
 - `www/templates/archive.html`
 
@@ -48,19 +66,22 @@
 
 ---
 
-#### 4. GitHub #20 - Formatierungsproblem Fortschritt (TEILWEISE BEHOBEN)
-**Status:** ⚠️ Template-Korrektur ausstehend  
-**Bereich:** [www/templates/index.html](../www/templates/index.html)  
+#### 4. GitHub #20 - Formatierungsproblem Fortschritt ⚠️
+**Status:** ⚠️ FAST FERTIG - Nur Template-Fix ausstehend (5 Min)  
+**Bereich:** [www/templates/index.html:65-67](../www/templates/index.html#L65-L67)  
 **Problem:** Fortschrittsbalken Speicherplatz zeigt falsche Richtung
 
 **Noch zu tun:**
+
 ```html
-<!-- Zeile 65-67: Ändern -->
+<!-- AKTUELL (falsch): -->
 <div class="progress-overlay" style="width: {{ disk_space.free_percent }}%"></div>
 
-<!-- Zu: -->
+<!-- KORRIGIEREN ZU: -->
 <div class="progress-overlay" style="width: {{ disk_space.used_percent }}%"></div>
 ```
+
+**Hintergrund:** Issue #20 wurde am 18.01.2026 analysiert, Lösung ist klar, nur 1 Zeile ändern
 
 ---
 
@@ -380,9 +401,91 @@ def api_archive():
 
 ---
 
-## ⚠️ ABGESCHLOSSENE AUFGABEN
+## ⚠️ TEILWEISE ERLEDIGTE GITHUB ISSUES
 
-Die folgenden Dateien enthalten **nur erledigte Aufgaben** und können archiviert werden:
+Die folgenden Issues sind **bereits implementiert**, benötigen aber noch Tests:
+
+### ⚠️ GitHub #5 - Audio CD - Meta Daten erfassen
+**Status:** ⚠️ **TEILWEISE BEHOBEN** (18. Januar 2026)  
+**Implementiert:**
+
+- ✅ `check_audio_metadata_dependencies()` Funktion
+- ✅ Runtime-Prüfung von jq, curl, eyeD3, id3v2
+- ✅ User-Agent Header in MusicBrainz API-Calls (RFC-konform)
+- ✅ URL-Encoding Funktion
+- ✅ Cache-basierte API-Funktionen
+- ✅ Artist-Sanitization für sichere Dateinamen
+
+**Noch ausstehend:**
+
+- ⏳ Laufzeit-Tests mit realen Audio-CDs
+- ⏳ Log-Analyse bei Fehlern
+- ⏳ MusicBrainz API Response prüfen
+
+**Siehe:** [GitHub-Issues.md](GitHub-Issues.md) - Issue #5
+
+---
+
+### ⚠️ GitHub #7 - DVD/BD Metadaten funktioniert nicht
+**Status:** ⚠️ **TEILWEISE BEHOBEN** (18. Januar 2026)  
+**Implementiert:**
+
+- ✅ `check_dvd_metadata_dependencies()` Funktion
+- ✅ Runtime-Prüfung von jq, curl und TMDB_API_KEY
+- ✅ User-Agent Header bei TMDB API-Calls
+- ✅ Klare Fehlermeldungen bei fehlenden Dependencies
+- ✅ Integration in disk2iso.sh Startup
+
+**Noch ausstehend:**
+
+- ⏳ TMDB_API_KEY konfigurieren und Live-Test
+- ⏳ Error-Handling bei API-Fehlern verbessern
+- ⏳ Log-Analyse bei Fehlern
+
+**Siehe:** [GitHub-Issues.md](GitHub-Issues.md) - Issue #7
+
+---
+
+## ✅ KOMPLETT ERLEDIGTE GITHUB ISSUES
+
+Die folgenden Issues sind **vollständig gelöst** (kein weiterer Code nötig):
+
+### ✅ GitHub #18 - LOG oder CODE Fehler (Doppelter Slash im Pfad)
+**Behoben:** 18. Januar 2026  
+**Lösung:** `"${OUTPUT_DIR%/}/"` in [lib/libfolders.sh:45](../lib/libfolders.sh#L45)  
+**Verifikation:** ✅ Kein doppelter Slash mehr möglich
+
+---
+
+### ✅ GitHub #17 - Fehlender Neustart nach Config-Änderung
+**Behoben:** 18. Januar 2026  
+**Lösung:** 
+
+- `apply_config_changes()` Funktion in [lib/libconfig.sh:190-275](../lib/libconfig.sh#L190-L275)
+- `perform_service_restarts()` Funktion
+- Intelligente Service-Neustarts basierend auf Config-Keys
+
+**Verifikation:** ✅ Services werden automatisch neu gestartet
+
+---
+
+### ✅ GitHub #16 - Passwort Feld nicht verschlüsselt
+**Behoben:** 18. Januar 2026  
+**Lösung:** `type="password"` in [www/templates/config.html:230](../www/templates/config.html#L230)  
+**Verifikation:** ✅ Passwort-Feld ist maskiert
+
+---
+
+### ✅ GitHub #14 - Menü verschwindet wenn Seite länger
+**Behoben:** 18. Januar 2026  
+**Lösung:** Sticky Header in [www/static/css/style.css:29-31](../www/static/css/style.css#L29-L31)  
+**Verifikation:** ✅ Navigation bleibt beim Scrollen sichtbar
+
+---
+
+## 📚 ABGESCHLOSSENE AUFGABEN (NICHT GITHUB)
+
+Die folgenden Dateien enthalten **nur erledigte Aufgaben** und wurden archiviert:
 
 ### ✅ Logging-Konvertierung.md
 **Status:** ✅ Vollständig abgeschlossen (20. Januar 2026)  
@@ -453,26 +556,37 @@ Die folgenden Dateien sind **Einmal-Tools** und können gelöscht werden:
 ## 📋 EMPFOHLENE ARBEITSREIHENFOLGE
 
 ### Sofort (diese Woche):
-1. **#20 Template-Fix** (5 Min) - Eine Zeile ändern
-2. **#11 MQTT Debug** (2 Std) - Logging aktivieren, Analyse
-3. **#9 ISO-Anzeige** (4 Std) - Detaillierte Diagnose
-4. **#4 Metadaten nachträglich** (4 Std) - Error-Logs sammeln
+
+1. **#20 Template-Fix** ⭐ (5 Min) - Eine Zeile in index.html ändern
+2. **#11 MQTT Debug** (2 Std) - Logging aktivieren, Broker-Logs prüfen
+3. **#9 ISO-Anzeige** (4 Std) - Detaillierte Diagnose, Issue-Details klären
+4. **#4 Metadaten nachträglich** (4 Std) - Error-Logs sammeln, Reproduzieren
 
 ### Kurzfristig (nächste 2 Wochen):
-5. **Auto-Cleanup Cronjob** (1 Tag) - install.sh erweitern
-6. **#15 Fehlerbehandlung** (2 Tage) - Retry-Logik implementieren
-7. **#19 Archivierte Logs** (1 Tag) - Neue Route + Template
-8. **#8 Ausgabeverzeichnis UI** (1 Tag) - Config-UI erweitern
+
+5. **#5/#7 Runtime-Tests** (4 Std) - Audio-CD + DVD/BD mit echten Discs testen
+6. **Auto-Cleanup Cronjob** (1 Tag) - install.sh erweitern
+7. **#15 Fehlerbehandlung** (2 Tage) - Retry-Logik implementieren
+8. **#19 Archivierte Logs** (1 Tag) - Neue Route + Template
+9. **#8 Ausgabeverzeichnis UI** (1 Tag) - Config-UI erweitern
 
 ### Mittelfristig (nächste 4 Wochen):
-9. **#13 Service-Anzeige** (1 Tag)
-10. **#12 UI-Flackern** (2 Tage)
-11. **#10 Kompaktere Anzeige** (2 Tage)
+
+10. **#13 Service-Anzeige** (1 Tag) - Uptime, Status-Icons
+11. **#12 UI-Flackern** (2 Tage) - Diff-Updates, CSS-Transitions
+12. **#10 Kompaktere Anzeige** (2 Tage) - Kollapsbare Sektionen
 
 ### Langfristig (nächste 3 Monate):
-12. **Frontend-Modularisierung** (1 Woche)
-13. **Metadata Cache-DB** (1 Woche)
-14. **Plugin-System Backend** (2 Wochen)
+
+13. **Frontend-Modularisierung** (1 Woche) - Dynamisches JS-Loading
+14. **Metadata Cache-DB** (1 Woche) - 10-40x schneller
+15. **Plugin-System Backend** (2 Wochen) - Flask Blueprints
+
+### Features (nach Bedarf):
+
+16. **#22 MP3 feat. Artists** (3 Tage) - MusicBrainz Artist-Credits
+17. **#21 MP3 Sampler** (1 Woche) - Komplexe MusicBrainz-Logik
+18. **#6 DVD Metadaten** (Details noch unklar)
 
 ---
 
