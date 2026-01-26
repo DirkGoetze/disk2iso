@@ -38,7 +38,7 @@ METADATA_SUPPORT=false
 # Rückgabe.: 0 = Verfügbar (Framework nutzbar)
 # .........  1 = Nicht verfügbar (Framework deaktiviert)
 # Extras...: Sollte so früh wie möglich nach dem Start geprüft werden, da
-# .........  andere Module ggf. auf dieses Framework angewiesen sind. Am 
+# .........  andere Module ggf. auf dieses Framework angewiesen sind. Am
 # .........  besten direkt im Hauptskript (disk2iso) nach dem
 # .........  Laden der libcommon.sh.
 # ===========================================================================

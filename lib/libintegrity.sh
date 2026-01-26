@@ -23,8 +23,21 @@
 # DEPENDENCY CHECK
 # =============================================================================
 
-# Funktion: Prüfe Integrity-Modul Abhängigkeiten
-# Rückgabe: 0 = OK
+# ===========================================================================
+# check_dependencies_integrity
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe alle Framework Abhängigkeiten (Modul-Dateien, die Modul
+# .........  Ausgabe Ordner, kritische und optionale Software für die
+# .........  Ausführung des Tool), lädt bei erfolgreicher Prüfung die
+# .........  Sprachdatei für das Modul.
+# Parameter: keine
+# Rückgabe.: 0 = Verfügbar (Framework nutzbar)
+# .........  1 = Nicht verfügbar (Framework deaktiviert)
+# Extras...: Sollte so früh wie möglich nach dem Start geprüft werden, da
+# .........  andere Module ggf. auf dieses Framework angewiesen sind. Am
+# .........  besten direkt im Hauptskript (disk2iso) nach dem
+# .........  Laden der libcommon.sh.
+# ===========================================================================
 check_dependencies_integrity() {
     # Integrity-Modul benötigt:
     # - libconfig.sh (get_ini_value, get_ini_array)

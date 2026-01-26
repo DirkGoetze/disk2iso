@@ -23,8 +23,21 @@
 # DEPENDENCY CHECK
 # =============================================================================
 
-# Funktion: Prüfe API-Modul Abhängigkeiten
-# Rückgabe: 0 = OK (Modul schreibt nur JSON-Dateien)
+# ===========================================================================
+# check_dependencies_api
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe alle Framework Abhängigkeiten (Modul-Dateien, die Modul
+# .........  Ausgabe Ordner, kritische und optionale Software für die
+# .........  Ausführung des Tool), lädt bei erfolgreicher Prüfung die
+# .........  Sprachdatei für das Modul.
+# Parameter: keine
+# Rückgabe.: 0 = Verfügbar (Framework nutzbar)
+# .........  1 = Nicht verfügbar (Framework deaktiviert)
+# Extras...: Sollte so früh wie möglich nach dem Start geprüft werden, da
+# .........  andere Module ggf. auf dieses Framework angewiesen sind. Am
+# .........  besten direkt im Hauptskript (disk2iso) nach dem
+# .........  Laden der libcommon.sh.
+# ===========================================================================
 check_dependencies_api() {
     # API-Modul benötigt keine externen Tools
     # Schreibt nur JSON-Dateien mit Bash-Funktionen
