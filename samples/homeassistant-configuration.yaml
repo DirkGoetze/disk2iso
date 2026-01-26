@@ -1,0 +1,169 @@
+# Home Assistant configuration.yaml - disk2iso MQTT Integration
+#
+# Kopiere diese Konfiguration in deine Home Assistant configuration.yaml
+# oder erstelle eine separate Datei unter packages/disk2iso.yaml
+
+# ============================================================================
+# MQTT Sensoren
+# ============================================================================
+
+mqtt:
+  sensor:
+    # Status Sensor
+    - name: "Disk2ISO Status"
+      unique_id: "disk2iso_status"
+      state_topic: "homeassistant/sensor/disk2iso/state"
+      value_template: "{{ value_json.status }}"
+      json_attributes_topic: "homeassistant/sensor/disk2iso/attributes"
+      availability_topic: "homeassistant/sensor/disk2iso/availability"
+      icon: mdi:disc
+      
+    # Fortschritt Sensor
+    - name: "Disk2ISO Fortschritt"
+      unique_id: "disk2iso_progress"
+      state_topic: "homeassistant/sensor/disk2iso/progress"
+      unit_of_measurement: "%"
+      availability_topic: "homeassistant/sensor/disk2iso/availability"
+      icon: mdi:progress-clock
+
+# ============================================================================
+# Binary Sensor (Optional)
+# ============================================================================
+
+mqtt:
+  binary_sensor:
+    # Optional Aktivitätssensor
+    name: "Disk2ISO Aktiv"
+    unique_id: "disk2iso_active"
+    state_topic: "homeassistant/sensor/disk2iso/state"
+    value_template: >
+      {% if value_json.status == 'copying' %}
+        ON
+      {% else %}
+        OFF
+      {% endif %}
+    availability_topic: "homeassistant/sensor/disk2iso/availability"
+    device_class: running
+
+# ============================================================================
+# Automatisierungen (Optional)
+# ============================================================================
+
+automation:
+  # Benachrichtigung bei Kopierstart
+  - alias: "Disk2ISO - Kopie gestartet"
+    description: "Benachrichtigung wenn eine neue Disc kopiert wird"
+    trigger:
+      - platform: mqtt
+        topic: "homeassistant/sensor/disk2iso/state"
+        value_template: "{{ value_json.status }}"
+        payload: "copying"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "💿 DVD wird kopiert"
+          message: >
+            {{ state_attr('sensor.disk2iso_status', 'disc_label') }} 
+            ({{ state_attr('sensor.disk2iso_status', 'disc_type') }})
+          data:
+            notification_icon: mdi:disc-player
+            color: blue
+
+  # Benachrichtigung bei Abschluss
+  - alias: "Disk2ISO - Kopie abgeschlossen"
+    description: "Benachrichtigung wenn Kopie erfolgreich abgeschlossen wurde"
+    trigger:
+      - platform: mqtt
+        topic: "homeassistant/sensor/disk2iso/state"
+        value_template: "{{ value_json.status }}"
+        payload: "completed"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "✅ DVD-Kopie fertig"
+          message: >
+            {{ state_attr('sensor.disk2iso_status', 'filename') }} wurde erstellt.
+          data:
+            notification_icon: mdi:check-circle
+            color: green
+
+  # Benachrichtigung bei Medium-Wechsel
+  - alias: "Disk2ISO - Medium entfernen"
+    description: "Benachrichtigung wenn Medium entfernt werden kann"
+    trigger:
+      - platform: mqtt
+        topic: "homeassistant/sensor/disk2iso/state"
+        value_template: "{{ value_json.status }}"
+        payload: "waiting"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "💿 DVD bereit"
+          message: >
+            {{ state_attr('sensor.disk2iso_status', 'disc_label') }} 
+            erfolgreich kopiert. Bitte Medium entfernen.
+          data:
+            notification_icon: mdi:disc
+            color: green
+
+  # Benachrichtigung bei Fehler
+  - alias: "Disk2ISO - Fehler"
+    description: "Benachrichtigung bei Kopier-Fehlern"
+    trigger:
+      - platform: mqtt
+        topic: "homeassistant/sensor/disk2iso/state"
+        value_template: "{{ value_json.status }}"
+        payload: "error"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "❌ Disk2ISO Fehler"
+          message: >
+            {{ state_attr('sensor.disk2iso_status', 'error_message') }}
+          data:
+            notification_icon: mdi:alert-circle
+            color: red
+
+# ============================================================================
+# Lovelace Dashboard (Optional)
+# ============================================================================
+
+# Füge diese Card in dein Lovelace Dashboard ein:
+#
+# type: vertical-stack
+# cards:
+#   - type: markdown
+#     content: |
+#       ## 💿 Disk2ISO
+#
+#   - type: entities
+#     entities:
+#       - entity: sensor.disk2iso_status
+#         name: Status
+#       - entity: binary_sensor.disk2iso_active
+#         name: Aktiv
+#
+#   - type: conditional
+#     conditions:
+#       - entity: sensor.disk2iso_status
+#         state: "copying"
+#     card:
+#       type: gauge
+#       entity: sensor.disk2iso_progress
+#       min: 0
+#       max: 100
+#       name: Fortschritt
+#       needle: true
+#
+#   - type: markdown
+#     content: |
+#       **Medium:** {{ state_attr('sensor.disk2iso_status', 'disc_label') or 'Kein Medium' }}
+#       **Typ:** {{ state_attr('sensor.disk2iso_status', 'disc_type') or '-' }}
+#       **Größe:** {{ state_attr('sensor.disk2iso_status', 'disc_size_mb') or 0 }} MB
+#
+#       {% if is_state('sensor.disk2iso_status', 'copying') %}
+#       {% set unit = state_attr('sensor.disk2iso_status', 'progress_unit') or 'MB' %}
+#       **Fortschritt:** {{ state_attr('sensor.disk2iso_status', 'progress_mb') }} / {{ state_attr('sensor.disk2iso_status', 'total_mb') }} {{ unit }}
+#       **Verbleibend:** {{ state_attr('sensor.disk2iso_status', 'eta') }}
+#       **Methode:** {{ state_attr('sensor.disk2iso_status', 'method') }}
+#       {% endif %}

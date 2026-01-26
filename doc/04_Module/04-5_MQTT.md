@@ -333,6 +333,8 @@ homeassistant/sensor/disk2iso/attributes
 
 **Datei**: `configuration.yaml`
 
+> 💡 **Vollständige Beispielkonfiguration**: [samples/homeassistant-configuration.yaml](../../samples/homeassistant-configuration.yaml)
+
 ```yaml
 # disk2iso MQTT Integration
 mqtt:
@@ -671,9 +673,18 @@ journalctl -u disk2iso -f | grep -i "mqtt.*fortschritt"
 
 ## Weiterführende Links
 
+### Dokumentation
+
 - **[← Zurück: Kapitel 4.4.2 - TMDB-Integration](04-4_Metadaten/04-4-2_TMDB.md)**
 - **[Kapitel 5: Fehlerhandling →](../05_Fehlerhandling.md)**
 - **[Kapitel 3: Betrieb →](../03_Betrieb.md)**
+
+### Beispieldateien
+
+- **[Home Assistant Konfiguration](../../samples/homeassistant-configuration.yaml)** - Vollständige configuration.yaml mit Sensoren, Automatisierungen und Dashboard-Beispielen
+
+### Externe Ressourcen
+
 - **Home Assistant**: https://www.home-assistant.io
 - **Mosquitto**: https://mosquitto.org
 - **MQTT Docs**: https://mqtt.org
