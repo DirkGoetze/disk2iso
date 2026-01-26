@@ -10,6 +10,7 @@
 #   - get_all_config_values() - Lese alle Werte als JSON
 #   - Kann ohne logging/folders verwendet werden
 #
+#
 # -----------------------------------------------------------------------------
 # Dependencies: Keine (nutzt nur awk, sed, grep - POSIX-Standard)
 # -----------------------------------------------------------------------------
