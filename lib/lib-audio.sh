@@ -17,10 +17,8 @@
 # ============================================================================
 # DEPENDENCY CHECK
 # ============================================================================
-# Globale Variable für Modulname
-readonly MODULE_NAME_AUDIO="audio"
-# Globale Variable für Verfügbarkeit
-AUDIO_CD_SUPPORT=false
+readonly MODULE_NAME_AUDIO="audio" # Globale Variable für Modulname
+AUDIO_CD_SUPPORT=false                    # Globale Variable für Verfügbarkeit
 
 # ===========================================================================
 # check_dependencies_audio

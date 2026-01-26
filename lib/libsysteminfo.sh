@@ -31,7 +31,7 @@ CONTAINER_TYPE=""
 # ============================================================================
 
 # ===========================================================================
-# check_systeminfo_dependencies
+# check_dependencies_systeminfo
 # ---------------------------------------------------------------------------
 # Funktion.: Prüfe alle Framework Abhängigkeiten (Modul-Dateien, die Modul
 # .........  Ausgabe Ordner, kritische und optionale Software für die
@@ -45,7 +45,7 @@ CONTAINER_TYPE=""
 # .........  besten direkt im Hauptskript (disk2iso) nach dem
 # .........  Laden der libcommon.sh.
 # ===========================================================================
-check_systeminfo_dependencies() {
+check_dependencies_systeminfo() {
     # Lade Sprachdatei für dieses Modul
     load_module_language "systeminfo"
     
