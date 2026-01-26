@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - TMDB Metadata Provider
-# Filepath: lib/lib-tmdb.sh
+# Filepath: lib/libtmdb.sh
 #
 # Beschreibung:
 #   TMDB-Provider für DVD/Blu-ray Metadata
@@ -37,7 +37,7 @@ check_dependencies_tmdb() {
     check_module_dependencies "$MODULE_NAME_TMDB" || return 1
 
     #-- Lade API-Konfiguration aus INI ---------------------------------------
-    tmdb_load_api_config || return 1
+    load_api_config_tmdb || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
     TMDB_SUPPORT=true
@@ -52,22 +52,22 @@ check_dependencies_tmdb() {
 # ============================================================================
 
 # ===========================================================================
-# tmdb_load_api_config
+# load_api_config_tmdb
 # ---------------------------------------------------------------------------
-# Funktion.: Lade TMDB API-Konfiguration aus lib-tmdb.ini [api] Sektion
+# Funktion.: Lade TMDB API-Konfiguration aus libtmdb.ini [api] Sektion
 # .........  und setze Defaults falls INI-Werte fehlen
 # Parameter: keine
 # Rückgabe.: 0 = Erfolgreich geladen
 # Setzt....: TMDB_API_BASE_URL, TMDB_IMAGE_BASE_URL, TMDB_USER_AGENT,
 # .........  TMDB_TIMEOUT, TMDB_LANGUAGE (global)
-# Nutzt....: get_ini_value() aus lib-config.sh
+# Nutzt....: get_ini_value() aus libconfig.sh
 # Hinweis..: Wird von check_dependencies_tmdb() aufgerufen, um Werte zu
 # .........  initialisieren bevor das Modul verwendet wird
 # ===========================================================================
-tmdb_load_api_config() {
-    local ini_file="${SCRIPT_DIR}/conf/lib-tmdb.ini"
+load_api_config_tmdb() {
+    local ini_file="${SCRIPT_DIR}/conf/libtmdb.ini"
     
-    # Lese API-Konfiguration mit get_ini_value() aus lib-config.sh (falls INI existiert)
+    # Lese API-Konfiguration mit get_ini_value() aus libconfig.sh (falls INI existiert)
     local base_url image_base_url user_agent timeout language
     
     if [[ -f "$ini_file" ]]; then

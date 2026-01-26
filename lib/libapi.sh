@@ -1,7 +1,7 @@
 #!/bin/bash
 #############################################################################
 # disk2iso v1.2.0 - API JSON Library
-# Filepath: lib/lib-api.sh
+# Filepath: lib/libapi.sh
 #
 # Beschreibung:
 #   API-Schnittstelle für Status-Informationen.
@@ -17,6 +17,18 @@
 #   - api_update_progress()   : Update Fortschritt (während Kopieren)
 #   - api_add_history()       : Füge History-Eintrag hinzu
 #############################################################################
+
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe API-Modul Abhängigkeiten
+# Rückgabe: 0 = OK (Modul schreibt nur JSON-Dateien)
+check_dependencies_api() {
+    # API-Modul benötigt keine externen Tools
+    # Schreibt nur JSON-Dateien mit Bash-Funktionen
+    return 0
+}
 
 # API-Verzeichnis
 readonly API_DIR="${INSTALL_DIR:-/opt/disk2iso}/api"

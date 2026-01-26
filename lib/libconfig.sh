@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - Configuration Management Library
-# Filepath: lib/lib-config.sh
+# Filepath: lib/libconfig.sh
 #
 # Beschreibung:
 #   Standalone Config-Management ohne Dependencies für Web-API
@@ -11,6 +11,19 @@
 # Version: 1.2.0
 # Datum: 14.01.2026
 ################################################################################
+
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe Config-Modul Abhängigkeiten
+# Rückgabe: 0 = OK (awk, sed, grep sind POSIX-Standard)
+check_dependencies_config() {
+    # Config-Modul nutzt POSIX-Standard-Tools
+    # Diese sind auf jedem Linux-System verfügbar
+    # Keine explizite Prüfung erforderlich
+    return 0
+}
 
 # ============================================================================
 # GLOBALE LAUFZEIT-VARIABLEN
@@ -523,11 +536,11 @@ save_config_and_restart() {
 # get_ini_value
 # ---------------------------------------------------------------------------
 # Funktion.: Lese einzelnen Wert aus INI-Manifest
-# Parameter: $1 = ini_file (z.B. "conf/lib-cd.ini")
+# Parameter: $1 = ini_file (z.B. "conf/libcd.ini")
 #            $2 = section (z.B. "metadata")
 #            $3 = key (z.B. "name")
 # Rückgabe.: Value (String), leer bei Fehler
-# Beispiel.: get_ini_value "conf/lib-cd.ini" "metadata" "version"
+# Beispiel.: get_ini_value "conf/libcd.ini" "metadata" "version"
 #            → "1.2.0"
 # ===========================================================================
 get_ini_value() {
@@ -565,7 +578,7 @@ get_ini_value() {
 #            $2 = section
 #            $3 = key
 # Rückgabe.: Array-Elemente (eine Zeile pro Element)
-# Beispiel.: get_ini_array "conf/lib-cd.ini" "dependencies" "external"
+# Beispiel.: get_ini_array "conf/libcd.ini" "dependencies" "external"
 #            → "cdparanoia\nlame\ngenisoimage"
 # ===========================================================================
 get_ini_array() {
@@ -589,11 +602,11 @@ get_ini_array() {
 # Funktion.: Standard Dependency-Check aus INI-Manifest
 # Parameter: $1 = module_name (z.B. "cd", "dvd", "metadata")
 # Rückgabe.: 0 = Alle kritischen Tools vorhanden, 1 = Fehler
-# Nutzt....: INI-Format: conf/lib-<module>.ini
+# Nutzt....: INI-Format: conf/lib<module>.ini
 # ===========================================================================
 check_module_dependencies() {
     local module_name="$1"
-    local manifest_file="${INSTALL_DIR}/conf/lib-${module_name}.ini"
+    local manifest_file="${INSTALL_DIR}/conf/lib${module_name}.ini"
     
     # Sprachdatei laden (vor Manifest-Check!)
     log_message "Prüfe Abhängigkeiten für Modul: ${module_name}"
@@ -620,7 +633,7 @@ check_module_dependencies() {
         
         # Nur prüfen wenn Eintrag existiert
         if [[ -n "$filename" ]]; then
-            # Ermittle vollständigen Pfad (via lib-folders.sh)
+            # Ermittle vollständigen Pfad (via libfolders.sh)
             local file_path
             file_path=$(get_module_file_path "$file_type" "$filename")
             

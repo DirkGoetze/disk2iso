@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - File Management Library
-# Filepath: lib/lib-files.sh
+# Filepath: lib/libfiles.sh
 #
 # Beschreibung:
 #   Verwaltung von Dateinamen:
@@ -13,6 +13,18 @@
 # Version: 1.2.0
 # Datum: 06.01.2026
 ################################################################################
+
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe Files-Modul Abhängigkeiten
+# Rückgabe: 0 = OK (Modul nutzt nur Bash-Funktionen)
+check_dependencies_files() {
+    # Files-Modul benötigt keine externen Tools
+    # Verwendet nur Bash-Funktionen (basename, sed)
+    return 0
+}
 
 # ============================================================================
 # FILENAME SANITIZATION

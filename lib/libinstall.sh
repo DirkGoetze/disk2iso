@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - Installation & Maintenance Library
-# Filepath: lib/lib-install.sh
+# Filepath: lib/libinstall.sh
 #
 # Beschreibung:
 #   Shared Funktionen für Installation, Update, Reparatur, Deinstallation

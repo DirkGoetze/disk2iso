@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - MQTT Library
-# Filepath: lib/lib-mqtt.sh
+# Filepath: lib/libmqtt.sh
 #
 # Beschreibung:
 #   MQTT-Integration für Home Assistant und andere Systeme
@@ -76,9 +76,9 @@ MQTT_LAST_STATE=""
 MQTT_LAST_PROGRESS=0
 MQTT_LAST_UPDATE=0
 
-# API-Verzeichnis wird von lib-api.sh definiert (readonly)
-# API_DIR ist bereits in lib-api.sh als readonly gesetzt
-# NICHT hier nochmal definieren da lib-api.sh VOR lib-mqtt.sh geladen wird
+# API-Verzeichnis wird von libapi.sh definiert (readonly)
+# API_DIR ist bereits in libapi.sh als readonly gesetzt
+# NICHT hier nochmal definieren da libapi.sh VOR libmqtt.sh geladen wird
 
 # ============================================================================
 # MQTT INITIALIZATION
@@ -136,8 +136,8 @@ mqtt_init() {
 # API JSON FILE HELPER
 # ============================================================================
 
-# HINWEIS: api_write_json() und api_add_history() werden aus lib-api.sh geladen
-# Diese Funktionen sind bereits in lib-api.sh definiert und müssen nicht dupliziert werden
+# HINWEIS: api_write_json() und api_add_history() werden aus libapi.sh geladen
+# Diese Funktionen sind bereits in libapi.sh definiert und müssen nicht dupliziert werden
 
 # ============================================================================
 # MQTT PUBLISH HELPER

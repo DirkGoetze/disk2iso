@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - Logging Library
-# Filepath: lib/lib-logging.sh
+# Filepath: lib/liblogging.sh
 #
 # Beschreibung:
 #   Zentrale Logging-Funktionen für alle Module:
@@ -12,6 +12,30 @@
 # Version: 1.2.0
 # Datum: 06.01.2026
 ################################################################################
+
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe Logging-Modul Abhängigkeiten
+# Rückgabe: 0 = OK (Modul nutzt nur Bash-Funktionen)
+check_dependencies_logging() {
+    # Logging-Modul benötigt keine externen Tools
+    # Verwendet nur Bash-Funktionen (echo, printf, date)
+    
+    # Prüfe/Erstelle Log-Ordner
+    # ensure_subfolder ist aus libfolders.sh bereits geladen
+    if declare -f ensure_subfolder >/dev/null 2>&1; then
+        if [[ -n "${OUTPUT_DIR:-}" ]]; then
+            if ! ensure_subfolder "$LOG_DIR" >/dev/null 2>&1; then
+                echo "FEHLER: Log-Ordner konnte nicht erstellt werden: $LOG_DIR" >&2
+                return 1
+            fi
+        fi
+    fi
+    
+    return 0
+}
 
 # ============================================================================
 # PATH CONSTANTS
@@ -49,18 +73,18 @@ readonly MSG_WARNING_NO_LANG_FILE="WARNUNG: Keine Sprachdatei gefunden für:"
 
 # Funktion: Lade modul-spezifische Sprachdatei
 # Parameter: $1 = Modul-Name (z.B. "common", "cd", "dvd", "bluray")
-# Lädt: lang/lib-[modul].[LANGUAGE]
-# Beispiel: load_module_language "cd" lädt lang/lib-cd.de
+# Lädt: lang/lib[modul].[LANGUAGE]
+# Beispiel: load_module_language "cd" lädt lang/libcd.de
 load_module_language() {
     local module_name="$1"
     
-    # Für Hauptskript (disk2iso) ohne lib- Präfix suchen
-    # Für Module mit lib- Präfix suchen
+    # Für Hauptskript (disk2iso) ohne lib Präfix suchen
+    # Für Module mit lib Präfix suchen
     local lang_file
     if [[ -f "${SCRIPT_DIR}/lang/${module_name}.${LANGUAGE}" ]]; then
         lang_file="${SCRIPT_DIR}/lang/${module_name}.${LANGUAGE}"
     else
-        lang_file="${SCRIPT_DIR}/lang/lib-${module_name}.${LANGUAGE}"
+        lang_file="${SCRIPT_DIR}/lang/lib${module_name}.${LANGUAGE}"
     fi
     
     if [[ -f "$lang_file" ]]; then
@@ -75,7 +99,7 @@ load_module_language() {
         if [[ -f "${SCRIPT_DIR}/lang/${module_name}.en" ]]; then
             fallback_file="${SCRIPT_DIR}/lang/${module_name}.en"
         else
-            fallback_file="${SCRIPT_DIR}/lang/lib-${module_name}.en"
+            fallback_file="${SCRIPT_DIR}/lang/lib${module_name}.en"
         fi
         
         if [[ -f "$fallback_file" ]]; then

@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - DVD Library
-# Filepath: lib/lib-dvd.sh
+# Filepath: lib/libdvd.sh
 #
 # Beschreibung:
 #   Funktionen für DVD-Ripping und -Konvertierung
@@ -49,6 +49,22 @@ check_dependencies_dvd() {
 # ============================================================================
 
 readonly FAILED_DISCS_FILE=".failed_dvds"
+
+# ============================================================================
+# PATH GETTER
+# ============================================================================
+
+# Funktion: Ermittle Pfad für Video-DVDs
+# Rückgabe: Vollständiger Pfad zu dvd/ oder Fallback zu data/
+# Nutzt ensure_subfolder aus libfolders.sh für konsistente Ordner-Verwaltung
+get_path_dvd() {
+    if [[ "$VIDEO_DVD_SUPPORT" == true ]] && [[ -n "$DVD_DIR" ]]; then
+        ensure_subfolder "$DVD_DIR"
+    else
+        # Fallback auf data/ wenn DVD-Modul nicht geladen
+        ensure_subfolder "data"
+    fi
+}
 
 # ============================================================================
 # FEHLER-TRACKING SYSTEM

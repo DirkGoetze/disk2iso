@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - Audio CD Library
-# Filepath: lib/lib-cd.sh
+# Filepath: lib/libcd.sh
 #
 # Beschreibung:
 #   Funktionen für Audio-CD Ripping mit MusicBrainz-Metadaten
@@ -35,7 +35,7 @@ AUDIO_CD_SUPPORT=false
 # Extras...: Sollte so früh wie möglich nach dem Start geprüft werden, da
 # .........  andere Module ggf. auf dieses Framework angewiesen sind. Am 
 # .........  besten direkt im Hauptskript (disk2iso) nach dem
-# .........  Laden der lib-common.sh.
+# .........  Laden der libcommon.sh.
 # ===========================================================================
 check_dependencies_cd() {
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - MusicBrainz Metadata Provider
-# Filepath: lib/lib-musicbrainz.sh
+# Filepath: lib/libmusicbrainz.sh
 #
 # Beschreibung:
 #   MusicBrainz-Provider für Audio-CD Metadata
@@ -37,7 +37,7 @@ check_dependencies_musicbrainz() {
     check_module_dependencies "$MODULE_NAME_MUSICBRAINZ" || return 1
 
     #-- Lade API-Konfiguration aus INI ---------------------------------------
-    musicbrainz_load_api_config || return 1
+    load_api_config_musicbrainz || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
     MUSICBRAINZ_SUPPORT=true
@@ -52,22 +52,22 @@ check_dependencies_musicbrainz() {
 # ============================================================================
 
 # ===========================================================================
-# musicbrainz_load_api_config
+# load_api_config_musicbrainz
 # ---------------------------------------------------------------------------
-# Funktion.: Lade MusicBrainz API-Konfiguration aus lib-musicbrainz.ini
+# Funktion.: Lade MusicBrainz API-Konfiguration aus libmusicbrainz.ini
 # .........  [api] Sektion und setze Defaults falls INI-Werte fehlen
 # Parameter: keine
 # Rückgabe.: 0 = Erfolgreich geladen
 # Setzt....: MUSICBRAINZ_API_BASE_URL, COVERART_API_BASE_URL,
 # .........  MUSICBRAINZ_USER_AGENT, MUSICBRAINZ_TIMEOUT (global)
-# Nutzt....: get_ini_value() aus lib-config.sh
+# Nutzt....: get_ini_value() aus libconfig.sh
 # Hinweis..: Wird von check_dependencies_musicbrainz() aufgerufen, um Werte
 # .........  zu initialisieren bevor das Modul verwendet wird
 # ===========================================================================
-musicbrainz_load_api_config() {
-    local ini_file="${SCRIPT_DIR}/conf/lib-musicbrainz.ini"
+load_api_config_musicbrainz() {
+    local ini_file="${SCRIPT_DIR}/conf/libmusicbrainz.ini"
     
-    # Lese API-Konfiguration mit get_ini_value() aus lib-config.sh (falls INI existiert)
+    # Lese API-Konfiguration mit get_ini_value() aus libconfig.sh (falls INI existiert)
     local base_url coverart_base_url user_agent timeout
     
     if [[ -f "$ini_file" ]]; then

@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - Folder Management Library
-# Filepath: lib/lib-folders.sh
+# Filepath: lib/libfolders.sh
 #
 # Beschreibung:
 #   Verwaltung von Verzeichnissen:
@@ -13,13 +13,25 @@
 # Datum: 06.01.2026
 ################################################################################
 
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe Folders-Modul Abhängigkeiten
+# Rückgabe: 0 = OK (mkdir ist POSIX-Standard)
+check_dependencies_folders() {
+    # Lade Sprachdatei für dieses Modul
+    load_module_language "folders"
+    
+    # Folders-Modul benötigt nur mkdir
+    # mkdir ist POSIX-Standard und auf jedem System verfügbar
+    return 0
+}
+
 # Globale Flags für Lazy Initialization
 _OUTPUT_DIR_CREATED=false
 _LOG_DIR_CREATED=false
 _TEMP_BASE_CREATED=false
-
-# Lade Sprachdatei für dieses Modul
-load_module_language "folders"
 
 # ============================================================================
 # GENERIC HELPER FUNCTIONS
@@ -70,7 +82,7 @@ ensure_subfolder() {
 # Grund: Service (root) + manuelle User-Aufrufe benötigen Write-Zugriff.
 # Security: Akzeptabel für Trusted Environment (Home-Server)
 get_temp_pathname() {
-    # Nutze ensure_subfolder für temp_base (Konstante aus lib-common.sh)
+    # Nutze ensure_subfolder für temp_base (Konstante aus libcommon.sh)
     local temp_base
     temp_base=$(ensure_subfolder "$TEMP_DIR") || return 1
     
@@ -103,7 +115,7 @@ cleanup_temp_pathname() {
 # Gibt den Pfad zurück
 # Rückgabe: Mount-Point Pfad
 get_tmp_mount() {
-    # Nutze ensure_subfolder für mount_base (Konstante aus lib-common.sh)
+    # Nutze ensure_subfolder für mount_base (Konstante aus libcommon.sh)
     local mount_base
     mount_base=$(ensure_subfolder "$MOUNTPOINTS_DIR") || return 1
     
@@ -252,10 +264,10 @@ readonly MODULE_ROUTER_DIR="www/routes"          # Python-Routes
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle vollständigen Pfad zu Modul-Datei
 # Parameter: $1 = file_type ("libary", "language", "js", "css", etc.)
-#            $2 = filename (z.B. "lib-metadata.sh")
+#            $2 = filename (z.B. "libmetadata.sh")
 # Rückgabe.: Vollständiger Pfad
-# Beispiel.: get_module_file_path "libary" "lib-metadata.sh"
-#            → "/opt/disk2iso/lib/lib-metadata.sh"
+# Beispiel.: get_module_file_path "libary" "libmetadata.sh"
+#            → "/opt/disk2iso/lib/libmetadata.sh"
 # ===========================================================================
 get_module_file_path() {
     local file_type="$1"

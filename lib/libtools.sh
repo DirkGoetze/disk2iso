@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - Tool Detection Library
-# Filepath: lib/lib-tools.sh
+# Filepath: lib/libtools.sh
 #
 # Beschreibung:
 #   Prüfung von Debian-Standard-Tools:

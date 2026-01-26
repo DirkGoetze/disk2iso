@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - Metadata Framework (Core)
-# Filepath: lib/lib-metadata.sh
+# Filepath: lib/libmetadata.sh
 #
 # Beschreibung:
 #   Zentrales Metadata-Framework für alle Disc-Typen
@@ -35,7 +35,7 @@ METADATA_SUPPORT=false
 # Extras...: Sollte so früh wie möglich nach dem Start geprüft werden, da
 # .........  andere Module ggf. auf dieses Framework angewiesen sind. Am 
 # .........  besten direkt im Hauptskript (disk2iso) nach dem
-# .........  Laden der lib-common.sh.
+# .........  Laden der libcommon.sh.
 # ===========================================================================
 check_dependencies_metadata() {
 
@@ -429,7 +429,7 @@ metadata_sanitize_filename() {
 # Funktion: Lade Metadata-Konfiguration aus Config-Datei
 # Liest: METADATA_AUDIO_PROVIDER, METADATA_VIDEO_PROVIDER, etc.
 metadata_load_config() {
-    # Diese Funktion wird von lib-config.sh aufgerufen
+    # Diese Funktion wird von libconfig.sh aufgerufen
     # Config-Variablen sind bereits geladen
     
     log_info "Metadata: Konfiguration geladen"
@@ -447,5 +447,5 @@ metadata_load_config() {
 }
 
 ################################################################################
-# ENDE lib-metadata.sh
+# ENDE libmetadata.sh
 ################################################################################

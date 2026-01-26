@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - Common Functions Library
-# Filepath: lib/lib-common.sh
+# Filepath: lib/libcommon.sh
 #
 # Beschreibung:
 #   - copy_data_disc() - Daten-Disc kopieren mit dd
@@ -12,6 +12,58 @@
 # Version: 1.2.0
 # Datum: 06.01.2026
 ################################################################################
+
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe Kern-Abhängigkeiten (kritisch)
+# Rückgabe: 0 = OK, 1 = Fehler
+check_dependencies_common() {
+    # Lade Sprachdatei für dieses Modul
+    load_module_language "common"
+    
+    local missing=()
+    
+    # Kritische Tools (müssen vorhanden sein)
+    command -v dd >/dev/null 2>&1 || missing+=("dd")
+    command -v md5sum >/dev/null 2>&1 || missing+=("md5sum")
+    command -v lsblk >/dev/null 2>&1 || missing+=("lsblk")
+    command -v eject >/dev/null 2>&1 || missing+=("eject")
+    
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        log_error "$MSG_ERROR_CRITICAL_TOOLS_MISSING ${missing[*]}"
+        log_info "$MSG_INSTALLATION_CORE_TOOLS"
+        return 1
+    fi
+    
+    # Optionale Tools (Performance-Verbesserung)
+    local optional_missing=()
+    command -v isoinfo >/dev/null 2>&1 || optional_missing+=("isoinfo")
+    command -v ddrescue >/dev/null 2>&1 || optional_missing+=("ddrescue")
+    
+    if [[ ${#optional_missing[@]} -gt 0 ]]; then
+        log_error "$MSG_OPTIONAL_TOOLS_INFO ${optional_missing[*]}"
+        log_info "$MSG_INSTALL_GENISOIMAGE_GDDRESCUE"
+    fi
+    
+    # Prüfe/Erstelle Ausgabe-Ordner für Daten-Discs
+    # ensure_subfolder ist aus libfolders.sh bereits geladen
+    if declare -f ensure_subfolder >/dev/null 2>&1; then
+        if ! ensure_subfolder "$DATA_DIR" >/dev/null 2>&1; then
+            log_error "Ausgabe-Ordner für Daten-Discs konnte nicht erstellt werden: $DATA_DIR"
+            return 1
+        fi
+        
+        # Temp-Ordner wird lazy erstellt, nur Prüfung dass OUTPUT_DIR existiert
+        if [[ ! -d "$OUTPUT_DIR" ]]; then
+            log_error "OUTPUT_DIR existiert nicht: $OUTPUT_DIR"
+            return 1
+        fi
+    fi
+    
+    return 0
+}
 
 # ============================================================================
 # CONFIG MANAGEMENT (NO DEPENDENCIES - must be first!)
@@ -157,46 +209,9 @@ readonly MOUNTPOINTS_DIR=".temp/mountpoints"
 
 # Funktion: Ermittle Pfad für Daten-Discs (DATA)
 # Rückgabe: Vollständiger Pfad zu data/
-# Nutzt ensure_subfolder aus lib-folders.sh für konsistente Ordner-Verwaltung
+# Nutzt ensure_subfolder aus libfolders.sh für konsistente Ordner-Verwaltung
 get_path_data() {
     ensure_subfolder "$DATA_DIR"
-}
-
-# ============================================================================
-# DEPENDENCY CHECK
-# ============================================================================
-
-# Lade Sprachdatei für dieses Modul
-load_module_language "common"
-
-# Funktion: Prüfe Kern-Abhängigkeiten (kritisch)
-# Rückgabe: 0 = OK, 1 = Fehler
-check_common_dependencies() {
-    local missing=()
-    
-    # Kritische Tools (müssen vorhanden sein)
-    command -v dd >/dev/null 2>&1 || missing+=("dd")
-    command -v md5sum >/dev/null 2>&1 || missing+=("md5sum")
-    command -v lsblk >/dev/null 2>&1 || missing+=("lsblk")
-    command -v eject >/dev/null 2>&1 || missing+=("eject")
-    
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_error "$MSG_ERROR_CRITICAL_TOOLS_MISSING ${missing[*]}"
-        log_info "$MSG_INSTALLATION_CORE_TOOLS"
-        return 1
-    fi
-    
-    # Optionale Tools (Performance-Verbesserung)
-    local optional_missing=()
-    command -v isoinfo >/dev/null 2>&1 || optional_missing+=("isoinfo")
-    command -v ddrescue >/dev/null 2>&1 || optional_missing+=("ddrescue")
-    
-    if [[ ${#optional_missing[@]} -gt 0 ]]; then
-        log_error "$MSG_OPTIONAL_TOOLS_INFO ${optional_missing[*]}"
-        log_info "$MSG_INSTALL_GENISOIMAGE_GDDRESCUE"
-    fi
-    
-    return 0
 }
 
 # ============================================================================

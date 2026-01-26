@@ -1,7 +1,7 @@
 #!/bin/bash
 ################################################################################
 # disk2iso v1.2.0 - Disk Information Library
-# Filepath: lib/lib-diskinfos.sh
+# Filepath: lib/libdiskinfos.sh
 #
 # Beschreibung:
 #   Typ-Erkennung und Label-Extraktion für optische Medien:
@@ -11,6 +11,40 @@
 # Version: 1.2.0
 # Datum: 06.01.2026
 ################################################################################
+
+# ============================================================================
+# DEPENDENCY CHECK
+# ============================================================================
+
+# Funktion: Prüfe Disk-Information-Modul Abhängigkeiten
+# Rückgabe: 0 = OK, 1 = Kritische Tools fehlen
+check_dependencies_diskinfos() {
+    local missing=()
+    
+    # Kritische Tools (müssen vorhanden sein)
+    command -v mount >/dev/null 2>&1 || missing+=("mount")
+    command -v umount >/dev/null 2>&1 || missing+=("umount")
+    
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        log_error "Kritische Tools für Disk-Erkennung fehlen: ${missing[*]}"
+        log_info "Installation: apt install mount"
+        return 1
+    fi
+    
+    # Optionale aber wichtige Tools
+    local optional_missing=()
+    command -v isoinfo >/dev/null 2>&1 || optional_missing+=("isoinfo")
+    command -v blkid >/dev/null 2>&1 || optional_missing+=("blkid")
+    command -v blockdev >/dev/null 2>&1 || optional_missing+=("blockdev")
+    
+    if [[ ${#optional_missing[@]} -gt 0 ]]; then
+        log_warning "Optionale Tools für verbesserte Disk-Erkennung fehlen: ${optional_missing[*]}"
+        log_info "Installation: apt install genisoimage util-linux"
+        log_info "Disk-Erkennung verwendet Fallback-Methoden"
+    fi
+    
+    return 0
+}
 
 # ============================================================================
 # DISC TYPE DETECTION
