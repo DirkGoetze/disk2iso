@@ -5,28 +5,36 @@ Willkommen zur ausführlichen Dokumentation von disk2iso - dem professionellen T
 ## 📚 Inhaltsverzeichnis
 
 ### [1. Übersicht](#übersicht)
+
 Allgemeine Informationen, Features und Systemarchitektur
 
-### [2. Installation als Script](Installation-Script.md)
-Manuelle Installation und Konfiguration ohne systemd-Service
+### [2. Installation](02_Installation.md)
 
-### [3. Installation als Service](Installation-Service.md)
-Automatische Installation mit systemd-Integration für permanenten Betrieb
+Installation als Service, Script oder manuell - alle Varianten
 
-### [4. Verwendung](Verwendung.md)
-Bedienung, Konfiguration und praktische Beispiele
+### [3. Betrieb](03_Betrieb.md)
 
-### [5. MQTT & Home Assistant Integration](MQTT-HomeAssistant.md)
-Echtzeit-Status, Benachrichtigungen und Dashboard-Integration
+Bedienung, Web-Interface, REST API und praktische Beispiele
 
-### [6. TMDB API-Key Beschaffung](TMDB-API-Key.md)
-DVD/Blu-ray Metadaten-Integration mit The Movie Database
+### [4. Optionale Module](04_Module/)
 
-### [7. Entwickler-Dokumentation](Entwickler.md)
-Technische Details, Modulstruktur und API-Referenz
+Audio-CD, DVD-Video, Blu-ray, Metadaten und MQTT-Integration
 
-### [8. Deinstallation](Deinstallation.md)
+### [5. Fehlerhandling](05_Fehlerhandling.md)
+
+Fehler-Tracking, Retry-Mechanismen und Debug-Modi
+
+### [6. Entwickler-Dokumentation](06_Entwickler.md)
+
+Architektur, Modulentwicklung, API-Referenz und Testing
+
+### [7. Deinstallation](07_Deinstallation.md)
+
 Vollständige Entfernung von disk2iso
+
+### [8. Anhang](08_Anhang.md)
+
+Software-Abhängigkeiten, externe APIs, Dateiformate und Glossar
 
 ---
 
@@ -39,11 +47,13 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 ### Hauptmerkmale
 
 #### 🎯 Automatische Medien-Erkennung
+
 - **6 Disc-Typen**: audio-cd, dvd-video, bd-video, cd-rom, dvd-rom, bd-rom
 - **Intelligente Analyse**: UDF, ISO9660, Audio-CD Format-Erkennung
 - **Label-Extraktion**: Automatische Disc-Namen via isoinfo oder blkid
 
 #### 🎵 Audio-CD Support (Modul: lib-cd.sh)
+
 - **Lossless Ripping**: cdparanoia mit Fehlerkorrektur
 - **MP3-Encoding**: LAME VBR V2 (~190 kbps, fest kodiert)
 - **Intelligente Metadaten-Erfassung**:
@@ -60,6 +70,7 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
   - **Automatisches Remastering**: MP3s extrahieren → Tags aktualisieren → Neue ISO erstellen
 
 #### 📀 Video-DVD Support (Modul: lib-dvd.sh)
+
 - **Entschlüsselung**: dvdbackup mit libdvdcss2
 - **Intelligenter Retry**: Automatischer Fallback bei Fehlern (dvdbackup → ddrescue)
 - **Fehler-Tracking**: Persistente .failed_dvds Liste (max. 2 Versuche)
@@ -75,29 +86,34 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
   - **Nachträgliche Erfassung**: "Add Metadata" Button im Web-Interface Archiv
 
 #### 🎬 Blu-ray Support (Modul: lib-bluray.sh)
+
 - **Robustes Kopieren**: ddrescue (primär), dd (fallback)
 - **UDF-Support**: Moderne Blu-ray-Dateisysteme
 - **Große Medien**: Bis 100GB+ unterstützt
 - **Verschlüsselt**: ISO-Kopie (Entschlüsselung extern möglich)
 
 #### 💾 Daten-Discs (Kern-Modul)
+
 - **Universell**: CD-ROM, DVD-ROM, BD-ROM
 - **Methoden**: dd (schnell), ddrescue (bei Fehlern)
 - **1:1 Kopie**: Bit-genaue ISO-Images
 
 #### 🔐 Integrität & Qualität
+
 - **MD5-Checksummen**: Automatisch für jede ISO
 - **Fehlerbehandlung**: Robuste Recovery-Mechanismen
 - **Fortschrittsanzeige**: Echtzeit-Feedback (MB/s, ETA)
 - **Logging**: Detaillierte Log-Dateien pro Disc
 
 #### 🌍 Mehrsprachigkeit
+
 - **Modulares Sprachsystem**: Jedes Modul hat eigene Sprachdateien
 - **Verfügbare Sprachen**: Deutsch (de), English (en), Español (es), Français (fr)
 - **Vollständig synchronisiert**: 202 Konstanten pro Sprache
 - **Erweiterbar**: Einfaches Hinzufügen weiterer Sprachen
 
 #### 📡 MQTT-Integration (Modul: lib-mqtt.sh)
+
 - **Home Assistant Support**: Native Integration über MQTT
 - **Echtzeit-Status**: Live-Updates im Dashboard
 - **Push-Benachrichtigungen**: Bei Medium-Wechsel, Abschluss, Fehler
@@ -106,6 +122,7 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 - **Konfigurierbar**: Broker, Auth, Topics
 
 #### 🔄 State Machine Architektur
+
 - **11 definierte Zustände**: Präzise Ablaufsteuerung
 - **Zustandsübergänge**: initializing → waiting_for_drive → drive_detected → waiting_for_media → media_detected → analyzing → copying → completed → waiting_for_removal → idle
 - **Fehlerbehandlung**: Automatischer Übergang zu error-State bei Problemen
@@ -113,6 +130,7 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 - **API-Integration**: JSON-API liefert aktuellen State in Echtzeit
 
 #### 🌐 Web-Interface & REST API
+
 - **Flask-basiertes Dashboard**: Modernes Web-UI auf Port 8080
 - **Mehrsprachig**: Web-UI nutzt gleiche LANGUAGE-Einstellung wie Backend (de, en, es, fr)
 - **6 Hauptseiten**: Home, Archive, Logs, Config, System, Help
@@ -131,7 +149,7 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 
 ### Systemarchitektur
 
-```
+```plain
 ┌─────────────────────────────────────────────────────────┐
 │              disk2iso.sh (Hauptskript)                  │
 │  • State Machine (11 Zustände)                          │
@@ -159,7 +177,7 @@ disk2iso ist ein modulares Bash-basiertes Tool zur automatischen Archivierung op
 
 ### Ausgabe-Struktur
 
-```
+```plain
 OUTPUT_DIR/
 ├── audio/                  # Audio-CDs (nur mit lib-cd.sh)
 │   └── Artist/
@@ -211,6 +229,7 @@ disk2iso funktioniert auch mit minimaler Installation:
 - **Fortschritts-Monitoring**: Effizientes stat-basiertes Tracking
 
 **Tatsächliche Verarbeitungszeiten** (gemessen):
+
 - Audio-CD (12 Tracks): ~15 Min (MusicBrainz + MP3 + ISO)
 - Video-DVD (7.5 GB): ~33 Min (dvdbackup entschlüsselt)
 - Blu-ray (46.6 GB): ~42 Min (ddrescue, verschlüsselt)
@@ -240,13 +259,14 @@ disk2iso funktioniert auch mit minimaler Installation:
 
 ## Navigation
 
-**Weiter**: [Installation als Script →](Installation-Script.md)
+**Weiter**: [Kapitel 2: Installation →](02_Installation.md)
 
 **Siehe auch**:
-- [Installation als Service](Installation-Service.md) - Automatischer Betrieb
-- [Verwendung](Verwendung.md) - Praktische Anleitung
-- [MQTT & Home Assistant](MQTT-HomeAssistant.md) - Integration & Dashboard
-- [Entwickler-Dokumentation](Entwickler.md) - Technische Details
+
+- [Kapitel 3: Betrieb](03_Betrieb.md) - Web-Interface, REST API, Ausgabe-Struktur
+- [Kapitel 4: Optionale Module](04_Module/) - Audio-CD, DVD, Blu-ray, MQTT
+- [Kapitel 5: Fehlerhandling](05_Fehlerhandling.md) - Fehler-Tracking & Debug-Modi
+- [Kapitel 6: Entwickler](06_Entwickler.md) - Architektur & Modulentwicklung
 - [Deinstallation](Deinstallation.md) - Vollständige Entfernung
 
 ---

@@ -408,9 +408,9 @@ sudo ./install.sh
 ## Weiterführende Links
 
 - **[← Zurück zum Handbuch](Handbuch.md)**
-- **[Installation als Script](Installation-Script.md)** - Neuinstallation
-- **[Installation als Service](Installation-Service.md)** - Service-Modus
+- **[Installation](02_Installation.md)** (Kapitel 2) - Neuinstallation
+- **[Entwickler-Dokumentation](06_Entwickler.md)** (Kapitel 6) - Debugging & Logs
 
 ---
 
-**Version**: 1.2.0 | **Letzte Aktualisierung**: 11.01.2026
+**Version**: 1.2.0 | **Letzte Aktualisierung**: 26.01.2026
