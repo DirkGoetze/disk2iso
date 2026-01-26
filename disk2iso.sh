@@ -141,9 +141,9 @@ DVD_METADATA_SUPPORT=$METADATA_SUPPORT
 AUDIO_METADATA_SUPPORT=$METADATA_SUPPORT
 
 # Audio-CD Support (optional)
-if [[ -f "${SCRIPT_DIR}/lib/lib-cd.sh" ]]; then
-    source "${SCRIPT_DIR}/lib/lib-cd.sh"
-    check_dependencies_cd  # Setzt AUDIO_CD_SUPPORT=true bei Erfolg
+if [[ -f "${SCRIPT_DIR}/lib/lib-audio.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/lib-audio.sh"
+    check_dependencies_audio  # Setzt AUDIO_CD_SUPPORT=true bei Erfolg
 fi
 
 # Video-DVD Support (optional)

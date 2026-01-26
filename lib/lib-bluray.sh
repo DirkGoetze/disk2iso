@@ -45,27 +45,6 @@ check_dependencies_bluray() {
 }
 
 # ============================================================================
-# PATH CONSTANTS
-# ============================================================================
-
-readonly BD_DIR="bd"
-
-# ============================================================================
-# PATH GETTER
-# ============================================================================
-
-# Funktion: Ermittle Pfad für Blu-ray Videos
-# Rückgabe: Vollständiger Pfad zu bd/ oder Fallback zu data/
-get_path_bd() {
-    if [[ "$BLURAY_SUPPORT" == true ]] && [[ -n "$BD_DIR" ]]; then
-        echo "${OUTPUT_DIR}/${BD_DIR}"
-    else
-        # Fallback auf data/ wenn Blu-ray-Modul nicht geladen
-        echo "${OUTPUT_DIR}/data"
-    fi
-}
-
-# ============================================================================
 # BLURAY COPY - DDRESCUE (Methode 1 - Verschlüsselt, Robust)
 # ============================================================================
 
