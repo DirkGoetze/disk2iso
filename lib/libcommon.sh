@@ -1,21 +1,27 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - Common Functions Library
+# =============================================================================
+# Common Functions Library
+# =============================================================================
 # Filepath: lib/libcommon.sh
 #
 # Beschreibung:
-#   - copy_data_disc() - Daten-Disc kopieren mit dd
-#   - copy_data_disc_ddrescue() - Daten-Disc kopieren mit ddrescue
-#   - reset_disc_variables, cleanup_disc_operation
-#   - check_disk_space, monitor_copy_progress
+#   Gemeinsame Kern-Funktionen für alle Module
+#   - copy_data_disc(), copy_data_disc_ddrescue()
+#   - reset_disc_variables(), cleanup_disc_operation()
+#   - check_disk_space(), monitor_copy_progress()
+#   - init_copy_log(), finish_copy_log()
 #
-# Version: 1.2.0
-# Datum: 06.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: liblogging, libfolders (für Core-Funktionen)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
-# ============================================================================
+# =============================================================================
 # DEPENDENCY CHECK
-# ============================================================================
+# =============================================================================
 
 # Funktion: Prüfe Kern-Abhängigkeiten (kritisch)
 # Rückgabe: 0 = OK, 1 = Fehler

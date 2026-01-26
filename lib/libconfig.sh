@@ -1,20 +1,26 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - Configuration Management Library
+# =============================================================================
+# Configuration Management Library
+# =============================================================================
 # Filepath: lib/libconfig.sh
 #
 # Beschreibung:
 #   Standalone Config-Management ohne Dependencies für Web-API
 #   - update_config_value() - Schreibe einzelnen Wert in config.sh
 #   - get_all_config_values() - Lese alle Werte als JSON
+#   - Kann ohne logging/folders verwendet werden
 #
-# Version: 1.2.0
-# Datum: 14.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: Keine (nutzt nur awk, sed, grep - POSIX-Standard)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
-# ============================================================================
+# =============================================================================
 # DEPENDENCY CHECK
-# ============================================================================
+# =============================================================================
 
 # Funktion: Prüfe Config-Modul Abhängigkeiten
 # Rückgabe: 0 = OK (awk, sed, grep sind POSIX-Standard)

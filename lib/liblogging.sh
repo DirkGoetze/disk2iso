@@ -1,21 +1,27 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - Logging Library
+# =============================================================================
+# Logging Library
+# =============================================================================
 # Filepath: lib/liblogging.sh
 #
 # Beschreibung:
-#   Zentrale Logging-Funktionen für alle Module:
+#   Zentrale Logging-Funktionen für alle Module
 #   - Timestamped Logging mit optionaler Datei-Ausgabe
-#   - Modulares Sprachsystem
-#   - Wird von allen Modulen verwendet
+#   - Modulares Sprachsystem (load_module_language)
+#   - log_error(), log_info(), log_warning(), log_copying()
+#   - Wird von allen anderen Modulen verwendet
 #
-# Version: 1.2.0
-# Datum: 06.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: Optional libfolders (für LOG_DIR)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
-# ============================================================================
+# =============================================================================
 # DEPENDENCY CHECK
-# ============================================================================
+# =============================================================================
 
 # Funktion: Prüfe Logging-Modul Abhängigkeiten
 # Rückgabe: 0 = OK (Modul nutzt nur Bash-Funktionen)

@@ -1,15 +1,23 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - Tool Detection Library
+# =============================================================================
+# Tool Detection Library
+# =============================================================================
 # Filepath: lib/libtools.sh
 #
 # Beschreibung:
-#   Prüfung von Debian-Standard-Tools:
+#   Prüfung von Debian-Standard-Tools
 #   - dd, md5sum, lsblk, eject
+#   - check_tool() - Generic Tool-Prüfung
+#   - Wird von allen Modulen verwendet
+#   - Fehlerbehandlung für fehlende Tools
 #
-# Version: 1.2.0
-# Datum: 06.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: liblogging (für log_* Funktionen)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
 # ============================================================================
 # LANGUAGE SUPPORT

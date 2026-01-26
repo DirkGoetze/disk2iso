@@ -1,20 +1,27 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - Disk Information Library
+# =============================================================================
+# Disk Information Library
+# =============================================================================
 # Filepath: lib/libdiskinfos.sh
 #
 # Beschreibung:
-#   Typ-Erkennung und Label-Extraktion für optische Medien:
+#   Typ-Erkennung und Label-Extraktion für optische Medien
 #   - Audio-CD, Video-DVD, Blu-ray, Daten-Discs
 #   - UDF, ISO9660, Audio-TOC Erkennung
+#   - get_disc_type(), extract_disc_label()
+#   - Unterstützung für verschiedene Dateisysteme
 #
-# Version: 1.2.0
-# Datum: 06.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: liblogging (für log_* Funktionen)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
-# ============================================================================
+# =============================================================================
 # DEPENDENCY CHECK
-# ============================================================================
+# =============================================================================
 
 # Funktion: Prüfe Disk-Information-Modul Abhängigkeiten
 # Rückgabe: 0 = OK, 1 = Kritische Tools fehlen

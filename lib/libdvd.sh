@@ -1,20 +1,27 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - DVD Library
+# =============================================================================
+# DVD Library
+# =============================================================================
 # Filepath: lib/libdvd.sh
 #
 # Beschreibung:
 #   Funktionen für DVD-Ripping und -Konvertierung
 #   - copy_video_dvd() - Video-DVD mit dvdbackup + genisoimage (entschlüsselt)
 #   - copy_video_dvd_ddrescue() - Video-DVD/BD mit ddrescue (verschlüsselt)
+#   - Intelligentes Fallback-System bei Fehlern
+#   - Integration mit TMDB Metadata-Abfrage
 #
-# Version: 1.2.0
-# Datum: 06.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: liblogging, libfolders, libcommon (optional: libtmdb)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
-# ============================================================================
+# =============================================================================
 # DEPENDENCY CHECK
-# ============================================================================
+# =============================================================================
 # Globale Variable für Modulname
 readonly MODULE_NAME_DVD="dvd"
 # Globale Variable für Verfügbarkeit

@@ -1,26 +1,27 @@
 #!/bin/bash
-#############################################################################
-# disk2iso v1.2.0 - API JSON Library
+# =============================================================================
+# API JSON Library
+# =============================================================================
 # Filepath: lib/libapi.sh
 #
 # Beschreibung:
-#   API-Schnittstelle für Status-Informationen.
-#   Schreibt JSON-Dateien die von Web-UI und anderen Tools gelesen werden.
-#   Unabhängig von MQTT - funktioniert IMMER.
+#   API-Schnittstelle für Status-Informationen via JSON-Dateien
+#   - Schreibt JSON für Web-UI und externe Tools
+#   - Unabhängig von MQTT - funktioniert IMMER
+#   - api_write_json(), api_update_status(), api_update_progress()
+#   - api_add_history()
 #
-# Version: 1.2.0
-# Datum: 10.01.2026
-#
-# Funktionen:
-#   - api_write_json()        : Schreibe JSON-Datei (low-level)
-#   - api_update_status()     : Update Status (idle/copying/waiting/completed/error)
-#   - api_update_progress()   : Update Fortschritt (während Kopieren)
-#   - api_add_history()       : Füge History-Eintrag hinzu
-#############################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: Keine (nutzt nur Bash-Funktionen)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
-# ============================================================================
+# =============================================================================
 # DEPENDENCY CHECK
-# ============================================================================
+# =============================================================================
 
 # Funktion: Prüfe API-Modul Abhängigkeiten
 # Rückgabe: 0 = OK (Modul schreibt nur JSON-Dateien)

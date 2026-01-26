@@ -1,17 +1,23 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - System Information Library
+# =============================================================================
+# System Information Library
+# =============================================================================
 # Filepath: lib/libsysteminfo.sh
 #
 # Beschreibung:
+#   System-Informationen und Container-Erkennung
 #   - Container-Erkennung (LXC, Docker, Podman)
-#   - Speicherplatz-Prüfung
-#   - Medium-Wechsel-Erkennung (für Container-Umgebungen)
-#   - System-Informationen und Monitoring
+#   - Speicherplatz-Prüfung (check_disk_space)
+#   - Medium-Wechsel-Erkennung für Container-Umgebungen
+#   - System-Monitoring und Ressourcen-Überwachung
 #
-# Version: 1.2.0
-# Datum: 06.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: liblogging (für log_* Funktionen)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
 # ============================================================================
 # GLOBAL VARIABLES

@@ -1,21 +1,27 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - Folder Management Library
+# =============================================================================
+# Folder Management Library
+# =============================================================================
 # Filepath: lib/libfolders.sh
 #
 # Beschreibung:
-#   Verwaltung von Verzeichnissen:
-#   - Temp-Verzeichnis-Erstellung
-#   - Temp-Verzeichnis-Bereinigung
+#   Verwaltung von Verzeichnissen und temporären Ordnern
+#   - Temp-Verzeichnis-Erstellung und Bereinigung
 #   - Lazy Initialization für Output-Ordner
+#   - ensure_subfolder() für alle Module
+#   - cleanup_temp() für automatische Bereinigung
 #
-# Version: 1.2.0
-# Datum: 06.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: liblogging (für log_* Funktionen)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
-# ============================================================================
+# =============================================================================
 # DEPENDENCY CHECK
-# ============================================================================
+# =============================================================================
 
 # Funktion: Prüfe Folders-Modul Abhängigkeiten
 # Rückgabe: 0 = OK (mkdir ist POSIX-Standard)

@@ -1,20 +1,27 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - MusicBrainz Metadata Provider
+# =============================================================================
+# MusicBrainz Metadata Provider
+# =============================================================================
 # Filepath: lib/libmusicbrainz.sh
 #
 # Beschreibung:
 #   MusicBrainz-Provider für Audio-CD Metadata
 #   - Registriert sich beim Metadata-Framework
 #   - Implementiert Query/Parse/Apply für MusicBrainz API
+#   - Disc-ID basierte Suche
+#   - Künstler/Album/Track-Informationen
 #
-# Version: 1.2.0
-# Datum: 20.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: libmetadata, liblogging (externe API: MusicBrainz)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
-# ============================================================================
+# =============================================================================
 # DEPENDENCY CHECK
-# ============================================================================
+# =============================================================================
 # Globale Variable für Modulname
 readonly MODULE_NAME_MUSICBRAINZ="musicbrainz"
 # Globale Variable für Verfügbarkeit

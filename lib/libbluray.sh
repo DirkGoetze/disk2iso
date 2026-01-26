@@ -1,20 +1,27 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - Blu-ray Library
+# =============================================================================
+# Blu-ray Library
+# =============================================================================
 # Filepath: lib/libbluray.sh
 #
 # Beschreibung:
 #   Funktionen für Blu-ray-Ripping und -Konvertierung
 #   - copy_bluray_ddrescue() - Blu-ray mit ddrescue (verschlüsselt, robust)
 #   - copy_bluray_dd() - Blu-ray mit dd (verschlüsselt, langsam)
+#   - Unterstützung für große Datenmengen (bis 50GB)
+#   - Integration mit TMDB Metadata-Abfrage
 #
-# Version: 1.2.0
-# Datum: 06.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: liblogging, libfolders, libcommon (optional: libtmdb)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
-# ============================================================================
+# =============================================================================
 # DEPENDENCY CHECK
-# ============================================================================
+# =============================================================================
 # Globale Variable für Modulname
 readonly MODULE_NAME_BLURAY="bluray"
 # Globale Variable für Verfügbarkeit

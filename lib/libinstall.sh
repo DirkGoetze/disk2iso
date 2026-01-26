@@ -1,18 +1,23 @@
 #!/bin/bash
-################################################################################
-# disk2iso v1.2.0 - Installation & Maintenance Library
+# =============================================================================
+# Installation & Maintenance Library
+# =============================================================================
 # Filepath: lib/libinstall.sh
 #
 # Beschreibung:
 #   Shared Funktionen für Installation, Update, Reparatur, Deinstallation
-#   Wird verwendet von:
-#   - install.sh
-#   - uninstall.sh  
+#   - Wird verwendet von install.sh, uninstall.sh
 #   - Web-Interface (zukünftig: Update-Funktion)
+#   - Service-Installation und Konfiguration
+#   - Datei-Kopieren und Berechtigungen setzen
 #
-# Version: 1.2.0
-# Datum: 07.01.2026
-################################################################################
+# -----------------------------------------------------------------------------
+# Dependencies: Keine (standalone für Installer)
+# -----------------------------------------------------------------------------
+# Author: D.Götze
+# Version: 1.2.1
+# Last Change: 2026-01-26 20:00
+# =============================================================================
 
 # ============================================================================
 # FARBEN FÜR CONSOLE OUTPUT
