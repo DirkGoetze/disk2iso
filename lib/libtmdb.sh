@@ -291,11 +291,30 @@ tmdb_parse_selection() {
         year="0000"
     fi
     
-    # Setze globale Variablen (für DVD/BD Workflow)
-    dvd_title="$title"
-    dvd_year="$year"
+    # Extrahiere zusätzliche Metadaten
+    local overview
+    local tmdb_id
     
-    log_info "TMDB: Metadata ausgewählt: $dvd_title ($dvd_year)"
+    overview=$(echo "$tmdb_json" | jq -r ".[$selected_index].overview // \"\"" 2>/dev/null)
+    tmdb_id=$(echo "$tmdb_json" | jq -r ".[$selected_index].id // \"\"" 2>/dev/null)
+    
+    # Setze Metadaten via metadb_set() API
+    metadb_set_data "title" "$title"
+    metadb_set_data "year" "$year"
+    metadb_set_data "media_type" "$media_type"
+    
+    if [[ -n "$overview" ]] && [[ "$overview" != "null" ]]; then
+        metadb_set_data "overview" "$overview"
+    fi
+    
+    # Setze Provider-Informationen
+    metadb_set_metadata "provider" "tmdb"
+    
+    if [[ -n "$tmdb_id" ]] && [[ "$tmdb_id" != "null" ]]; then
+        metadb_set_metadata "provider_id" "$tmdb_id"
+    fi
+    
+    log_info "TMDB: Metadata ausgewählt: $title ($year)"
     
     # Update disc_label
     tmdb_apply_selection "$title" "$year"
@@ -316,12 +335,13 @@ tmdb_apply_selection() {
     local year="$2"
     
     # Sanitize
-    local safe_title=$(metadata_sanitize_filename "$title")
+    local safe_title=$(metadb_sanitize_filename "$title")
     
-    # Update disc_label
-    disc_label="${safe_title}_${year}"
+    # Update disc_label via metadb API
+    local new_label="${safe_title}_${year}"
+    metadb_set_metadata "disc_label" "$new_label"
     
-    log_info "TMDB: Neues disc_label: $disc_label"
+    log_info "TMDB: Neues disc_label: $new_label"
 }
 
 # ============================================================================

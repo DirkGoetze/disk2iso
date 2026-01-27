@@ -1,0 +1,87 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Fichier de Langue Française pour libmetadb.sh
+# Filepath: lang/libmetadb.fr
+#
+# Description:
+#   Textes de messages pour les fonctions de base de données de métadonnées
+#
+################################################################################
+
+# ============================================================================
+# INITIALISATION
+# ============================================================================
+
+readonly MSG_METADB_INIT_SUCCESS="Base de données de métadonnées initialisée pour le type:"
+readonly MSG_METADB_INIT_ERROR="ERREUR: La base de données de métadonnées n'a pas pu être initialisée"
+readonly MSG_METADB_INIT_MISSING_TYPE="ERREUR: Type de disque manquant pour l'initialisation"
+readonly MSG_METADB_INIT_UNKNOWN_TYPE="AVERTISSEMENT: Type de disque inconnu - seuls les champs de base initialisés:"
+
+# ============================================================================
+# OPÉRATIONS CRUD
+# ============================================================================
+
+readonly MSG_METADB_SET_SUCCESS="Valeur de métadonnées définie:"
+readonly MSG_METADB_SET_ERROR="ERREUR: La valeur de métadonnées n'a pas pu être définie"
+readonly MSG_METADB_SET_MISSING_KEY="ERREUR: Clé manquante pour l'opération set"
+
+readonly MSG_METADB_GET_SUCCESS="Valeur de métadonnées récupérée:"
+readonly MSG_METADB_GET_NOT_FOUND="AVERTISSEMENT: Clé non trouvée:"
+readonly MSG_METADB_GET_MISSING_KEY="ERREUR: Clé manquante pour l'opération get"
+
+readonly MSG_METADB_CLEAR_SUCCESS="Base de données de métadonnées effacée"
+
+# ============================================================================
+# OPÉRATIONS DE PISTE
+# ============================================================================
+
+readonly MSG_METADB_SET_TRACK_SUCCESS="Information de piste définie:"
+readonly MSG_METADB_SET_TRACK_ERROR="ERREUR: L'information de piste n'a pas pu être définie"
+readonly MSG_METADB_SET_TRACK_INVALID_NUMBER="ERREUR: Numéro de piste invalide:"
+
+readonly MSG_METADB_GET_TRACK_SUCCESS="Information de piste récupérée:"
+readonly MSG_METADB_GET_TRACK_NOT_FOUND="AVERTISSEMENT: Information de piste non trouvée:"
+
+# ============================================================================
+# OPÉRATIONS DE GENRE
+# ============================================================================
+
+readonly MSG_METADB_ADD_GENRE_SUCCESS="Genre ajouté:"
+readonly MSG_METADB_ADD_GENRE_ERROR="ERREUR: Le genre n'a pas pu être ajouté"
+
+readonly MSG_METADB_GET_GENRES_SUCCESS="Genres récupérés:"
+readonly MSG_METADB_GET_GENRES_EMPTY="Aucun genre disponible"
+
+# ============================================================================
+# OPÉRATIONS D'EXPORTATION
+# ============================================================================
+
+readonly MSG_METADB_EXPORT_NFO_SUCCESS="Fichier NFO créé:"
+readonly MSG_METADB_EXPORT_NFO_ERROR="ERREUR: Le fichier NFO n'a pas pu être créé"
+readonly MSG_METADB_EXPORT_NFO_MISSING_PATH="ERREUR: Chemin du fichier NFO manquant"
+readonly MSG_METADB_EXPORT_NFO_UNKNOWN_TYPE="ERREUR: Export NFO pour type de disque inconnu:"
+
+readonly MSG_METADB_EXPORT_JSON_SUCCESS="JSON exporté"
+readonly MSG_METADB_EXPORT_JSON_ERROR="ERREUR: Échec de l'exportation JSON"
+
+# ============================================================================
+# VALIDATION
+# ============================================================================
+
+readonly MSG_METADB_VALIDATE_SUCCESS="Validation des métadonnées réussie"
+readonly MSG_METADB_VALIDATE_ERROR="ERREUR: Échec de la validation des métadonnées"
+readonly MSG_METADB_VALIDATE_MISSING_TYPE="ERREUR: disc_type manquant"
+readonly MSG_METADB_VALIDATE_MISSING_LABEL="AVERTISSEMENT: disc_label manquant"
+readonly MSG_METADB_VALIDATE_AUDIO_MISSING="AVERTISSEMENT: CD audio sans artiste/album"
+readonly MSG_METADB_VALIDATE_VIDEO_MISSING="AVERTISSEMENT: Vidéo sans titre"
+
+# ============================================================================
+# FONCTIONS AUXILIAIRES
+# ============================================================================
+
+readonly MSG_METADB_SANITIZE_SUCCESS="Nom de fichier nettoyé:"
+readonly MSG_METADB_DUMP_HEADER="=== Dump des Métadonnées ==="
+
+################################################################################
+# FIN libmetadb.fr
+################################################################################

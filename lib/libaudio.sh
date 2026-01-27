@@ -698,6 +698,17 @@ copy_audio_cd() {
     fi
     
     # ========================================================================
+    # METADATA DATABASE INITIALISIERUNG
+    # ========================================================================
+    # Initialisiere Metadaten-Datenbank für Audio-CD
+    if declare -f metadb_init >/dev/null 2>&1; then
+        metadb_init "audio-cd"
+        log_debug "Metadaten-Datenbank für audio-cd initialisiert"
+    else
+        log_warning "libmetadb.sh nicht geladen - verwende Legacy-Variablen"
+    fi
+    
+    # ========================================================================
     # METADATA BEFORE COPY - Neue Strategie
     # ========================================================================
     # Metadaten VOR dem Rippen abfragen und auf User-Auswahl warten
@@ -991,8 +1002,17 @@ copy_audio_cd() {
     log_copying "$MSG_RIPPING_COMPLETE_CREATE_ISO"
     
     # Erstelle album.nfo für Jellyfin (falls Metadaten verfügbar)
-    if [[ "$skip_metadata" == "false" ]] && [[ -n "$mb_response" ]]; then
-        create_album_nfo "$album_dir"
+    # HINWEIS: Nutzt metadb_export_nfo() aus libmetadb.sh
+    if [[ "$skip_metadata" == "false" ]]; then
+        local nfo_file="${album_dir}/album.nfo"
+        
+        # Validiere ob Metadaten gesetzt sind
+        if metadb_validate 2>/dev/null; then
+            metadb_export_nfo "$nfo_file"
+            log_info "$MSG_NFO_FILE_CREATED"
+        else
+            log_warning "$MSG_INFO_NO_MUSICBRAINZ_NFO_SKIPPED"
+        fi
     fi
     
     # Sichere temp_pathname bevor check_disk_space es braucht

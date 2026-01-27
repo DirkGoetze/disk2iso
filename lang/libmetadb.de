@@ -1,0 +1,87 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Deutsche Sprachdatei für libmetadb.sh
+# Filepath: lang/libmetadb.de
+#
+# Beschreibung:
+#   Meldungstexte für Metadaten-Datenbank Funktionen
+#
+################################################################################
+
+# ============================================================================
+# INITIALISIERUNG
+# ============================================================================
+
+readonly MSG_METADB_INIT_SUCCESS="Metadaten-Datenbank initialisiert für Typ:"
+readonly MSG_METADB_INIT_ERROR="FEHLER: Metadaten-Datenbank konnte nicht initialisiert werden"
+readonly MSG_METADB_INIT_MISSING_TYPE="FEHLER: Disc-Typ fehlt für Initialisierung"
+readonly MSG_METADB_INIT_UNKNOWN_TYPE="WARNUNG: Unbekannter Disc-Typ - nur Basis-Felder initialisiert:"
+
+# ============================================================================
+# CRUD OPERATIONEN
+# ============================================================================
+
+readonly MSG_METADB_SET_SUCCESS="Metadaten-Wert gesetzt:"
+readonly MSG_METADB_SET_ERROR="FEHLER: Metadaten-Wert konnte nicht gesetzt werden"
+readonly MSG_METADB_SET_MISSING_KEY="FEHLER: Schlüssel fehlt für set-Operation"
+
+readonly MSG_METADB_GET_SUCCESS="Metadaten-Wert abgerufen:"
+readonly MSG_METADB_GET_NOT_FOUND="WARNUNG: Schlüssel nicht gefunden:"
+readonly MSG_METADB_GET_MISSING_KEY="FEHLER: Schlüssel fehlt für get-Operation"
+
+readonly MSG_METADB_CLEAR_SUCCESS="Metadaten-Datenbank geleert"
+
+# ============================================================================
+# TRACK OPERATIONEN
+# ============================================================================
+
+readonly MSG_METADB_SET_TRACK_SUCCESS="Track-Information gesetzt:"
+readonly MSG_METADB_SET_TRACK_ERROR="FEHLER: Track-Information konnte nicht gesetzt werden"
+readonly MSG_METADB_SET_TRACK_INVALID_NUMBER="FEHLER: Ungültige Track-Nummer:"
+
+readonly MSG_METADB_GET_TRACK_SUCCESS="Track-Information abgerufen:"
+readonly MSG_METADB_GET_TRACK_NOT_FOUND="WARNUNG: Track-Information nicht gefunden:"
+
+# ============================================================================
+# GENRE OPERATIONEN
+# ============================================================================
+
+readonly MSG_METADB_ADD_GENRE_SUCCESS="Genre hinzugefügt:"
+readonly MSG_METADB_ADD_GENRE_ERROR="FEHLER: Genre konnte nicht hinzugefügt werden"
+
+readonly MSG_METADB_GET_GENRES_SUCCESS="Genres abgerufen:"
+readonly MSG_METADB_GET_GENRES_EMPTY="Keine Genres vorhanden"
+
+# ============================================================================
+# EXPORT OPERATIONEN
+# ============================================================================
+
+readonly MSG_METADB_EXPORT_NFO_SUCCESS="NFO-Datei erstellt:"
+readonly MSG_METADB_EXPORT_NFO_ERROR="FEHLER: NFO-Datei konnte nicht erstellt werden"
+readonly MSG_METADB_EXPORT_NFO_MISSING_PATH="FEHLER: NFO-Dateipfad fehlt"
+readonly MSG_METADB_EXPORT_NFO_UNKNOWN_TYPE="FEHLER: NFO-Export für unbekannten Disc-Typ:"
+
+readonly MSG_METADB_EXPORT_JSON_SUCCESS="JSON exportiert"
+readonly MSG_METADB_EXPORT_JSON_ERROR="FEHLER: JSON-Export fehlgeschlagen"
+
+# ============================================================================
+# VALIDIERUNG
+# ============================================================================
+
+readonly MSG_METADB_VALIDATE_SUCCESS="Metadaten-Validierung erfolgreich"
+readonly MSG_METADB_VALIDATE_ERROR="FEHLER: Metadaten-Validierung fehlgeschlagen"
+readonly MSG_METADB_VALIDATE_MISSING_TYPE="FEHLER: disc_type fehlt"
+readonly MSG_METADB_VALIDATE_MISSING_LABEL="WARNUNG: disc_label fehlt"
+readonly MSG_METADB_VALIDATE_AUDIO_MISSING="WARNUNG: Audio-CD ohne artist/album"
+readonly MSG_METADB_VALIDATE_VIDEO_MISSING="WARNUNG: Video ohne title"
+
+# ============================================================================
+# HELPER FUNKTIONEN
+# ============================================================================
+
+readonly MSG_METADB_SANITIZE_SUCCESS="Dateiname bereinigt:"
+readonly MSG_METADB_DUMP_HEADER="=== Metadaten-Dump ==="
+
+################################################################################
+# ENDE libmetadb.de
+################################################################################

@@ -25,6 +25,18 @@
 readonly MODULE_NAME_METADATA="metadata"     # Globale Variable für Modulname
 SUPPORT_METADATA=false                                # Globales Support Flag
 
+# Lade Metadata-Datenbank (libmetadb.sh)
+# shellcheck source=lib/libmetadb.sh
+if [[ -f "${SCRIPT_DIR}/lib/libmetadb.sh" ]]; then
+    source "${SCRIPT_DIR}/lib/libmetadb.sh" || {
+        log_error "Metadata: libmetadb.sh konnte nicht geladen werden"
+        return 1
+    }
+else
+    log_error "Metadata: libmetadb.sh nicht gefunden"
+    return 1
+fi
+
 # ===========================================================================
 # check_dependencies_metadata
 # ---------------------------------------------------------------------------
@@ -240,7 +252,7 @@ metadata_query_before_copy() {
 #            $2 = disc_id
 #            $3 = provider (optional, auto-detect wenn leer)
 # Rückgabe: 0 = Auswahl getroffen, 1 = Timeout/Skip
-# Setzt globale Variablen je nach Provider (z.B. cd_artist, dvd_title)
+# Setzt Metadaten via metadb_set() statt globaler Variablen
 metadata_wait_for_selection() {
     local disc_type="$1"
     local disc_id="$2"
@@ -306,9 +318,16 @@ metadata_wait_for_selection() {
                 return 1
             fi
             
-            # Parse Selection (setzt globale Variablen)
+            # Parse Selection (setzt Metadaten via metadb_set())
+            # HINWEIS: Provider-Parse-Funktionen müssen metadb_set() verwenden
             if "$parse_func" "$selected_index" "$query_file" "$select_file"; then
                 log_info "Metadata: Auswahl erfolgreich geparst"
+                
+                # Validiere Metadaten
+                if metadb_validate; then
+                    log_info "Metadata: Metadaten validiert"
+                fi
+                
                 rm -f "$query_file" "$select_file" 2>/dev/null
                 return 0
             else

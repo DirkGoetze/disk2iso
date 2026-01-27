@@ -247,7 +247,7 @@ musicbrainz_query() {
 #            $2 = query_file (.mbquery Datei)
 #            $3 = select_file (.mbselect Datei)
 # Rückgabe: 0 = Parse erfolgreich, setzt globale Variablen
-# Setzt: cd_artist, cd_album, cd_year
+# Setzt: Metadaten via metadb_set_data() (artist, album, year, provider, provider_id)
 musicbrainz_parse_selection() {
     local selected_index="$1"
     local query_file="$2"
@@ -284,12 +284,22 @@ musicbrainz_parse_selection() {
         year="0000"
     fi
     
-    # Setze globale Variablen (für Audio-CD Workflow)
-    cd_artist="$artist"
-    cd_album="$album"
-    cd_year="$year"
+    # Setze Metadaten via metadb_set() API
+    metadb_set_data "artist" "$artist"
+    metadb_set_data "album" "$album"
+    metadb_set_data "year" "$year"
     
-    log_info "MusicBrainz: Metadata ausgewählt: $cd_artist - $cd_album ($cd_year)"
+    # Setze Provider-Informationen
+    metadb_set_metadata "provider" "musicbrainz"
+    
+    # Extrahiere Release-ID falls vorhanden
+    local release_id
+    release_id=$(echo "$mb_json" | jq -r ".[$selected_index].id // \"\"" 2>/dev/null)
+    if [[ -n "$release_id" ]] && [[ "$release_id" != "null" ]]; then
+        metadb_set_metadata "provider_id" "$release_id"
+    fi
+    
+    log_info "MusicBrainz: Metadata ausgewählt: $artist - $album ($year)"
     
     # Update disc_label
     musicbrainz_apply_selection "$artist" "$album" "$year"
@@ -312,13 +322,14 @@ musicbrainz_apply_selection() {
     local year="$3"
     
     # Sanitize
-    local safe_artist=$(metadata_sanitize_filename "$artist")
-    local safe_album=$(metadata_sanitize_filename "$album")
+    local safe_artist=$(metadb_sanitize_filename "$artist")
+    local safe_album=$(metadb_sanitize_filename "$album")
     
-    # Update disc_label
-    disc_label="${safe_artist}_${safe_album}_${year}"
+    # Update disc_label via metadb API
+    local new_label="${safe_artist}_${safe_album}_${year}"
+    metadb_set_metadata "disc_label" "$new_label"
     
-    log_info "MusicBrainz: Neues disc_label: $disc_label"
+    log_info "MusicBrainz: Neues disc_label: $new_label"
 }
 
 # ============================================================================
