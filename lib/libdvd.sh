@@ -37,12 +37,14 @@ SUPPORT_DVD=false                                     # Globales Support Flag
 # Extras...: Setzt SUPPORT_DVD=true bei erfolgreicher Prüfung
 # ===========================================================================
 check_dependencies_dvd() {
+    log_debug "$MSG_DEBUG_DVD_CHECK_START"
 
     #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_DVD" || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_DVD=true
+    log_debug "$MSG_DEBUG_DVD_CHECK_COMPLETE"
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_VIDEO_SUPPORT_AVAILABLE"

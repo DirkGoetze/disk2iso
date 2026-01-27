@@ -15,7 +15,9 @@
 # Solo mensajes específicos del módulo aquí
 
 readonly MSG_MQTT_SUPPORT_AVAILABLE="Soporte MQTT disponible"
-readonly MSG_MQTT_NOT_AVAILABLE="Soporte MQTT no disponible"
+# Mensajes de depuración
+readonly MSG_DEBUG_MQTT_CHECK_START="Comprobando dependencias del módulo MQTT..."
+readonly MSG_DEBUG_MQTT_CHECK_COMPLETE="Módulo MQTT inicializado correctamente"readonly MSG_MQTT_NOT_AVAILABLE="Soporte MQTT no disponible"
 
 # ============================================================================
 # INICIALIZACIÓN

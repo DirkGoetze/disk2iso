@@ -12,3 +12,6 @@
 # VÉRIFICATION DES DÉPENDANCES
 # ============================================================================
 readonly MSG_METADATA_SUPPORT_AVAILABLE="Support des Métadonnées disponible"
+# Messages de débogage
+readonly MSG_DEBUG_METADATA_CHECK_START="Vérification des dépendances du framework de métadonnées..."
+readonly MSG_DEBUG_METADATA_CHECK_COMPLETE="Framework de métadonnées initialisé avec succès"

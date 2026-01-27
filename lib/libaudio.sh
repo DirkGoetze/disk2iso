@@ -37,12 +37,14 @@ SUPPORT_AUDIO=false                                   # Globales Support Flag
 # Extras...: Setzt SUPPORT_AUDIO=true/false
 # ===========================================================================
 check_dependencies_audio() {
+    log_debug "$MSG_DEBUG_AUDIO_CHECK_START"
 
     #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_AUDIO" || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_AUDIO=true
+    log_debug "$MSG_DEBUG_AUDIO_CHECK_COMPLETE"
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_AUDIO_SUPPORT_AVAILABLE"

@@ -12,3 +12,6 @@
 # DEPENDENCY CHECK
 # ============================================================================
 readonly MSG_METADATA_SUPPORT_AVAILABLE="Metadata Support available"
+# Debug messages
+readonly MSG_DEBUG_METADATA_CHECK_START="Checking Metadata framework dependencies..."
+readonly MSG_DEBUG_METADATA_CHECK_COMPLETE="Metadata framework successfully initialized"

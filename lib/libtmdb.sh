@@ -37,19 +37,24 @@ SUPPORT_TMDB=false                                    # Globales Support Flag
 # Extras...: Setzt SUPPORT_TMDB=true bei erfolgreicher Prüfung
 # ===========================================================================
 check_dependencies_tmdb() {
+    log_debug "$MSG_DEBUG_TMDB_CHECK_START"
 
     #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_TMDB" || return 1
 
     #-- Lade API-Konfiguration aus INI ---------------------------------------
     load_api_config_tmdb || return 1
+    log_debug "$MSG_DEBUG_TMDB_API_LOADED: $TMDB_API_BASE_URL"
 
     #-- Initialisiere Verzeichnisstruktur -----------------------------------
-    get_cachepath_tmdb > /dev/null
-    get_coverpath_tmdb > /dev/null
+    local cache_path=$(get_cachepath_tmdb)
+    local cover_path=$(get_coverpath_tmdb)
+    log_debug "$MSG_DEBUG_TMDB_CACHE_PATH: $cache_path"
+    log_debug "$MSG_DEBUG_TMDB_COVER_PATH: $cover_path"
 
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_TMDB=true
+    log_debug "$MSG_DEBUG_TMDB_CHECK_COMPLETE"
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_TMDB_SUPPORT_AVAILABLE"

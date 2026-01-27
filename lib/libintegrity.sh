@@ -78,6 +78,9 @@ check_module_dependencies() {
     local module_name="$1"
     local manifest_file="${INSTALL_DIR}/conf/lib${module_name}.ini"
     
+    # Debug: Start der Abhängigkeitsprüfung
+    log_debug "check_module_dependencies: Start für Modul '${module_name}'"
+    
     # Sprachdatei laden (vor Manifest-Check!)
     log_message "Prüfe Abhängigkeiten für Modul: ${module_name}"
     load_module_language "$module_name"
@@ -251,6 +254,10 @@ check_module_dependencies() {
     if [[ ${#folder_creation_success[@]} -gt 0 ]]; then
         log_info "${module_name}: Modul-Ordner verfügbar (${#folder_creation_success[@]} Ordner geprüft/erstellt)"
     fi
+    
+    # Debug: Erfolgreiche Prüfung
+    log_debug "check_module_dependencies: Abgeschlossen für Modul '${module_name}' (alle Abhängigkeiten erfüllt)"
+    
     log_info "${module_name}: Alle Modul-Abhängigkeiten erfüllt"
     return 0
 }

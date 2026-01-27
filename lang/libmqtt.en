@@ -15,6 +15,10 @@
 # Only module-specific messages here
 
 readonly MSG_MQTT_SUPPORT_AVAILABLE="MQTT support available"
+
+# Debug messages
+readonly MSG_DEBUG_MQTT_CHECK_START="Checking MQTT module dependencies..."
+readonly MSG_DEBUG_MQTT_CHECK_COMPLETE="MQTT module successfully initialized"
 readonly MSG_MQTT_NOT_AVAILABLE="MQTT support not available"
 
 # ============================================================================

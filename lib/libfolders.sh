@@ -75,21 +75,26 @@ ensure_subfolder() {
     
     # Fast-Path: Ordner existiert bereits
     if [[ -d "$full_path" ]]; then
+        log_debug "ensure_subfolder: Fast-Path für '${subfolder}' (bereits vorhanden)"
         echo "$full_path"
         return 0
     fi
     
     # Slow-Path: Stelle sicher dass OUTPUT_DIR existiert
+    log_debug "ensure_subfolder: Slow-Path für '${subfolder}' (Ordner wird erstellt)"
     get_out_folder || return 1
     
     # Erstelle Ordner
     if mkdir -p "$full_path" 2>/dev/null; then
         # Setze Berechtigungen (777 für .log/.temp, sonst 755)
+        local perms="755"
         if [[ "$subfolder" =~ ^\.(log|temp) ]] || [[ "$subfolder" =~ /\.(log|temp)($|/) ]]; then
             chmod 777 "$full_path" 2>/dev/null
+            perms="777"
         else
             chmod 755 "$full_path" 2>/dev/null
         fi
+        log_debug "ensure_subfolder: Ordner erstellt mit Permissions ${perms}"
         log_info "$MSG_SUBFOLDER_CREATED $full_path" >&2
     else
         log_error "$MSG_ERROR_CREATE_SUBFOLDER $full_path" >&2

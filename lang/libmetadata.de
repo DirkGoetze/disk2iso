@@ -12,3 +12,7 @@
 # ABHÄNGIGKEITENPRÜFUNG
 # ============================================================================
 readonly MSG_METADATA_SUPPORT_AVAILABLE="Metadaten Support verfügbar"
+
+# Debug-Meldungen
+readonly MSG_DEBUG_METADATA_CHECK_START="Prüfe Metadata Framework Abhängigkeiten..."
+readonly MSG_DEBUG_METADATA_CHECK_COMPLETE="Metadata Framework erfolgreich initialisiert"

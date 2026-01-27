@@ -16,6 +16,10 @@
 
 readonly MSG_VIDEO_SUPPORT_AVAILABLE="Soporte de Video-DVD/BD disponible"
 
+# Mensajes de depuración
+readonly MSG_DEBUG_DVD_CHECK_START="Comprobando dependencias del módulo DVD..."
+readonly MSG_DEBUG_DVD_CHECK_COMPLETE="Módulo DVD inicializado correctamente"
+
 # ============================================================================
 # MÉTODO DVDBACKUP
 # ============================================================================

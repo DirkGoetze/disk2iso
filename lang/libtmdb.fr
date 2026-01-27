@@ -16,6 +16,13 @@
 
 readonly MSG_TMDB_SUPPORT_AVAILABLE="Fournisseur TMDB disponible"
 
+# Messages de débogage
+readonly MSG_DEBUG_TMDB_CHECK_START="Vérification des dépendances du module TMDB..."
+readonly MSG_DEBUG_TMDB_API_LOADED="Configuration de l'API TMDB chargée"
+readonly MSG_DEBUG_TMDB_CACHE_PATH="Chemin de cache TMDB"
+readonly MSG_DEBUG_TMDB_COVER_PATH="Chemin des affiches TMDB"
+readonly MSG_DEBUG_TMDB_CHECK_COMPLETE="Module TMDB initialisé avec succès"
+
 # ============================================================================
 # FIN lib-tmdb.fr
 # ============================================================================

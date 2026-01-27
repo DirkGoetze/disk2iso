@@ -37,19 +37,24 @@ SUPPORT_MUSICBRAINZ=false                             # Globales Support Flag
 # Extras...: Setzt SUPPORT_MUSICBRAINZ=true bei erfolgreicher Prüfung
 # ===========================================================================
 check_dependencies_musicbrainz() {
+    log_debug "$MSG_DEBUG_MUSICBRAINZ_CHECK_START"
 
     #-- Alle Modul Abhängigkeiten prüfen ------------------------------------
     check_module_dependencies "$MODULE_NAME_MUSICBRAINZ" || return 1
 
     #-- Lade API-Konfiguration aus INI --------------------------------------
     load_api_config_musicbrainz || return 1
+    log_debug "$MSG_DEBUG_MUSICBRAINZ_API_LOADED: $MUSICBRAINZ_API_BASE_URL"
 
     #-- Initialisiere Verzeichnisstruktur -----------------------------------
-    get_cachepath_musicbrainz > /dev/null
-    get_coverpath_musicbrainz > /dev/null
+    local cache_path=$(get_cachepath_musicbrainz)
+    local cover_path=$(get_coverpath_musicbrainz)
+    log_debug "$MSG_DEBUG_MUSICBRAINZ_CACHE_PATH: $cache_path"
+    log_debug "$MSG_DEBUG_MUSICBRAINZ_COVER_PATH: $cover_path"
 
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_MUSICBRAINZ=true
+    log_debug "$MSG_DEBUG_MUSICBRAINZ_CHECK_COMPLETE"
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_MUSICBRAINZ_SUPPORT_AVAILABLE"

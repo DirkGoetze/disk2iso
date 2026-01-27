@@ -16,6 +16,13 @@
 
 readonly MSG_MUSICBRAINZ_SUPPORT_AVAILABLE="Fournisseur MusicBrainz disponible"
 
+# Messages de débogage
+readonly MSG_DEBUG_MUSICBRAINZ_CHECK_START="Vérification des dépendances du module MusicBrainz..."
+readonly MSG_DEBUG_MUSICBRAINZ_API_LOADED="Configuration de l'API MusicBrainz chargée"
+readonly MSG_DEBUG_MUSICBRAINZ_CACHE_PATH="Chemin de cache MusicBrainz"
+readonly MSG_DEBUG_MUSICBRAINZ_COVER_PATH="Chemin des couvertures MusicBrainz"
+readonly MSG_DEBUG_MUSICBRAINZ_CHECK_COMPLETE="Module MusicBrainz initialisé avec succès"
+
 # ============================================================================
 # FIN lib-musicbrainz.fr
 # ============================================================================

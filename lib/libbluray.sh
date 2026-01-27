@@ -37,12 +37,14 @@ SUPPORT_BLURAY=false                                  # Globales Support Flag
 # Extras...: Setzt SUPPORT_BLURAY=true bei erfolgreicher Prüfung
 # ===========================================================================
 check_dependencies_bluray() {
+    log_debug "$MSG_DEBUG_BLURAY_CHECK_START"
 
     #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_BLURAY" || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_BLURAY=true
+    log_debug "$MSG_DEBUG_BLURAY_CHECK_COMPLETE"
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_BLURAY_SUPPORT_AVAILABLE"

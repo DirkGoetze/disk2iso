@@ -37,12 +37,14 @@ SUPPORT_MQTT=false                                    # Globales Support Flag
 # Extras...: Setzt SUPPORT_MQTT=true bei erfolgreicher Prüfung
 # ===========================================================================
 check_dependencies_mqtt() {
+    log_debug "$MSG_DEBUG_MQTT_CHECK_START"
 
     #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_MQTT" || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_MQTT=true
+    log_debug "$MSG_DEBUG_MQTT_CHECK_COMPLETE"
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_MQTT_SUPPORT_AVAILABLE"

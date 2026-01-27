@@ -17,7 +17,9 @@
 readonly MSG_CDTEXT_FALLBACK_AVAILABLE="Alternative CD-TEXT disponible"
 readonly MSG_CDTEXT_FALLBACK_INSTALL_HINT="Remarque: Pour alternative CD-TEXT installer: icedax ou libcdio-utils (cd-info)"
 readonly MSG_AUDIO_SUPPORT_AVAILABLE="Support Audio-CD disponible"
-
+# Messages de débogage
+readonly MSG_DEBUG_AUDIO_CHECK_START="Vérification des dépendances du module Audio-CD..."
+readonly MSG_DEBUG_AUDIO_CHECK_COMPLETE="Module Audio-CD initialisé avec succès"
 # ============================================================================
 # MÉTADONNÉES
 # ============================================================================

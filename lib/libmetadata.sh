@@ -37,12 +37,14 @@ SUPPORT_METADATA=false                                # Globales Support Flag
 # Extras...: Setzt SUPPORT_METADATA=true/false
 # ===========================================================================
 check_dependencies_metadata() {
+    log_debug "$MSG_DEBUG_METADATA_CHECK_START"
 
     #-- Alle Modul Abhängikeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_METADATA" || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_METADATA=true
+    log_debug "$MSG_DEBUG_METADATA_CHECK_COMPLETE"
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_METADATA_SUPPORT_AVAILABLE"

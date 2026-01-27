@@ -15,7 +15,9 @@
 # Seuls messages spécifiques au module ici
 
 readonly MSG_VIDEO_SUPPORT_AVAILABLE="Support Video-DVD/BD disponible"
-
+# Messages de débogage
+readonly MSG_DEBUG_DVD_CHECK_START="Vérification des dépendances du module DVD..."
+readonly MSG_DEBUG_DVD_CHECK_COMPLETE="Module DVD initialisé avec succès"
 # ============================================================================
 # MÉTHODE DVDBACKUP
 # ============================================================================

@@ -15,7 +15,12 @@
 # Only module-specific messages here
 
 readonly MSG_TMDB_SUPPORT_AVAILABLE="TMDB Provider available"
-
+# Debug messages
+readonly MSG_DEBUG_TMDB_CHECK_START="Checking TMDB module dependencies..."
+readonly MSG_DEBUG_TMDB_API_LOADED="TMDB API config loaded"
+readonly MSG_DEBUG_TMDB_CACHE_PATH="TMDB cache path"
+readonly MSG_DEBUG_TMDB_COVER_PATH="TMDB poster path"
+readonly MSG_DEBUG_TMDB_CHECK_COMPLETE="TMDB module successfully initialized"
 # ============================================================================
 # END lib-tmdb.en
 # ============================================================================

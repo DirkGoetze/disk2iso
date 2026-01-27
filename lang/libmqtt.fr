@@ -17,6 +17,10 @@
 readonly MSG_MQTT_SUPPORT_AVAILABLE="Support MQTT disponible"
 readonly MSG_MQTT_NOT_AVAILABLE="Support MQTT non disponible"
 
+# Messages de débogage
+readonly MSG_DEBUG_MQTT_CHECK_START="Vérification des dépendances du module MQTT..."
+readonly MSG_DEBUG_MQTT_CHECK_COMPLETE="Module MQTT initialisé avec succès"
+
 # ============================================================================
 # INITIALISATION
 # ============================================================================

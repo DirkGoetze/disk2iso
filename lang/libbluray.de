@@ -16,6 +16,10 @@
 
 readonly MSG_BLURAY_SUPPORT_AVAILABLE="Blu-ray Support verfügbar"
 
+# Debug-Meldungen
+readonly MSG_DEBUG_BLURAY_CHECK_START="Prüfe Blu-ray Modul-Abhängigkeiten..."
+readonly MSG_DEBUG_BLURAY_CHECK_COMPLETE="Blu-ray Modul erfolgreich initialisiert"
+
 # ============================================================================
 # BLU-RAY KOPIEREN
 # ============================================================================
