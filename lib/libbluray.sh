@@ -23,7 +23,7 @@
 # DEPENDENCY CHECK
 # ===========================================================================
 readonly MODULE_NAME_BLURAY="bluray"         # Globale Variable für Modulname
-BLURAY_SUPPORT=false                     # Globale Variable für Verfügbarkeit
+SUPPORT_BLURAY=false                                  # Globales Support Flag
 
 # ===========================================================================
 # check_dependencies_bluray
@@ -34,7 +34,7 @@ BLURAY_SUPPORT=false                     # Globale Variable für Verfügbarkeit
 # Parameter: keine
 # Rückgabe.: 0 = Verfügbar (Module nutzbar)
 # .........  1 = Nicht verfügbar (Modul deaktiviert)
-# Extras...: Setzt BLURAY_SUPPORT=true bei erfolgreicher Prüfung
+# Extras...: Setzt SUPPORT_BLURAY=true bei erfolgreicher Prüfung
 # ===========================================================================
 check_dependencies_bluray() {
 
@@ -42,12 +42,31 @@ check_dependencies_bluray() {
     check_module_dependencies "$MODULE_NAME_BLURAY" || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
-    BLURAY_SUPPORT=true
+    SUPPORT_BLURAY=true
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_BLURAY_SUPPORT_AVAILABLE"
     return 0
 }
+
+# ============================================================================
+# PATH GETTER
+# ============================================================================
+
+# ===========================================================================
+# get_path_bluray
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Ausgabepfad des Modul für die Verwendung in anderen
+# .........  abhängigen Modulen
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum Modul Verzeichnis
+# Hinweis..: Ordner wird bereits in check_module_dependencies() erstellt
+# ===========================================================================
+get_path_bluray() {
+    echo "${OUTPUT_DIR}/${MODULE_NAME_BLURAY}"
+}
+
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 
 # ============================================================================
 # BLURAY COPY - DDRESCUE (Methode 1 - Verschlüsselt, Robust)
@@ -185,7 +204,7 @@ copy_bluray_ddrescue() {
                 fi
                 
                 # MQTT: Fortschritt senden (optional)
-                if [[ "$MQTT_SUPPORT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
+                if [[ "$SUPPORT_MQTT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
                     mqtt_publish_progress "$percent" "$copied_mb" "$total_mb" "$eta"
                 fi
             else

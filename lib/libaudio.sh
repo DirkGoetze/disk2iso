@@ -23,7 +23,7 @@
 # DEPENDENCY CHECK
 # ===========================================================================
 readonly MODULE_NAME_AUDIO="audio"           # Globale Variable für Modulname
-AUDIO_CD_SUPPORT=false                   # Globale Variable für Verfügbarkeit
+SUPPORT_AUDIO=false                                   # Globales Support Flag
 
 # ===========================================================================
 # check_dependencies_audio
@@ -34,7 +34,7 @@ AUDIO_CD_SUPPORT=false                   # Globale Variable für Verfügbarkeit
 # Parameter: keine
 # Rückgabe.: 0 = Verfügbar (Module nutzbar)
 # .........  1 = Nicht verfügbar (Modul deaktiviert)
-# Extras...: Setzt AUDIO_CD_SUPPORT=true/false
+# Extras...: Setzt SUPPORT_AUDIO=true/false
 # ===========================================================================
 check_dependencies_audio() {
 
@@ -42,12 +42,31 @@ check_dependencies_audio() {
     check_module_dependencies "$MODULE_NAME_AUDIO" || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
-    AUDIO_CD_SUPPORT=true
+    SUPPORT_AUDIO=true
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_AUDIO_SUPPORT_AVAILABLE"
     return 0
 }
+
+# ============================================================================
+# PATH GETTER
+# ============================================================================
+
+# ===========================================================================
+# get_path_audio
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Ausgabepfad des Modul für die Verwendung in anderen
+# .........  abhängigen Modulen
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum Modul Verzeichnis
+# Hinweis: Ordner wird bereits in check_module_dependencies() erstellt
+# ===========================================================================
+get_path_audio() {
+    echo "${OUTPUT_DIR}/${MODULE_NAME_AUDIO}"
+}
+
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 
 # ============================================================================
 # CD-TEXT METADATA FALLBACK
@@ -820,7 +839,7 @@ copy_audio_cd() {
     fi
     
     # MQTT: Sende Update mit DiskID
-    if [[ "$MQTT_SUPPORT" == "true" ]] && declare -f mqtt_publish_state >/dev/null 2>&1; then
+    if [[ "$SUPPORT_MQTT" == "true" ]] && declare -f mqtt_publish_state >/dev/null 2>&1; then
         mqtt_publish_state "copying" "$disc_label" "audio-cd"
     fi
     
@@ -951,7 +970,7 @@ copy_audio_cd() {
         fi
         
         # MQTT: Fortschritt senden
-        if [[ "$MQTT_SUPPORT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
+        if [[ "$SUPPORT_MQTT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
             local remaining_tracks=$((total_tracks - processed_tracks))
             local eta_minutes=$((remaining_tracks * 4))
             local eta=$(printf "%02d:%02d:00" $((eta_minutes / 60)) $((eta_minutes % 60)))

@@ -221,6 +221,7 @@ get_all_config_values() {
 readonly DATA_DIR="data"
 readonly TEMP_DIR=".temp"
 readonly MOUNTPOINTS_DIR=".temp/mountpoints"
+readonly FAILED_DISCS_FILE=".failed_discs"    # Zentrale Fehler-Tracking Datei
 
 # ============================================================================
 # PATH GETTER
@@ -231,6 +232,88 @@ readonly MOUNTPOINTS_DIR=".temp/mountpoints"
 # Nutzt ensure_subfolder aus libfolders.sh für konsistente Ordner-Verwaltung
 get_path_data() {
     ensure_subfolder "$DATA_DIR"
+}
+
+# ============================================================================
+# FEHLER-TRACKING SYSTEM (für alle Disc-Typen)
+# ============================================================================
+
+# Funktion: Ermittle eindeutigen Identifier für Disc
+# Rückgabe: String mit disc_label und disc_type (z.B. "album_name:audio-cd")
+# Nutzt globale Variablen: disc_label, disc_type
+get_disc_identifier() {
+    echo "${disc_label}:${disc_type}"
+}
+
+# Funktion: Prüfe ob Disc bereits fehlgeschlagen ist
+# Parameter: $1 = Disc-Identifier (optional, nutzt get_disc_identifier() falls leer)
+# Rückgabe: Anzahl der bisherigen Fehlversuche (0-N)
+get_disc_failure_count() {
+    local identifier="${1:-$(get_disc_identifier)}"
+    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
+    
+    if [[ ! -f "$failed_file" ]]; then
+        echo 0
+        return
+    fi
+    
+    local count=$(grep -c "^${identifier}|" "$failed_file" 2>/dev/null || true)
+    if [[ -z "$count" ]] || [[ "$count" == "0" ]]; then
+        echo 0
+    else
+        echo "$count"
+    fi
+}
+
+# Funktion: Registriere Disc-Fehlschlag
+# Parameter: $1 = Fehlgeschlagene Methode (z.B. "dvdbackup", "ddrescue", "cdparanoia")
+#            $2 = Disc-Identifier (optional, nutzt get_disc_identifier() falls leer)
+# Format in Datei: identifier|timestamp|method|disc_type
+register_disc_failure() {
+    local method="$1"
+    local identifier="${2:-$(get_disc_identifier)}"
+    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # Format: identifier|timestamp|method|disc_type
+    echo "${identifier}|${timestamp}|${method}|${disc_type}" >> "$failed_file"
+    
+    log_warning "Disc-Fehler registriert: $identifier ($method)"
+}
+
+# Funktion: Entferne Disc aus Fehler-Liste (nach erfolgreichem Kopieren)
+# Parameter: $1 = Disc-Identifier (optional, nutzt get_disc_identifier() falls leer)
+clear_disc_failures() {
+    local identifier="${1:-$(get_disc_identifier)}"
+    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
+    
+    if [[ -f "$failed_file" ]]; then
+        sed -i "/^${identifier}|/d" "$failed_file"
+        log_info "Disc-Fehler-Historie gelöscht: $identifier"
+    fi
+}
+
+# Funktion: Hole letzte fehlgeschlagene Methode für Disc
+# Parameter: $1 = Disc-Identifier (optional, nutzt get_disc_identifier() falls leer)
+# Rückgabe: Name der Methode oder leer
+get_last_failed_method() {
+    local identifier="${1:-$(get_disc_identifier)}"
+    local failed_file="${OUTPUT_DIR}/${FAILED_DISCS_FILE}"
+    
+    if [[ ! -f "$failed_file" ]]; then
+        return 1
+    fi
+    
+    # Hole letzte Zeile für diesen Identifier
+    local last_entry=$(grep "^${identifier}|" "$failed_file" 2>/dev/null | tail -1)
+    
+    if [[ -n "$last_entry" ]]; then
+        # Extrahiere Methode (3. Feld)
+        echo "$last_entry" | cut -d'|' -f3
+        return 0
+    fi
+    
+    return 1
 }
 
 # ============================================================================
@@ -283,7 +366,7 @@ calculate_and_log_progress() {
         fi
         
         # MQTT: Fortschritt senden (optional)
-        if [[ "$MQTT_SUPPORT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
+        if [[ "$SUPPORT_MQTT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
             mqtt_publish_progress "$percent" "$current_mb" "$total_mb" "$eta"
         fi
         

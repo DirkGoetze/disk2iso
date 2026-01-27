@@ -160,44 +160,44 @@ log_info "$MSG_CORE_MODULES_LOADED"
 # Audio-CD Support (optional)
 if [[ -f "${SCRIPT_DIR}/lib/libaudio.sh" ]]; then
     source "${SCRIPT_DIR}/lib/libaudio.sh"
-    check_dependencies_audio  # Setzt AUDIO_CD_SUPPORT=true bei Erfolg
+    check_dependencies_audio  # Setzt SUPPORT_AUDIO=true bei Erfolg
 fi
 
 # Video-DVD Support (optional)
 if [[ -f "${SCRIPT_DIR}/lib/libdvd.sh" ]]; then
     source "${SCRIPT_DIR}/lib/libdvd.sh"
-    check_dependencies_dvd  # Setzt VIDEO_DVD_SUPPORT=true bei Erfolg
+    check_dependencies_dvd  # Setzt SUPPORT_DVD=true bei Erfolg
 fi
 
 # Video-Bluray Support (optional)
 if [[ -f "${SCRIPT_DIR}/lib/libbluray.sh" ]]; then
     source "${SCRIPT_DIR}/lib/libbluray.sh"
-    check_dependencies_bluray  # Setzt BLURAY_SUPPORT=true bei Erfolg
+    check_dependencies_bluray  # Setzt SUPPORT_BLURAY=true bei Erfolg
 fi
 
 # Metadata Framework nur laden wenn mindestens ein Disc-Type unterstützt wird
-if [[ "$AUDIO_CD_SUPPORT" == "true" ]] || 
-   [[ "$VIDEO_DVD_SUPPORT" == "true" ]] || 
-   [[ "$BLURAY_SUPPORT" == "true" ]]; then
+if [[ "$SUPPORT_AUDIO" == "true" ]] || 
+   [[ "$SUPPORT_DVD" == "true" ]] || 
+   [[ "$SUPPORT_BLURAY" == "true" ]]; then
     
     if [[ -f "${SCRIPT_DIR}/lib/libmetadata.sh" ]]; then
         source "${SCRIPT_DIR}/lib/libmetadata.sh"
-        check_dependencies_metadata  # Setzt METADATA_SUPPORT=true bei Erfolg
+        check_dependencies_metadata  # Setzt SUPPORT_METADATA=true bei Erfolg
         
         # Lade Provider nur wenn Framework verfügbar
-        if [[ "$METADATA_SUPPORT" == "true" ]]; then
+        if [[ "$SUPPORT_METADATA" == "true" ]]; then
             # MusicBrainz Provider nur wenn Audio-CD Support vorhanden
-            if [[ "$AUDIO_CD_SUPPORT" == "true" ]] && 
+            if [[ "$SUPPORT_AUDIO" == "true" ]] && 
                [[ -f "${SCRIPT_DIR}/lib/libmusicbrainz.sh" ]]; then
                 source "${SCRIPT_DIR}/lib/libmusicbrainz.sh"
-                check_dependencies_musicbrainz  # Setzt MUSICBRAINZ_SUPPORT=true bei Erfolg
+                check_dependencies_musicbrainz  # Setzt SUPPORT_MUSICBRAINZ=true bei Erfolg
             fi
             
             # TMDB Provider nur wenn DVD/BD Support vorhanden
-            if { [[ "$VIDEO_DVD_SUPPORT" == "true" ]] || [[ "$BLURAY_SUPPORT" == "true" ]]; } && 
+            if { [[ "$SUPPORT_DVD" == "true" ]] || [[ "$SUPPORT_BLURAY" == "true" ]]; } && 
                [[ -f "${SCRIPT_DIR}/lib/libtmdb.sh" ]]; then
                 source "${SCRIPT_DIR}/lib/libtmdb.sh"
-                check_dependencies_tmdb  # Setzt TMDB_SUPPORT=true bei Erfolg
+                check_dependencies_tmdb  # Setzt SUPPORT_TMDB=true bei Erfolg
             fi
         fi
     fi
@@ -206,9 +206,9 @@ fi
 # MQTT Support (optional)
 if [[ -f "${SCRIPT_DIR}/lib/libmqtt.sh" ]]; then
     source "${SCRIPT_DIR}/lib/libmqtt.sh"
-    check_dependencies_mqtt  # Setzt MQTT_SUPPORT=true bei Erfolg
+    check_dependencies_mqtt  # Setzt SUPPORT_MQTT=true bei Erfolg
     
-    # mqtt_init prüft selbst ob MQTT_ENABLED=true und MQTT_SUPPORT verfügbar
+    # mqtt_init prüft selbst ob MQTT_ENABLED=true und SUPPORT_MQTT verfügbar
     if [[ "$MQTT_SUPPORT" == "true" ]]; then
         mqtt_init  # Initialisiert MQTT_AVAILABLE bei Erfolg
     fi
@@ -228,7 +228,7 @@ select_copy_method() {
     
     # Für Audio-CDs
     if [[ "$disc_type" == "audio-cd" ]]; then
-        if [[ "$AUDIO_CD_SUPPORT" == true ]]; then
+        if [[ "$SUPPORT_AUDIO" == true ]]; then
             echo "audio-cd"
             return 0
         else
@@ -241,7 +241,7 @@ select_copy_method() {
     
     # Für Video-DVDs
     if [[ "$disc_type" == "dvd-video" ]]; then
-        if [[ "$VIDEO_DVD_SUPPORT" == true ]]; then
+        if [[ "$SUPPORT_DVD" == true ]]; then
             # Priorität 1: dvdbackup (entschlüsselt, schnell)
             if command -v dvdbackup >/dev/null 2>&1 && command -v genisoimage >/dev/null 2>&1; then
                 echo "dvdbackup"
@@ -261,7 +261,7 @@ select_copy_method() {
     
     # Für Blu-ray Video: ddrescue (Priorität 1) oder dd (Fallback)
     elif [[ "$disc_type" == "bd-video" ]]; then
-        if [[ "$BLURAY_SUPPORT" == true ]]; then
+        if [[ "$SUPPORT_BLURAY" == true ]]; then
             # Priorität 1: ddrescue (verschlüsselt/unverschlüsselt, robust, schnell)
             if command -v ddrescue >/dev/null 2>&1; then
                 echo "bluray-ddrescue"
@@ -298,7 +298,7 @@ copy_disc_to_iso() {
     
     # Audio-CDs behandeln init_filenames selbst (wegen speziellem Workflow)
     if [[ "$method" == "audio-cd" ]]; then
-        if [[ "$AUDIO_CD_SUPPORT" == true ]] && declare -f copy_audio_cd >/dev/null 2>&1; then
+        if [[ "$SUPPORT_AUDIO" == true ]] && declare -f copy_audio_cd >/dev/null 2>&1; then
             if copy_audio_cd; then
                 return 0
             else
@@ -329,7 +329,7 @@ copy_disc_to_iso() {
     api_update_status "copying" "$disc_label" "$disc_type"
     
     # MQTT: Kopiervorgang gestartet (optional)
-    if [[ "$MQTT_SUPPORT" == "true" ]]; then
+    if [[ "$SUPPORT_MQTT" == "true" ]]; then
         mqtt_publish_state "copying" "$disc_label" "$disc_type"
     fi
     
@@ -341,7 +341,7 @@ copy_disc_to_iso() {
             # Wird oben behandelt
             ;;
         dvdbackup)
-            if [[ "$VIDEO_DVD_SUPPORT" == true ]] && declare -f copy_video_dvd >/dev/null 2>&1; then
+            if [[ "$SUPPORT_DVD" == true ]] && declare -f copy_video_dvd >/dev/null 2>&1; then
                 if copy_video_dvd; then
                     copy_success=true
                 fi
@@ -351,7 +351,7 @@ copy_disc_to_iso() {
             fi
             ;;
         bluray-ddrescue)
-            if [[ "$BLURAY_SUPPORT" == true ]] && declare -f copy_bluray_ddrescue >/dev/null 2>&1; then
+            if [[ "$SUPPORT_BLURAY" == true ]] && declare -f copy_bluray_ddrescue >/dev/null 2>&1; then
                 if copy_bluray_ddrescue; then
                     copy_success=true
                 fi
@@ -389,7 +389,7 @@ copy_disc_to_iso() {
         log_info "$MSG_COPY_SUCCESS_FINAL $iso_filename"
         
         # MQTT: Erfolgreich abgeschlossen
-        if [[ "$MQTT_SUPPORT" == "true" ]]; then
+        if [[ "$SUPPORT_MQTT" == "true" ]]; then
             mqtt_publish_complete "$iso_basename"
         fi
         
@@ -399,7 +399,7 @@ copy_disc_to_iso() {
         log_info "$MSG_COPY_FAILED_FINAL $disc_label"
         
         # MQTT: Fehler
-        if [[ "$MQTT_SUPPORT" == "true" ]]; then
+        if [[ "$SUPPORT_MQTT" == "true" ]]; then
             mqtt_publish_error "Kopiervorgang fehlgeschlagen"
         fi
         
@@ -457,7 +457,7 @@ transition_to_state() {
     esac
     
     # MQTT (optional)
-    if [[ "$MQTT_SUPPORT" == "true" ]]; then
+    if [[ "$SUPPORT_MQTT" == "true" ]]; then
         case "$new_state" in
             "$STATE_WAITING_FOR_DRIVE"|"$STATE_DRIVE_DETECTED"|"$STATE_WAITING_FOR_MEDIA"|"$STATE_IDLE")
                 mqtt_publish_state "idle"
@@ -744,7 +744,7 @@ cleanup_service() {
     log_info "$MSG_SERVICE_STOPPING"
     
     # MQTT: Offline setzen
-    if [[ "$MQTT_SUPPORT" == "true" ]]; then
+    if [[ "$SUPPORT_MQTT" == "true" ]]; then
         mqtt_cleanup
     fi
     

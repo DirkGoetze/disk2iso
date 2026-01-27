@@ -23,7 +23,7 @@
 # DEPENDENCY CHECK
 # ===========================================================================
 readonly MODULE_NAME_TMDB="tmdb"             # Globale Variable für Modulname
-TMDB_SUPPORT=false                       # Globale Variable für Verfügbarkeit
+SUPPORT_TMDB=false                                    # Globales Support Flag
 
 # ===========================================================================
 # check_dependencies_tmdb
@@ -34,7 +34,7 @@ TMDB_SUPPORT=false                       # Globale Variable für Verfügbarkeit
 # Parameter: keine
 # Rückgabe.: 0 = Verfügbar (Module nutzbar)
 # .........  1 = Nicht verfügbar (Modul deaktiviert)
-# Extras...: Setzt TMDB_SUPPORT=true bei erfolgreicher Prüfung
+# Extras...: Setzt SUPPORT_TMDB=true bei erfolgreicher Prüfung
 # ===========================================================================
 check_dependencies_tmdb() {
 
@@ -44,12 +44,61 @@ check_dependencies_tmdb() {
     #-- Lade API-Konfiguration aus INI ---------------------------------------
     load_api_config_tmdb || return 1
 
+    #-- Initialisiere Verzeichnisstruktur -----------------------------------
+    get_cachepath_tmdb > /dev/null
+    get_coverpath_tmdb > /dev/null
+
     #-- Setze Verfügbarkeit -------------------------------------------------
-    TMDB_SUPPORT=true
+    SUPPORT_TMDB=true
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_TMDB_SUPPORT_AVAILABLE"
     return 0
+}
+
+# ===========================================================================
+# PATH CONSTANTS / GETTER
+# ===========================================================================
+readonly CACHEDIR_TMDB="cache"                  # Unterordner für Query-Cache
+readonly COVERDIR_TMDB="covers"            # Unterordner für Cover-Thumbnails
+
+# ===========================================================================
+# get_path_tmdb
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Ausgabepfad des TMDB-Providers
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum TMDB-Provider-Verzeichnis
+# Hinweis..: Liegt unter ${OUTPUT_DIR}/metadata/tmdb/
+# ===========================================================================
+get_path_tmdb() {
+    local metadata_base=$(get_path_metadata)
+    echo "${metadata_base}/${MODULE_NAME_TMDB}"
+}
+
+# ===========================================================================
+# get_cachepath_tmdb
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Cache-Pfad für temporäre Query-Results
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum Cache-Verzeichnis
+# Hinweis..: ${get_path_tmdb()}/cache/ für .nfo Query-Dateien
+# ===========================================================================
+get_cachepath_tmdb() {
+    local provider_base=$(get_path_tmdb)
+    ensure_subfolder "${provider_base}/${CACHEDIR_TMDB}"
+}
+
+# ===========================================================================
+# get_coverpath_tmdb
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Pfad für temporäre Poster-Thumbnails (Modal)
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum Thumbs-Verzeichnis
+# Hinweis..: ${get_path_tmdb()}/thumbs/ für temporäre Thumbnails
+# ===========================================================================
+get_coverpath_tmdb() {
+    local provider_base=$(get_path_tmdb)
+    ensure_subfolder "${provider_base}/${COVERDIR_TMDB}"
 }
 
 # ============================================================================
@@ -94,27 +143,7 @@ load_api_config_tmdb() {
     return 0
 }
 
-# ============================================================================
-# CACHE MANAGEMENT
-# ============================================================================
-
-TMDB_CACHE_DIR=""
-TMDB_THUMBS_DIR=""
-
-# Funktion: Initialisiere TMDB Cache-Verzeichnisse
-tmdb_init_cache() {
-    if [[ -n "$TMDB_CACHE_DIR" ]]; then
-        return 0  # Bereits initialisiert
-    fi
-    
-    TMDB_CACHE_DIR=$(metadata_get_cache_dir "tmdb") || return 1
-    TMDB_THUMBS_DIR="${TMDB_CACHE_DIR}/thumbs"
-    
-    mkdir -p "$TMDB_THUMBS_DIR" 2>/dev/null
-    
-    log_info "TMDB: Cache initialisiert: $TMDB_CACHE_DIR"
-    return 0
-}
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 
 # ============================================================================
 # PROVIDER IMPLEMENTATION - QUERY
@@ -137,8 +166,6 @@ tmdb_query() {
         log_error "TMDB: API-Key nicht konfiguriert"
         return 1
     fi
-    
-    tmdb_init_cache || return 1
     
     log_info "TMDB: Suche nach '$search_term'"
     
@@ -333,7 +360,8 @@ tmdb_populate_cache() {
     local disc_id="$2"
     local media_type="$3"
     
-    tmdb_init_cache || return 1
+    local cache_dir=$(get_cachepath_tmdb)
+    local thumbs_dir=$(get_coverpath_tmdb)
     
     local result_count=$(echo "$tmdb_json" | jq -r '.results | length' 2>/dev/null || echo "0")
     
@@ -363,7 +391,7 @@ tmdb_populate_cache() {
         local overview=$(echo "$tmdb_json" | jq -r ".results[$i].overview // \"\"" 2>/dev/null)
         
         # Erstelle .nfo Datei
-        local nfo_file="${TMDB_CACHE_DIR}/${disc_id}_${i}_${tmdb_id}.nfo"
+        local nfo_file="${cache_dir}/${disc_id}_${i}_${tmdb_id}.nfo"
         
         cat > "$nfo_file" <<EOF
 SEARCH_RESULT_FOR=${disc_id}
@@ -380,7 +408,7 @@ EOF
         
         # Lade Poster-Thumbnail
         if [[ -n "$poster_path" ]] && [[ "$poster_path" != "null" ]]; then
-            local thumb_file="${TMDB_THUMBS_DIR}/${disc_id}_${i}_${tmdb_id}-thumb.jpg"
+            local thumb_file="${thumbs_dir}/${disc_id}_${i}_${tmdb_id}-thumb.jpg"
             local poster_url="${TMDB_IMAGE_BASE_URL}${poster_path}"
             
             if curl -s -f -L -m 5 -o "$thumb_file" "$poster_url" 2>/dev/null; then

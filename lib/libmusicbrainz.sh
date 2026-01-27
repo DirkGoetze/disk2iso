@@ -23,7 +23,7 @@
 # DEPENDENCY CHECK
 # ===========================================================================
 readonly MODULE_NAME_MUSICBRAINZ="musicbrainz"    # Globale Var für Modulname
-MUSICBRAINZ_SUPPORT=false                # Globale Variable für Verfügbarkeit
+SUPPORT_MUSICBRAINZ=false                             # Globales Support Flag
 
 # ===========================================================================
 # check_dependencies_musicbrainz
@@ -34,22 +34,71 @@ MUSICBRAINZ_SUPPORT=false                # Globale Variable für Verfügbarkeit
 # Parameter: keine
 # Rückgabe.: 0 = Verfügbar (Module nutzbar)
 # .........  1 = Nicht verfügbar (Modul deaktiviert)
-# Extras...: Setzt MUSICBRAINZ_SUPPORT=true bei erfolgreicher Prüfung
+# Extras...: Setzt SUPPORT_MUSICBRAINZ=true bei erfolgreicher Prüfung
 # ===========================================================================
 check_dependencies_musicbrainz() {
 
-    #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
+    #-- Alle Modul Abhängigkeiten prüfen ------------------------------------
     check_module_dependencies "$MODULE_NAME_MUSICBRAINZ" || return 1
 
-    #-- Lade API-Konfiguration aus INI ---------------------------------------
+    #-- Lade API-Konfiguration aus INI --------------------------------------
     load_api_config_musicbrainz || return 1
 
+    #-- Initialisiere Verzeichnisstruktur -----------------------------------
+    get_cachepath_musicbrainz > /dev/null
+    get_coverpath_musicbrainz > /dev/null
+
     #-- Setze Verfügbarkeit -------------------------------------------------
-    MUSICBRAINZ_SUPPORT=true
+    SUPPORT_MUSICBRAINZ=true
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_MUSICBRAINZ_SUPPORT_AVAILABLE"
     return 0
+}
+
+# ===========================================================================
+# PATH CONSTANTS / GETTER
+# ===========================================================================
+readonly CACHEDIR_MUSICBRAINZ="cache"           # Unterordner für Query-Cache
+readonly COVERDIR_MUSICBRAINZ="covers"     # Unterordner für Cover-Thumbnails
+
+# ===========================================================================
+# get_path_musicbrainz
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Ausgabepfad des MusicBrainz-Providers
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum MusicBrainz-Provider-Verzeichnis
+# Hinweis..: Liegt unter ${OUTPUT_DIR}/metadata/musicbrainz/
+# ===========================================================================
+get_path_musicbrainz() {
+    local metadata_base=$(get_path_metadata)
+    echo "${metadata_base}/${MODULE_NAME_MUSICBRAINZ}"
+}
+
+# ===========================================================================
+# get_cachepath_musicbrainz
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Cache-Pfad für temporäre Query-Results
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum Cache-Verzeichnis
+# Hinweis..: ${get_path_musicbrainz()}/cache/ für .nfo Query-Dateien
+# ===========================================================================
+get_cachepath_musicbrainz() {
+    local provider_base=$(get_path_musicbrainz)
+    ensure_subfolder "${provider_base}/${CACHEDIR_MUSICBRAINZ}"
+}
+
+# ===========================================================================
+# get_coverpath_musicbrainz
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Pfad für temporäre Cover-Thumbnails (Modal)
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum Covers-Verzeichnis
+# Hinweis..: ${get_path_musicbrainz()}/covers/ für temporäre Thumbnails
+# ===========================================================================
+get_coverpath_musicbrainz() {
+    local provider_base=$(get_path_musicbrainz)
+    ensure_subfolder "${provider_base}/${COVERDIR_MUSICBRAINZ}"
 }
 
 # ============================================================================
@@ -92,27 +141,7 @@ load_api_config_musicbrainz() {
     return 0
 }
 
-# ============================================================================
-# CACHE MANAGEMENT
-# ============================================================================
-
-MUSICBRAINZ_CACHE_DIR=""
-MUSICBRAINZ_COVERS_DIR=""
-
-# Funktion: Initialisiere MusicBrainz Cache-Verzeichnisse
-musicbrainz_init_cache() {
-    if [[ -n "$MUSICBRAINZ_CACHE_DIR" ]]; then
-        return 0  # Bereits initialisiert
-    fi
-    
-    MUSICBRAINZ_CACHE_DIR=$(metadata_get_cache_dir "musicbrainz") || return 1
-    MUSICBRAINZ_COVERS_DIR="${MUSICBRAINZ_CACHE_DIR}/covers"
-    
-    mkdir -p "$MUSICBRAINZ_COVERS_DIR" 2>/dev/null
-    
-    log_info "MusicBrainz: Cache initialisiert: $MUSICBRAINZ_CACHE_DIR"
-    return 0
-}
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 
 # ============================================================================
 # PROVIDER IMPLEMENTATION - QUERY
@@ -129,8 +158,6 @@ musicbrainz_query() {
     local search_term="$2"
     local disc_id="$3"
     local toc="${4:-}"
-    
-    musicbrainz_init_cache || return 1
     
     log_info "MusicBrainz: Suche nach '$search_term'"
     
@@ -320,7 +347,8 @@ musicbrainz_populate_cache() {
     local mb_json="$1"
     local disc_id="$2"
     
-    musicbrainz_init_cache || return 1
+    local cache_dir=$(get_cachepath_musicbrainz)
+    local covers_dir=$(get_coverpath_musicbrainz)
     
     local release_count=$(echo "$mb_json" | jq -r '.releases | length' 2>/dev/null || echo "0")
     
@@ -339,7 +367,7 @@ musicbrainz_populate_cache() {
         local country=$(echo "$mb_json" | jq -r ".releases[$i].country // \"\"" 2>/dev/null)
         
         # Erstelle .nfo Datei
-        local nfo_file="${MUSICBRAINZ_CACHE_DIR}/${disc_id}_${i}_${release_id:0:8}.nfo"
+        local nfo_file="${cache_dir}/${disc_id}_${i}_${release_id:0:8}.nfo"
         
         cat > "$nfo_file" <<EOF
 SEARCH_RESULT_FOR=${disc_id}
@@ -354,7 +382,7 @@ CACHE_VERSION=1.0
 EOF
         
         # Lade Cover-Thumbnail
-        local cover_file="${MUSICBRAINZ_COVERS_DIR}/${disc_id}_${i}_${release_id:0:8}-thumb.jpg"
+        local cover_file="${covers_dir}/${disc_id}_${i}_${release_id:0:8}-thumb.jpg"
         local cover_url="${COVERART_API_BASE_URL}/release/${release_id}/front-250"
         
         if curl -s -f -L -m 5 -o "$cover_file" "$cover_url" 2>/dev/null; then

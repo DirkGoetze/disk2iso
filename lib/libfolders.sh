@@ -60,6 +60,7 @@ _TEMP_BASE_CREATED=false
 # Parameter: $1 = Unterordner-Name (relativ zu OUTPUT_DIR)
 # Rückgabe: Vollständiger Pfad zum Unterordner
 # Nutzt Lazy Initialization - erstellt Ordner nur einmal pro Name
+# Hinweis: Setzt 755 für normale Ordner, 777 für .log/.temp Ordner
 ensure_subfolder() {
     local subfolder="$1"
     
@@ -69,20 +70,30 @@ ensure_subfolder() {
         return 1
     fi
     
-    # Stelle sicher dass OUTPUT_DIR existiert
-    get_out_folder || return 1
-    
     # Vollständiger Pfad (entferne trailing slash von OUTPUT_DIR)
     local full_path="${OUTPUT_DIR%/}/${subfolder}"
     
-    # Prüfe/Erstelle Ordner (idempotent)
-    if [[ ! -d "$full_path" ]]; then
-        if mkdir -p "$full_path" 2>/dev/null; then
-            log_info "$MSG_SUBFOLDER_CREATED $full_path" >&2
+    # Fast-Path: Ordner existiert bereits
+    if [[ -d "$full_path" ]]; then
+        echo "$full_path"
+        return 0
+    fi
+    
+    # Slow-Path: Stelle sicher dass OUTPUT_DIR existiert
+    get_out_folder || return 1
+    
+    # Erstelle Ordner
+    if mkdir -p "$full_path" 2>/dev/null; then
+        # Setze Berechtigungen (777 für .log/.temp, sonst 755)
+        if [[ "$subfolder" =~ ^\.(log|temp) ]] || [[ "$subfolder" =~ /\.(log|temp)($|/) ]]; then
+            chmod 777 "$full_path" 2>/dev/null
         else
-            log_error "$MSG_ERROR_CREATE_SUBFOLDER $full_path" >&2
-            return 1
+            chmod 755 "$full_path" 2>/dev/null
         fi
+        log_info "$MSG_SUBFOLDER_CREATED $full_path" >&2
+    else
+        log_error "$MSG_ERROR_CREATE_SUBFOLDER $full_path" >&2
+        return 1
     fi
     
     echo "$full_path"
@@ -207,7 +218,7 @@ get_type_subfolder() {
             full_path=$(get_path_dvd)
             ;;
         bd-video)
-            full_path=$(get_path_bd)
+            full_path=$(get_path_bluray)
             ;;
         *)
             # Default Fallback für unbekannte Typen

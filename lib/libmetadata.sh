@@ -23,7 +23,7 @@
 # DEPENDENCY CHECK
 # ===========================================================================
 readonly MODULE_NAME_METADATA="metadata"     # Globale Variable für Modulname
-METADATA_SUPPORT=false                   # Globale Variable für Verfügbarkeit
+SUPPORT_METADATA=false                                # Globales Support Flag
 
 # ===========================================================================
 # check_dependencies_metadata
@@ -34,7 +34,7 @@ METADATA_SUPPORT=false                   # Globale Variable für Verfügbarkeit
 # Parameter: keine
 # Rückgabe.: 0 = Verfügbar (Module nutzbar)
 # .........  1 = Nicht verfügbar (Modul deaktiviert)
-# Extras...: Setzt METADATA_SUPPORT=true/false
+# Extras...: Setzt SUPPORT_METADATA=true/false
 # ===========================================================================
 check_dependencies_metadata() {
 
@@ -42,13 +42,32 @@ check_dependencies_metadata() {
     check_module_dependencies "$MODULE_NAME_METADATA" || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
-    METADATA_SUPPORT=true
+    SUPPORT_METADATA=true
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_METADATA_SUPPORT_AVAILABLE"
     return 0
 }
 
+# ===========================================================================
+# PATH CONSTANTS / GETTER
+# ===========================================================================
+
+# ===========================================================================
+# get_path_metadata
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Ausgabepfad des Modul für die Verwendung in anderen
+# .........  abhängigen Modulen
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum Modul Verzeichnis
+# Hinweis..: Ordner wird bereits in check_module_dependencies() erstellt
+# .........  Provider legen hier ihre Unterordner an (musicbrainz/, tmdb/)
+# ===========================================================================
+get_path_metadata() {
+    echo "${OUTPUT_DIR}/${MODULE_NAME_METADATA}"
+}
+
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 
 # ============================================================================
 # GLOBALE VARIABLEN
@@ -65,15 +84,6 @@ declare -A METADATA_DISC_PROVIDERS     # Disc-Type → Provider-Name
 
 # Cache-Verzeichnisse
 METADATA_CACHE_BASE=""
-
-# ===========================================================================
-# PATH CONSTANTS / GETTER
-# ===========================================================================
-
-readonly METADATA_DIR="metadata"               # Basisverzeichnis für Metadata
-
-
-
 
 # ============================================================================
 # PROVIDER REGISTRATION SYSTEM
@@ -174,49 +184,7 @@ metadata_list_providers() {
     echo "$providers_json"
 }
 
-# ============================================================================
-# CACHE MANAGEMENT
-# ============================================================================
 
-# Funktion: Initialisiere Metadata Cache-Verzeichnisse
-# Parameter: Keine
-# Rückgabe: 0 = Erfolg, 1 = Fehler
-metadata_init_cache() {
-    if [[ -n "$METADATA_CACHE_BASE" ]]; then
-        return 0  # Bereits initialisiert
-    fi
-    
-    # Nutze ensure_subfolder() falls verfügbar
-    if declare -f ensure_subfolder >/dev/null 2>&1; then
-        METADATA_CACHE_BASE=$(ensure_subfolder "metadata")
-    else
-        # Fallback
-        METADATA_CACHE_BASE="${OUTPUT_DIR}/../metadata"
-        mkdir -p "$METADATA_CACHE_BASE" 2>/dev/null
-    fi
-    
-    if [[ ! -d "$METADATA_CACHE_BASE" ]]; then
-        log_error "Metadata: Cache-Verzeichnis konnte nicht erstellt werden: $METADATA_CACHE_BASE"
-        return 1
-    fi
-    
-    log_info "Metadata: Cache initialisiert: $METADATA_CACHE_BASE"
-    return 0
-}
-
-# Funktion: Hole Cache-Pfad für Provider
-# Parameter: $1 = provider_name
-# Rückgabe: Pfad zum Provider-Cache-Verzeichnis
-metadata_get_cache_dir() {
-    local provider="$1"
-    
-    metadata_init_cache || return 1
-    
-    local cache_dir="${METADATA_CACHE_BASE}/${provider}"
-    mkdir -p "$cache_dir" 2>/dev/null
-    
-    echo "$cache_dir"
-}
 
 # ============================================================================
 # QUERY WORKFLOW

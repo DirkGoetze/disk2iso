@@ -23,7 +23,7 @@
 # DEPENDENCY CHECK
 # ===========================================================================
 readonly MODULE_NAME_MQTT="mqtt"             # Globale Variable für Modulname
-MQTT_SUPPORT=false                       # Globale Variable für Verfügbarkeit
+SUPPORT_MQTT=false                                    # Globales Support Flag
 
 # ===========================================================================
 # check_dependencies_mqtt
@@ -34,7 +34,7 @@ MQTT_SUPPORT=false                       # Globale Variable für Verfügbarkeit
 # Parameter: keine
 # Rückgabe.: 0 = Verfügbar (Module nutzbar)
 # .........  1 = Nicht verfügbar (Modul deaktiviert)
-# Extras...: Setzt MQTT_SUPPORT=true bei erfolgreicher Prüfung
+# Extras...: Setzt SUPPORT_MQTT=true bei erfolgreicher Prüfung
 # ===========================================================================
 check_dependencies_mqtt() {
 
@@ -42,12 +42,31 @@ check_dependencies_mqtt() {
     check_module_dependencies "$MODULE_NAME_MQTT" || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
-    MQTT_SUPPORT=true
+    SUPPORT_MQTT=true
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_MQTT_SUPPORT_AVAILABLE"
     return 0
 }
+
+# ============================================================================
+# PATH GETTER
+# ============================================================================
+
+# ===========================================================================
+# get_path_mqtt
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Ausgabepfad des Modul für die Verwendung in anderen
+# .........  abhängigen Modulen
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum Modul Verzeichnis
+# Hinweis: Ordner wird bereits in check_module_dependencies() erstellt
+# ===========================================================================
+get_path_mqtt() {
+    echo "${OUTPUT_DIR}/${MODULE_NAME_MQTT}"
+}
+
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 
 # ============================================================================
 # GLOBALE VARIABLEN
@@ -96,7 +115,7 @@ mqtt_init() {
     fi
     
     # Prüfe ob MQTT-Support verfügbar ist (wurde bereits von check_dependencies_mqtt geprüft)
-    if [[ "$MQTT_SUPPORT" != "true" ]]; then
+    if [[ "$SUPPORT_MQTT" != "true" ]]; then
         log_warning "$MSG_MQTT_NOT_AVAILABLE"
         MQTT_AVAILABLE=false
         return 1

@@ -23,7 +23,7 @@
 # DEPENDENCY CHECK
 # ===========================================================================
 readonly MODULE_NAME_DVD="dvd"               # Globale Variable für Modulname
-VIDEO_DVD_SUPPORT=false                  # Globale Variable für Verfügbarkeit
+SUPPORT_DVD=false                                     # Globales Support Flag
 
 # ===========================================================================
 # check_dependencies_dvd
@@ -34,7 +34,7 @@ VIDEO_DVD_SUPPORT=false                  # Globale Variable für Verfügbarkeit
 # Parameter: keine
 # Rückgabe.: 0 = Verfügbar (Module nutzbar)
 # .........  1 = Nicht verfügbar (Modul deaktiviert)
-# Extras...: Setzt VIDEO_DVD_SUPPORT=true bei erfolgreicher Prüfung
+# Extras...: Setzt SUPPORT_DVD=true bei erfolgreicher Prüfung
 # ===========================================================================
 check_dependencies_dvd() {
 
@@ -42,7 +42,7 @@ check_dependencies_dvd() {
     check_module_dependencies "$MODULE_NAME_DVD" || return 1
 
     #-- Setze Verfügbarkeit -------------------------------------------------
-    VIDEO_DVD_SUPPORT=true
+    SUPPORT_DVD=true
     
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_VIDEO_SUPPORT_AVAILABLE"
@@ -53,23 +53,26 @@ check_dependencies_dvd() {
 # PATH CONSTANTS
 # ============================================================================
 
+# ===========================================================================
+# get_path_dvd
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Ausgabepfad des Modul für die Verwendung in anderen
+# .........  abhängigen Modulen
+# Parameter: keine
+# Rückgabe.: Vollständiger Pfad zum Modul Verzeichnis
+# Hinweis: Ordner wird bereits in check_module_dependencies() erstellt
+# ===========================================================================
+get_path_dvd() {
+    echo "${OUTPUT_DIR}/${MODULE_NAME_DVD}"
+}
+
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
+
 readonly FAILED_DISCS_FILE=".failed_dvds"
 
 # ============================================================================
 # PATH GETTER
 # ============================================================================
-
-# Funktion: Ermittle Pfad für Video-DVDs
-# Rückgabe: Vollständiger Pfad zu dvd/ oder Fallback zu data/
-# Nutzt ensure_subfolder aus libfolders.sh für konsistente Ordner-Verwaltung
-get_path_dvd() {
-    if [[ "$VIDEO_DVD_SUPPORT" == true ]] && [[ -n "$DVD_DIR" ]]; then
-        ensure_subfolder "$DVD_DIR"
-    else
-        # Fallback auf data/ wenn DVD-Modul nicht geladen
-        ensure_subfolder "data"
-    fi
-}
 
 # ============================================================================
 # FEHLER-TRACKING SYSTEM
@@ -136,14 +139,15 @@ copy_video_dvd() {
     # Initialisiere Kopiervorgang-Log
     init_copy_log "$disc_label" "dvd"
     
-    local dvd_id=$(get_dvd_identifier)
-    local failure_count=$(get_dvd_failure_count "$dvd_id")
+    # Nutze zentrale Fehler-Tracking Funktionen aus libcommon.sh
+    local failure_count=$(get_disc_failure_count)
     
     # ========================================================================
     # TMDB METADATA BEFORE COPY (wenn verfügbar)
     # ========================================================================
     
     local skip_tmdb=false
+    local disc_id=$(get_disc_identifier)  # Zentrale Funktion aus libcommon.sh
     
     # Prüfe ob TMDB BEFORE Copy verfügbar ist
     if declare -f query_tmdb_before_copy >/dev/null 2>&1; then
@@ -153,13 +157,13 @@ copy_video_dvd() {
             movie_title=$(extract_movie_title_from_label "$disc_label")
         else
             # Fallback: Einfache Konvertierung
-            movie_title=$(echo "$disc_label" | tr '_' ' ' | sed 's/\b\(.\)/\u\1/g')
+            movie_title=$(echo "$disc_label" | tr '_' ' ' | sed 's/\b\(.)/ \u\1/g')
         fi
         
         log_info "TMDB: Suche nach '$movie_title'..."
         
         # Query TMDB
-        if query_tmdb_before_copy "$movie_title" "$disc_type" "$dvd_id"; then
+        if query_tmdb_before_copy "$movie_title" "$disc_type" "$disc_id"; then
             # TMDB Query erfolgreich - warte auf User-Auswahl
             log_info "TMDB: Warte auf User-Auswahl..."
             
@@ -174,12 +178,9 @@ copy_video_dvd() {
                 
                 # Warte auf Auswahl
                 if declare -f wait_for_tmdb_selection >/dev/null 2>&1; then
-                    if wait_for_tmdb_selection "$dvd_id" "$tmdb_json"; then
+                    if wait_for_tmdb_selection "$disc_id" "$tmdb_json"; then
                         # User hat ausgewählt - disc_label wurde aktualisiert
                         log_info "TMDB: Metadata-Auswahl erfolgreich - neues Label: $disc_label"
-                        
-                        # Update dvd_id mit neuem Label
-                        dvd_id=$(get_dvd_identifier)
                         
                         # Re-initialisiere Log mit neuem Label
                         init_copy_log "$disc_label" "dvd"
@@ -300,9 +301,8 @@ copy_video_dvd() {
     if [[ $dvdbackup_exit -ne 0 ]]; then
         log_error "$MSG_ERROR_DVDBACKUP_FAILED (Exit-Code: $dvdbackup_exit)"
         
-        # Registriere Fehlschlag für automatischen Fallback
-        local dvd_id=$(get_dvd_identifier)
-        register_dvd_failure "$dvd_id" "dvdbackup"
+        # Registriere Fehlschlag für automatischen Fallback (zentrale Funktion)
+        register_disc_failure "dvdbackup"
         log_warning "$MSG_DVD_MARKED_FOR_RETRY"
         
         rm -rf "$temp_dvd"
@@ -326,9 +326,8 @@ copy_video_dvd() {
     if genisoimage -dvd-video -V "$disc_label" -o "$iso_filename" "$(dirname "$video_ts_dir")" 2>>"$copy_log_filename"; then
         log_copying "$MSG_DECRYPTED_DVD_SUCCESS"
         
-        # Erfolg → Lösche eventuelle Fehler-Historie
-        local dvd_id=$(get_dvd_identifier)
-        clear_dvd_failures "$dvd_id"
+        # Erfolg → Lösche eventuelle Fehler-Historie (zentrale Funktion)
+        clear_disc_failures
         
         # Erstelle Metadaten für Archiv-Ansicht
         if declare -f create_dvd_archive_metadata >/dev/null 2>&1; then
@@ -342,9 +341,8 @@ copy_video_dvd() {
     else
         log_error "$MSG_ERROR_GENISOIMAGE_FAILED"
         
-        # Registriere Fehlschlag (genisoimage-Fehler)
-        local dvd_id=$(get_dvd_identifier)
-        register_dvd_failure "$dvd_id" "genisoimage"
+        # Registriere Fehlschlag (genisoimage-Fehler, zentrale Funktion)
+        register_disc_failure "genisoimage"
         
         rm -rf "$temp_dvd"
         finish_copy_log
@@ -427,9 +425,8 @@ copy_video_dvd_ddrescue() {
     if [[ $ddrescue_exit -eq 0 ]]; then
         log_copying "$MSG_VIDEO_DVD_DDRESCUE_SUCCESS"
         
-        # Erfolg → Lösche eventuelle Fehler-Historie
-        local dvd_id=$(get_dvd_identifier)
-        clear_dvd_failures "$dvd_id"
+        # Erfolg → Lösche eventuelle Fehler-Historie (zentrale Funktion)
+        clear_disc_failures
         
         # Erstelle Metadaten für Archiv-Ansicht (verwende disc_type für DVD/Blu-ray)
         if declare -f create_dvd_archive_metadata >/dev/null 2>&1; then
@@ -443,9 +440,8 @@ copy_video_dvd_ddrescue() {
     else
         log_error "$MSG_ERROR_DDRESCUE_FAILED"
         
-        # Registriere Fehlschlag für finale Ablehnung
-        local dvd_id=$(get_dvd_identifier)
-        register_dvd_failure "$dvd_id" "ddrescue"
+        # Registriere Fehlschlag für finale Ablehnung (zentrale Funktion)
+        register_disc_failure "ddrescue"
         log_error "$MSG_DVD_FINAL_FAILURE"
         
         # Mapfile wird mit temp_pathname automatisch gelöscht
