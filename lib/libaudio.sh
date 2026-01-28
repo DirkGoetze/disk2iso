@@ -74,59 +74,252 @@ get_path_audio() {
 # CD-TEXT METADATA FALLBACK
 # ============================================================================
 
-# Funktion: CD-TEXT auslesen (Fallback wenn MusicBrainz nicht verfügbar)
-# Benötigt: icedax oder cd-info (aus libcdio)
-# Rückgabe: Setzt globale Variablen: cd_artist, cd_album
+# ===========================================================================
+# get_cdtext_metadata
+# ---------------------------------------------------------------------------
+# Funktion.: CD-TEXT auslesen (Fallback wenn MusicBrainz nicht verfügbar)
+# Benötigt.: icedax oder cd-info (aus libcdio)
+# Rückgabe.: 0 = Metadaten gefunden, 1 = Keine CD-TEXT Daten
+# Setzt....: DISC_DATA[artist], DISC_DATA[album], DISC_DATA[track_count]
+#            DISC_DATA[track.N.title], DISC_DATA[track.N.artist] (falls vorhanden)
+#            + globale Variablen cd_artist, cd_album (DEPRECATED)
+# Provider.: none (CD-TEXT ist in der Disc eingebettet)
+# Hinweis..: CD-TEXT nach Red Book Standard unterstützt pro Track:
+#            TITLE, PERFORMER, SONGWRITER, COMPOSER, ARRANGER, MESSAGE
+# ===========================================================================
 get_cdtext_metadata() {
-    cd_artist=""
-    cd_album=""
+    local artist=""
+    local album=""
+    local track_count=0
+    local found_tracks=false
     
     log_info "$MSG_TRY_CDTEXT"
     
-    # Methode 1: icedax (aus cdrtools/cdrkit)
-    if command -v icedax >/dev/null 2>&1; then
-        local cdtext_output
-        cdtext_output=$(icedax -J -H -D "$CD_DEVICE" -g 2>&1 | grep -E "^Albumtitle:|^Performer:")
-        
-        if [[ -n "$cdtext_output" ]]; then
-            cd_album=$(echo "$cdtext_output" | grep "^Albumtitle:" | cut -d':' -f2- | xargs)
-            cd_artist=$(echo "$cdtext_output" | grep "^Performer:" | cut -d':' -f2- | xargs)
-            
-            if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
-                log_info "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
-                return 0
-            fi
-        fi
-    fi
-    
-    # Methode 2: cd-info (aus libcdio-utils)
+    # Methode 1: cd-info (aus libcdio-utils) - BESTE Methode für Track-Details
     if command -v cd-info >/dev/null 2>&1; then
         local cdtext_output
         cdtext_output=$(cd-info --no-header --no-device-info --cdtext-only "$CD_DEVICE" 2>/dev/null)
         
         if [[ -n "$cdtext_output" ]]; then
-            # cd-info Format: TITLE, PERFORMER
-            cd_album=$(echo "$cdtext_output" | grep -i "TITLE" | head -1 | cut -d':' -f2- | xargs)
-            cd_artist=$(echo "$cdtext_output" | grep -i "PERFORMER" | head -1 | cut -d':' -f2- | xargs)
+            # Extrahiere Album-Level Daten (erste TITLE/PERFORMER Einträge)
+            album=$(echo "$cdtext_output" | grep -i "TITLE" | head -1 | cut -d':' -f2- | xargs)
+            artist=$(echo "$cdtext_output" | grep -i "PERFORMER" | head -1 | cut -d':' -f2- | xargs)
             
-            if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
-                log_info "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
+            # Extrahiere Track-Level Daten (cd-info Format: "CD-TEXT for Track N:")
+            local current_track=0
+            local in_track_section=false
+            
+            while IFS= read -r line; do
+                # Erkenne Track-Sektion: "CD-TEXT for Track 1:"
+                if [[ "$line" =~ ^CD-TEXT\ for\ Track\ ([0-9]+): ]]; then
+                    current_track="${BASH_REMATCH[1]}"
+                    in_track_section=true
+                    ((track_count++))
+                    continue
+                fi
+                
+                # Erkenne Disc-Sektion (Ende der Track-Daten)
+                if [[ "$line" =~ ^CD-TEXT\ for\ Disc: ]]; then
+                    in_track_section=false
+                    continue
+                fi
+                
+                # Lese Track-Daten
+                if [[ "$in_track_section" == true ]] && [[ $current_track -gt 0 ]]; then
+                    if [[ "$line" =~ ^[[:space:]]*TITLE:[[:space:]]*(.*) ]]; then
+                        local track_title="${BASH_REMATCH[1]}"
+                        if [[ -n "$track_title" ]]; then
+                            DISC_DATA["track.${current_track}.title"]="$track_title"
+                            found_tracks=true
+                        fi
+                    elif [[ "$line" =~ ^[[:space:]]*PERFORMER:[[:space:]]*(.*) ]]; then
+                        local track_artist="${BASH_REMATCH[1]}"
+                        if [[ -n "$track_artist" ]]; then
+                            DISC_DATA["track.${current_track}.artist"]="$track_artist"
+                        fi
+                    elif [[ "$line" =~ ^[[:space:]]*COMPOSER:[[:space:]]*(.*) ]]; then
+                        local track_composer="${BASH_REMATCH[1]}"
+                        if [[ -n "$track_composer" ]]; then
+                            DISC_DATA["track.${current_track}.composer"]="$track_composer"
+                        fi
+                    elif [[ "$line" =~ ^[[:space:]]*SONGWRITER:[[:space:]]*(.*) ]]; then
+                        local track_songwriter="${BASH_REMATCH[1]}"
+                        if [[ -n "$track_songwriter" ]]; then
+                            DISC_DATA["track.${current_track}.songwriter"]="$track_songwriter"
+                        fi
+                    elif [[ "$line" =~ ^[[:space:]]*ARRANGER:[[:space:]]*(.*) ]]; then
+                        local track_arranger="${BASH_REMATCH[1]}"
+                        if [[ -n "$track_arranger" ]]; then
+                            DISC_DATA["track.${current_track}.arranger"]="$track_arranger"
+                        fi
+                    fi
+                fi
+            done <<< "$cdtext_output"
+            
+            if [[ -n "$artist" ]] && [[ -n "$album" ]]; then
+                # Setze DISC_DATA Array
+                discdata_set_artist "$artist"
+                discdata_set_album "$album"
+                [[ $track_count -gt 0 ]] && discdata_set_track_count "$track_count"
+                
+                # Setze Provider auf "none" (CD-TEXT ist kein externer Provider)
+                discinfo_set_provider "none"
+                
+                # Backward compatibility (DEPRECATED)
+                cd_artist="$artist"
+                cd_album="$album"
+                
+                if [[ "$found_tracks" == true ]]; then
+                    log_info "$MSG_CDTEXT_FOUND $artist - $album ($track_count Tracks mit Titeln)"
+                else
+                    log_info "$MSG_CDTEXT_FOUND $artist - $album"
+                fi
                 return 0
             fi
         fi
     fi
     
-    # Methode 3: cdda2wav (aus cdrtools)
-    if command -v cdda2wav >/dev/null 2>&1; then
+    # Methode 2: icedax (aus cdrtools/cdrkit) - Vollständige Ausgabe mit -v
+    if command -v icedax >/dev/null 2>&1; then
         local cdtext_output
-        cdtext_output=$(cdda2wav -J -H -D "$CD_DEVICE" -g 2>&1 | grep -E "^Albumtitle:|^Performer:")
+        cdtext_output=$(icedax -J -H -D "$CD_DEVICE" -v all 2>&1)
         
         if [[ -n "$cdtext_output" ]]; then
-            cd_album=$(echo "$cdtext_output" | grep "^Albumtitle:" | cut -d':' -f2- | xargs)
-            cd_artist=$(echo "$cdtext_output" | grep "^Performer:" | cut -d':' -f2- | xargs)
+            # Extrahiere Album-Daten
+            album=$(echo "$cdtext_output" | grep "^Albumtitle:" | head -1 | cut -d':' -f2- | xargs)
+            artist=$(echo "$cdtext_output" | grep "^Performer:" | head -1 | cut -d':' -f2- | xargs)
             
-            if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
-                log_info "$MSG_CDTEXT_FOUND $cd_artist - $cd_album"
+            # Extrahiere Track-Daten (icedax Format: "Tracktitle[N]: ...")
+            local max_track=0
+            while IFS= read -r line; do
+                if [[ "$line" =~ ^Tracktitle\[([0-9]+)\]:[[:space:]]*(.*) ]]; then
+                    local track_num="${BASH_REMATCH[1]}"
+                    local track_title="${BASH_REMATCH[2]}"
+                    if [[ -n "$track_title" ]]; then
+                        DISC_DATA["track.${track_num}.title"]="$track_title"
+                        found_tracks=true
+                        [[ $track_num -gt $max_track ]] && max_track=$track_num
+                    fi
+                elif [[ "$line" =~ ^Trackperformer\[([0-9]+)\]:[[:space:]]*(.*) ]]; then
+                    local track_num="${BASH_REMATCH[1]}"
+                    local track_artist="${BASH_REMATCH[2]}"
+                    if [[ -n "$track_artist" ]]; then
+                        DISC_DATA["track.${track_num}.artist"]="$track_artist"
+                    fi
+                elif [[ "$line" =~ ^Trackcomposer\[([0-9]+)\]:[[:space:]]*(.*) ]]; then
+                    local track_num="${BASH_REMATCH[1]}"
+                    local track_composer="${BASH_REMATCH[2]}"
+                    if [[ -n "$track_composer" ]]; then
+                        DISC_DATA["track.${track_num}.composer"]="$track_composer"
+                    fi
+                elif [[ "$line" =~ ^Tracksongwriter\[([0-9]+)\]:[[:space:]]*(.*) ]]; then
+                    local track_num="${BASH_REMATCH[1]}"
+                    local track_songwriter="${BASH_REMATCH[2]}"
+                    if [[ -n "$track_songwriter" ]]; then
+                        DISC_DATA["track.${track_num}.songwriter"]="$track_songwriter"
+                    fi
+                elif [[ "$line" =~ ^Trackarranger\[([0-9]+)\]:[[:space:]]*(.*) ]]; then
+                    local track_num="${BASH_REMATCH[1]}"
+                    local track_arranger="${BASH_REMATCH[2]}"
+                    if [[ -n "$track_arranger" ]]; then
+                        DISC_DATA["track.${track_num}.arranger"]="$track_arranger"
+                    fi
+                fi
+            done <<< "$cdtext_output"
+            
+            [[ $max_track -gt $track_count ]] && track_count=$max_track
+            
+            if [[ -n "$artist" ]] && [[ -n "$album" ]]; then
+                # Setze DISC_DATA Array
+                discdata_set_artist "$artist"
+                discdata_set_album "$album"
+                [[ $track_count -gt 0 ]] && discdata_set_track_count "$track_count"
+                
+                # Setze Provider auf "none"
+                discinfo_set_provider "none"
+                
+                # Backward compatibility (DEPRECATED)
+                cd_artist="$artist"
+                cd_album="$album"
+                
+                if [[ "$found_tracks" == true ]]; then
+                    log_info "$MSG_CDTEXT_FOUND $artist - $album ($track_count Tracks mit Titeln)"
+                else
+                    log_info "$MSG_CDTEXT_FOUND $artist - $album"
+                fi
+                return 0
+            fi
+        fi
+    fi
+    
+    # Methode 3: cdda2wav (aus cdrtools) - Ähnlich wie icedax
+    if command -v cdda2wav >/dev/null 2>&1; then
+        local cdtext_output
+        cdtext_output=$(cdda2wav -J -H -D "$CD_DEVICE" -v all 2>&1)
+        
+        if [[ -n "$cdtext_output" ]]; then
+            # Extrahiere Album-Daten
+            album=$(echo "$cdtext_output" | grep "^Albumtitle:" | head -1 | cut -d':' -f2- | xargs)
+            artist=$(echo "$cdtext_output" | grep "^Performer:" | head -1 | cut -d':' -f2- | xargs)
+            
+            # Extrahiere Track-Daten
+            local max_track=0
+            while IFS= read -r line; do
+                if [[ "$line" =~ ^Tracktitle\[([0-9]+)\]:[[:space:]]*(.*) ]]; then
+                    local track_num="${BASH_REMATCH[1]}"
+                    local track_title="${BASH_REMATCH[2]}"
+                    if [[ -n "$track_title" ]]; then
+                        DISC_DATA["track.${track_num}.title"]="$track_title"
+                        found_tracks=true
+                        [[ $track_num -gt $max_track ]] && max_track=$track_num
+                    fi
+                elif [[ "$line" =~ ^Trackperformer\[([0-9]+)\]:[[:space:]]*(.*) ]]; then
+                    local track_num="${BASH_REMATCH[1]}"
+                    local track_artist="${BASH_REMATCH[2]}"
+                    if [[ -n "$track_artist" ]]; then
+                        DISC_DATA["track.${track_num}.artist"]="$track_artist"
+                    fi
+                elif [[ "$line" =~ ^Trackcomposer\[([0-9]+)\]:[[:space:]]*(.*) ]]; then
+                    local track_num="${BASH_REMATCH[1]}"
+                    local track_composer="${BASH_REMATCH[2]}"
+                    if [[ -n "$track_composer" ]]; then
+                        DISC_DATA["track.${track_num}.composer"]="$track_composer"
+                    fi
+                elif [[ "$line" =~ ^Tracksongwriter\[([0-9]+)\]:[[:space:]]*(.*) ]]; then
+                    local track_num="${BASH_REMATCH[1]}"
+                    local track_songwriter="${BASH_REMATCH[2]}"
+                    if [[ -n "$track_songwriter" ]]; then
+                        DISC_DATA["track.${track_num}.songwriter"]="$track_songwriter"
+                    fi
+                elif [[ "$line" =~ ^Trackarranger\[([0-9]+)\]:[[:space:]]*(.*) ]]; then
+                    local track_num="${BASH_REMATCH[1]}"
+                    local track_arranger="${BASH_REMATCH[2]}"
+                    if [[ -n "$track_arranger" ]]; then
+                        DISC_DATA["track.${track_num}.arranger"]="$track_arranger"
+                    fi
+                fi
+            done <<< "$cdtext_output"
+            
+            [[ $max_track -gt $track_count ]] && track_count=$max_track
+            
+            if [[ -n "$artist" ]] && [[ -n "$album" ]]; then
+                # Setze DISC_DATA Array
+                discdata_set_artist "$artist"
+                discdata_set_album "$album"
+                [[ $track_count -gt 0 ]] && discdata_set_track_count "$track_count"
+                
+                # Setze Provider auf "none"
+                discinfo_set_provider "none"
+                
+                # Backward compatibility (DEPRECATED)
+                cd_artist="$artist"
+                cd_album="$album"
+                
+                if [[ "$found_tracks" == true ]]; then
+                    log_info "$MSG_CDTEXT_FOUND $artist - $album ($track_count Tracks mit Titeln)"
+                else
+                    log_info "$MSG_CDTEXT_FOUND $artist - $album"
+                fi
                 return 0
             fi
         fi
@@ -140,18 +333,28 @@ get_cdtext_metadata() {
 # MUSICBRAINZ METADATA ABFRAGE
 # ============================================================================
 
-# Funktion: MusicBrainz-Metadaten abrufen
-# Benötigt: cd-discid, curl, jq
-# Rückgabe: Setzt globale Variablen: cd_artist, cd_album, cd_year, cd_discid, mb_response, best_release_index, toc, track_count
+# ===========================================================================
+# get_musicbrainz_metadata
+# ---------------------------------------------------------------------------
+# Funktion.: MusicBrainz-Metadaten abrufen
+# Benötigt.: cd-discid, curl, jq
+# Rückgabe.: 0 = Metadaten gefunden, 1 = Fehler/Nicht gefunden
+# Setzt....: DISC_INFO[disc_id], DISC_INFO[provider], DISC_INFO[provider_id]
+#            DISC_DATA[artist], DISC_DATA[album], DISC_DATA[year],
+#            DISC_DATA[track_count], DISC_DATA[toc]
+#            + globale Variablen (DEPRECATED): cd_artist, cd_album, cd_year,
+#            cd_discid, mb_response, best_release_index, toc, track_count
+# Provider.: musicbrainz
+# ===========================================================================
 get_musicbrainz_metadata() {
-    cd_artist=""
-    cd_album=""
-    cd_year=""
-    cd_discid=""
+    local artist=""
+    local album=""
+    local year=""
+    local disc_id=""
     mb_response=""  # Speichere vollständige Antwort für Track-Infos
     best_release_index=0  # Index des gewählten Release (bei mehreren Treffern)
-    toc=""  # TOC-String für MusicBrainz
-    track_count=""  # Anzahl der Tracks
+    local toc_str=""  # TOC-String für MusicBrainz
+    local tracks=""  # Anzahl der Tracks
     
     log_info "$MSG_RETRIEVE_METADATA"
     
@@ -177,10 +380,10 @@ get_musicbrainz_metadata() {
     
     # Parse cd-discid output: discid tracks offset1 offset2 ... offsetN total_seconds
     local discid_parts=($discid_output)
-    cd_discid="${discid_parts[0]}"
-    track_count="${discid_parts[1]}"  # Global für spätere Verwendung
+    disc_id="${discid_parts[0]}"
+    tracks="${discid_parts[1]}"
     
-    log_info "$MSG_DISCID: $cd_discid ($MSG_TRACKS: $track_count)"
+    log_info "$MSG_DISCID: $disc_id ($MSG_TRACKS: $tracks)"
     
     # Ermittle Leadout-Position (letzte Position + 150 für Pregap der ersten Track)
     # cdparanoia gibt TOTAL in Frames, das ist der Leadout
@@ -196,13 +399,13 @@ get_musicbrainz_metadata() {
     leadout=$((leadout + 150))
     
     # Baue TOC-String für MusicBrainz: 1+track_count+leadout+offset1+offset2+...
-    toc="1+${track_count}+${leadout}"  # Global für spätere Verwendung
+    toc_str="1+${tracks}+${leadout}"
     for ((i=2; i<${#discid_parts[@]}-1; i++)); do
-        toc="${toc}+${discid_parts[$i]}"
+        toc_str="${toc_str}+${discid_parts[$i]}"
     done
     
     # MusicBrainz-Abfrage mit TOC statt nur Disc-ID
-    local mb_url="https://musicbrainz.org/ws/2/discid/${cd_discid}?toc=${toc}&fmt=json&inc=artists+recordings"
+    local mb_url="https://musicbrainz.org/ws/2/discid/${disc_id}?toc=${toc_str}&fmt=json&inc=artists+recordings"
     
     log_info "$MSG_QUERY_MUSICBRAINZ"
     mb_response=$(curl -s -A "disk2iso/1.0 (https://github.com/user/disk2iso)" "$mb_url" 2>/dev/null)
@@ -217,7 +420,7 @@ get_musicbrainz_metadata() {
     releases_count=$(echo "$mb_response" | jq -r '.releases | length' 2>/dev/null)
     
     if [[ -z "$releases_count" ]] || [[ "$releases_count" == "0" ]] || [[ "$releases_count" == "null" ]]; then
-        log_warning "$MSG_WARNING_NO_MUSICBRAINZ_ENTRY $cd_discid"
+        log_warning "$MSG_WARNING_NO_MUSICBRAINZ_ENTRY $disc_id"
         return 1
     fi
     
@@ -244,7 +447,7 @@ get_musicbrainz_metadata() {
             }]')
             
             # Baue finale JSON-Struktur
-            local releases_json="{\"disc_id\":\"$cd_discid\",\"track_count\":$track_count,\"releases\":$releases_array}"
+            local releases_json="{\"disc_id\":\"$disc_id\",\"track_count\":$tracks,\"releases\":$releases_array}"
             
             api_write_json "musicbrainz_releases.json" "$releases_json"
         fi
@@ -259,7 +462,7 @@ get_musicbrainz_metadata() {
             local release_tracks
             release_tracks=$(echo "$mb_response" | jq -r ".releases[$i].media[0].tracks | length" 2>/dev/null)
             
-            if [[ "$release_tracks" == "$track_count" ]]; then
+            if [[ "$release_tracks" == "$tracks" ]]; then
                 score=$((score + 100))  # Exakte Track-Anzahl = +100 Punkte
             fi
             
@@ -303,19 +506,41 @@ get_musicbrainz_metadata() {
     fi
     
     # Extrahiere gewähltes Release
-    cd_album=$(echo "$mb_response" | jq -r ".releases[$best_release_index].title" 2>/dev/null)
-    cd_artist=$(echo "$mb_response" | jq -r ".releases[$best_release_index][\"artist-credit\"][0].name" 2>/dev/null)
-    cd_year=$(echo "$mb_response" | jq -r ".releases[$best_release_index].date" 2>/dev/null | cut -d'-' -f1)
+    album=$(echo "$mb_response" | jq -r ".releases[$best_release_index].title" 2>/dev/null)
+    artist=$(echo "$mb_response" | jq -r ".releases[$best_release_index][\"artist-credit\"][0].name" 2>/dev/null)
+    year=$(echo "$mb_response" | jq -r ".releases[$best_release_index].date" 2>/dev/null | cut -d'-' -f1)
+    local release_id=$(echo "$mb_response" | jq -r ".releases[$best_release_index].id" 2>/dev/null)
     
     # Bereinige null-Werte
-    [[ "$cd_album" == "null" ]] && cd_album=""
-    [[ "$cd_artist" == "null" ]] && cd_artist=""
-    [[ "$cd_year" == "null" ]] && cd_year=""
+    [[ "$album" == "null" ]] && album=""
+    [[ "$artist" == "null" ]] && artist=""
+    [[ "$year" == "null" ]] && year=""
+    [[ "$release_id" == "null" ]] && release_id=""
     
-    if [[ -n "$cd_artist" ]] && [[ -n "$cd_album" ]]; then
-        log_info "$MSG_ALBUM: $cd_album"
-        log_info "$MSG_ARTIST: $cd_artist"
-        [[ -n "$cd_year" ]] && log_info "$MSG_YEAR: $cd_year"
+    if [[ -n "$artist" ]] && [[ -n "$album" ]]; then
+        # Setze DISC_INFO Felder
+        discinfo_set_disc_id "$disc_id"
+        discinfo_set_provider "musicbrainz"
+        [[ -n "$release_id" ]] && discinfo_set_provider_id "$release_id"
+        
+        # Setze DISC_DATA Felder
+        discdata_set_artist "$artist"
+        discdata_set_album "$album"
+        [[ -n "$year" ]] && discdata_set_year "$year"
+        discdata_set_track_count "$tracks"
+        discdata_set_toc "$toc_str"
+        
+        # Backward compatibility (DEPRECATED)
+        cd_artist="$artist"
+        cd_album="$album"
+        cd_year="$year"
+        cd_discid="$disc_id"
+        toc="$toc_str"
+        track_count="$tracks"
+        
+        log_info "$MSG_ALBUM: $album"
+        log_info "$MSG_ARTIST: $artist"
+        [[ -n "$year" ]] && log_info "$MSG_YEAR: $year"
         
         # Zähle Track-Anzahl (vom gewählten Release)
         local mb_track_count
@@ -712,16 +937,29 @@ copy_audio_cd() {
     
     # Hole MusicBrainz Metadaten
     if ! get_musicbrainz_metadata; then
-        log_info "$MSG_CONTINUE_WITHOUT_METADATA"
-        skip_metadata=true
+        # Fallback 1: MusicBrainz fehlgeschlagen → Versuche CD-TEXT
+        log_info "MusicBrainz nicht verfügbar - versuche CD-TEXT Fallback"
+        if ! get_cdtext_metadata; then
+            log_info "$MSG_CONTINUE_WITHOUT_METADATA"
+            skip_metadata=true
+        else
+            # CD-TEXT erfolgreich - verwende diese Metadaten
+            skip_metadata=false
+        fi
     else
         # Zähle Releases
         releases_count=$(echo "$mb_response" | jq '.releases | length' 2>/dev/null || echo "0")
         
         if [[ $releases_count -eq 0 ]]; then
-            # Keine Releases gefunden
-            log_info "Keine MusicBrainz Releases gefunden - verwende generische Namen"
-            skip_metadata=true
+            # Fallback 2: Keine MusicBrainz Releases → Versuche CD-TEXT
+            log_info "Keine MusicBrainz Releases gefunden - versuche CD-TEXT Fallback"
+            if ! get_cdtext_metadata; then
+                log_info "$MSG_CONTINUE_WITHOUT_METADATA"
+                skip_metadata=true
+            else
+                # CD-TEXT erfolgreich - verwende diese Metadaten
+                skip_metadata=false
+            fi
         elif [[ $releases_count -eq 1 ]]; then
             # Genau 1 Release - direkt verwenden (kein User-Input nötig)
             log_info "1 Release gefunden - verwende Metadaten direkt"
@@ -936,6 +1174,12 @@ copy_audio_cd() {
             fi
             if [[ -n "$track_title" ]]; then
                 lame_opts+=("--tt" "$track_title")
+            fi
+            
+            # Composer aus CD-TEXT oder DISC_DATA (für Jellyfin ID3-Tag TCOM)
+            local track_composer="${DISC_DATA[track.${track}.composer]}"
+            if [[ -n "$track_composer" ]]; then
+                lame_opts+=("--tc" "$track_composer")
             fi
         fi
         lame_opts+=("--tn" "$track/$track_count")

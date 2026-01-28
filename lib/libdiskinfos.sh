@@ -95,6 +95,13 @@ declare -A DISC_INFO=(
     ["provider_id"]=""     # ID des Mediums beim Metadaten-Anbieter
     ["cover_url"]=""       # URL zum Cover-Bild (für Audio-CD/DVD/Blu-ray)
     ["cover_path"]=""      # Lokaler Pfad zum Cover-Bild (für Audio-CD/DVD/Blu-ray)
+    
+    # ========== Dateinamen (generiert nach Metadata-Auswahl) ==========
+    ["iso_filename"]=""    # Vollständiger Pfad zur ISO-Datei
+    ["md5_filename"]=""    # Vollständiger Pfad zur MD5-Checksummen-Datei
+    ["log_filename"]=""    # Vollständiger Pfad zur Log-Datei
+    ["iso_basename"]=""    # Nur Dateiname der ISO (ohne Pfad)
+    ["temp_pathname"]=""   # Temporäres Arbeitsverzeichnis für Copy-Vorgang
 )
 
 # DISC_DATA: Metadaten des KÜNSTLERISCHEN INHALTS
@@ -167,6 +174,11 @@ discinfo_init() {
     DISC_INFO[provider_id]=""
     DISC_INFO[cover_url]=""
     DISC_INFO[cover_path]=""
+    DISC_INFO[iso_filename]=""
+    DISC_INFO[md5_filename]=""
+    DISC_INFO[log_filename]=""
+    DISC_INFO[iso_basename]=""
+    DISC_INFO[temp_pathname]=""
     
     log_debug "discinfo_init: DISC_INFO zurückgesetzt"
     return 0
@@ -519,6 +531,295 @@ discinfo_get_created_at() {
         return 0
     fi
     return 1
+}
+
+# ===========================================================================
+# discinfo_set_iso_filename
+# ---------------------------------------------------------------------------
+# Funktion.: Setze ISO-Dateinamen
+# Parameter: $1 = iso_filename (vollständiger Pfad)
+# Rückgabe.: 0
+# ===========================================================================
+discinfo_set_iso_filename() {
+    local filename="$1"
+    DISC_INFO[iso_filename]="$filename"
+    log_debug "discinfo_set_iso_filename: '$filename'"
+    return 0
+}
+
+# ===========================================================================
+# discinfo_get_iso_filename
+# ---------------------------------------------------------------------------
+# Funktion.: Lese ISO-Dateinamen
+# Parameter: keine
+# Ausgabe..: ISO-Dateiname (stdout)
+# Rückgabe.: 0 = Wert vorhanden, 1 = Leer
+# ===========================================================================
+discinfo_get_iso_filename() {
+    local filename="${DISC_INFO[iso_filename]}"
+    if [[ -n "$filename" ]]; then
+        echo "$filename"
+        return 0
+    fi
+    return 1
+}
+
+# ===========================================================================
+# discinfo_set_md5_filename
+# ---------------------------------------------------------------------------
+# Funktion.: Setze MD5-Dateinamen
+# Parameter: $1 = md5_filename (vollständiger Pfad)
+# Rückgabe.: 0
+# ===========================================================================
+discinfo_set_md5_filename() {
+    local filename="$1"
+    DISC_INFO[md5_filename]="$filename"
+    log_debug "discinfo_set_md5_filename: '$filename'"
+    return 0
+}
+
+# ===========================================================================
+# discinfo_get_md5_filename
+# ---------------------------------------------------------------------------
+# Funktion.: Lese MD5-Dateinamen
+# Parameter: keine
+# Ausgabe..: MD5-Dateiname (stdout)
+# Rückgabe.: 0 = Wert vorhanden, 1 = Leer
+# ===========================================================================
+discinfo_get_md5_filename() {
+    local filename="${DISC_INFO[md5_filename]}"
+    if [[ -n "$filename" ]]; then
+        echo "$filename"
+        return 0
+    fi
+    return 1
+}
+
+# ===========================================================================
+# discinfo_set_log_filename
+# ---------------------------------------------------------------------------
+# Funktion.: Setze Log-Dateinamen
+# Parameter: $1 = log_filename (vollständiger Pfad)
+# Rückgabe.: 0
+# ===========================================================================
+discinfo_set_log_filename() {
+    local filename="$1"
+    DISC_INFO[log_filename]="$filename"
+    log_debug "discinfo_set_log_filename: '$filename'"
+    return 0
+}
+
+# ===========================================================================
+# discinfo_get_log_filename
+# ---------------------------------------------------------------------------
+# Funktion.: Lese Log-Dateinamen
+# Parameter: keine
+# Ausgabe..: Log-Dateiname (stdout)
+# Rückgabe.: 0 = Wert vorhanden, 1 = Leer
+# ===========================================================================
+discinfo_get_log_filename() {
+    local filename="${DISC_INFO[log_filename]}"
+    if [[ -n "$filename" ]]; then
+        echo "$filename"
+        return 0
+    fi
+    return 1
+}
+
+# ===========================================================================
+# discinfo_set_iso_basename
+# ---------------------------------------------------------------------------
+# Funktion.: Setze ISO-Basisnamen
+# Parameter: $1 = iso_basename (nur Dateiname)
+# Rückgabe.: 0
+# ===========================================================================
+discinfo_set_iso_basename() {
+    local basename="$1"
+    DISC_INFO[iso_basename]="$basename"
+    log_debug "discinfo_set_iso_basename: '$basename'"
+    return 0
+}
+
+# ===========================================================================
+# discinfo_get_iso_basename
+# ---------------------------------------------------------------------------
+# Funktion.: Lese ISO-Basisnamen
+# Parameter: keine
+# Ausgabe..: ISO-Basisname (stdout)
+# Rückgabe.: 0 = Wert vorhanden, 1 = Leer
+# ===========================================================================
+discinfo_get_iso_basename() {
+    local basename="${DISC_INFO[iso_basename]}"
+    if [[ -n "$basename" ]]; then
+        echo "$basename"
+        return 0
+    fi
+    return 1
+}
+
+# ===========================================================================
+# discinfo_set_temp_pathname
+# ---------------------------------------------------------------------------
+# Funktion.: Setze temporären Arbeitsordner
+# Parameter: $1 = temp_pathname (vollständiger Pfad)
+# Rückgabe.: 0
+# ===========================================================================
+discinfo_set_temp_pathname() {
+    local pathname="$1"
+    DISC_INFO[temp_pathname]="$pathname"
+    log_debug "discinfo_set_temp_pathname: '$pathname'"
+    return 0
+}
+
+# ===========================================================================
+# discinfo_get_temp_pathname
+# ---------------------------------------------------------------------------
+# Funktion.: Lese temporären Arbeitsordner
+# Parameter: keine
+# Ausgabe..: Temp-Pathname (stdout)
+# Rückgabe.: 0 = Wert vorhanden, 1 = Leer
+# ===========================================================================
+discinfo_get_temp_pathname() {
+    local pathname="${DISC_INFO[temp_pathname]}"
+    if [[ -n "$pathname" ]]; then
+        echo "$pathname"
+        return 0
+    fi
+    return 1
+}
+
+# ===========================================================================
+# DISC_DATA GETTER/SETTER - AUDIO-CD METADATA
+# ===========================================================================
+
+# Artist (Album-Artist / Haupt-Künstler)
+discdata_set_artist() {
+    DISC_DATA[artist]="$1"
+    log_debug "discdata_set_artist: '$1'"
+}
+
+discdata_get_artist() {
+    echo "${DISC_DATA[artist]}"
+}
+
+# Album-Name
+discdata_set_album() {
+    DISC_DATA[album]="$1"
+    log_debug "discdata_set_album: '$1'"
+}
+
+discdata_get_album() {
+    echo "${DISC_DATA[album]}"
+}
+
+# Original-Erscheinungsjahr
+discdata_set_year() {
+    DISC_DATA[year]="$1"
+    log_debug "discdata_set_year: '$1'"
+}
+
+discdata_get_year() {
+    echo "${DISC_DATA[year]}"
+}
+
+# Genre
+discdata_set_genre() {
+    DISC_DATA[genre]="$1"
+    log_debug "discdata_set_genre: '$1'"
+}
+
+discdata_get_genre() {
+    echo "${DISC_DATA[genre]}"
+}
+
+# Track-Anzahl
+discdata_set_track_count() {
+    DISC_DATA[track_count]="$1"
+    log_debug "discdata_set_track_count: '$1'"
+}
+
+discdata_get_track_count() {
+    echo "${DISC_DATA[track_count]}"
+}
+
+# Gesamtlaufzeit (Millisekunden)
+discdata_set_duration() {
+    DISC_DATA[duration]="$1"
+    log_debug "discdata_set_duration: '$1'"
+}
+
+discdata_get_duration() {
+    echo "${DISC_DATA[duration]}"
+}
+
+# Table of Contents (für MusicBrainz)
+discdata_set_toc() {
+    DISC_DATA[toc]="$1"
+    log_debug "discdata_set_toc: '$1'"
+}
+
+discdata_get_toc() {
+    echo "${DISC_DATA[toc]}"
+}
+
+# Original-Veröffentlichungsdatum
+discdata_set_original_release_date() {
+    DISC_DATA[original_release_date]="$1"
+    log_debug "discdata_set_original_release_date: '$1'"
+}
+
+discdata_get_original_release_date() {
+    echo "${DISC_DATA[original_release_date]}"
+}
+
+# Original-Produktionsland
+discdata_set_original_country() {
+    DISC_DATA[original_country]="$1"
+    log_debug "discdata_set_original_country: '$1'"
+}
+
+discdata_get_original_country() {
+    echo "${DISC_DATA[original_country]}"
+}
+
+# Original-Plattenlabel
+discdata_set_original_label() {
+    DISC_DATA[original_label]="$1"
+    log_debug "discdata_set_original_label: '$1'"
+}
+
+discdata_get_original_label() {
+    echo "${DISC_DATA[original_label]}"
+}
+
+# Composer (Album-Komponist)
+discdata_set_composer() {
+    DISC_DATA[composer]="$1"
+    log_debug "discdata_set_composer: '$1'"
+}
+
+discdata_get_composer() {
+    echo "${DISC_DATA[composer]}"
+}
+
+# Songwriter (Album-Texter)
+discdata_set_songwriter() {
+    DISC_DATA[songwriter]="$1"
+    log_debug "discdata_set_songwriter: '$1'"
+}
+
+discdata_get_songwriter() {
+    echo "${DISC_DATA[songwriter]}"
+}
+
+# Arranger (Album-Arrangeur)
+discdata_set_arranger() {
+    DISC_DATA[arranger]="$1"
+    log_debug "discdata_set_arranger: '$1'"
+}
+
+discdata_get_arranger() {
+    echo "${DISC_DATA[arranger]}"
 }
 
 # ===========================================================================
