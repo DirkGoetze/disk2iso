@@ -60,16 +60,19 @@ sanitize_filename() {
 # FILENAME GENERATION
 # ============================================================================
 
-# Funktion zum Erstellen des ISO-Dateinamens
-# Erstellt eindeutigen Dateinamen basierend auf Disc-Typ
-# Setzt globale Variable: iso_filename
-# Funktion zum Finden eines eindeutigen Dateinamens
-# Args: Verzeichnis, Basis-Name (ohne .iso), [optionale existierende Datei]
-# Return: Eindeutiger Pfad (mit _1, _2 etc. falls nötig)
+# ===========================================================================
+# get_unique_iso_path
+# ---------------------------------------------------------------------------
+# Funktion.: Finde eindeutigen Dateinamen mit Auto-Increment
+# Parameter: $1 = target_dir (Zielverzeichnis)
+#            $2 = base_name (Basis-Name ohne .iso)
+#            $3 = existing_file (optional, existierende Datei die umbenannt wird)
+# Rückgabe.: Eindeutiger Pfad (mit _1, _2 etc. falls nötig)
+# ===========================================================================
 get_unique_iso_path() {
     local target_dir="$1"
     local base_name="$2"
-    local existing_file="${3:-}"  # Optional: Existierende Datei die umbenannt wird
+    local existing_file="${3:-}"
     
     local base_filename="${base_name}.iso"
     local full_path="${target_dir}/${base_filename}"
@@ -85,54 +88,71 @@ get_unique_iso_path() {
     echo "$full_path"
 }
 
-get_iso_filename() {
-    # Erstelle Typ-spezifischen Unterordner
-    local target_dir
-    target_dir=$(get_type_subfolder "$(discinfo_get_type)")
-    
-    # Nutze Hilfsfunktion für eindeutigen Dateinamen
-    iso_filename=$(get_unique_iso_path "$target_dir" "$(discinfo_get_label)")
-}
-
-# Funktion zum Erstellen des MD5-Dateinamens
-# Leitet MD5-Dateinamen vom ISO-Dateinamen ab
-# Setzt globale Variable: md5_filename
-get_md5_filename() {
-    # Ersetze .iso durch .md5 (iso_filename enthält bereits OUTPUT_DIR)
-    md5_filename="${iso_filename%.iso}.md5"
-}
-
-# Funktion zum Erstellen des LOG-Dateinamens
-# Leitet LOG-Dateinamen vom ISO-Dateinamen ab
-# Log-Dateien werden im separaten log/ Verzeichnis gespeichert
-# Setzt globale Variable: log_filename
-get_log_filename() {
-    # Extrahiere nur den Dateinamen ohne Pfad
-    local base_name=$(basename "${iso_filename%.iso}")
-    
-    # Erstelle Pfad im log/ Verzeichnis
-    log_filename="$(get_path_log)/${base_name}.log"
-}
-
-# Funktion zum Extrahieren des ISO-Basisnamens
-# Setzt globale Variable: iso_basename
-get_iso_basename() {
-    iso_basename=$(basename "$iso_filename")
-}
-
 # ============================================================================
 # FILENAME INITIALIZATION
 # ============================================================================
 
-# Funktion zur Initialisierung aller Dateinamen
-# Ruft alle Dateinamen-Generierungsfunktionen in der richtigen Reihenfolge auf
-# Setzt globale Variablen: iso_filename, md5_filename, log_filename, iso_basename, temp_pathname
+# ===========================================================================
+# init_filenames
+# ---------------------------------------------------------------------------
+# Funktion.: Initialisiere alle Dateinamen basierend auf disc_label und disc_type
+# Parameter: keine
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beschr...: Setzt DISC_INFO Felder: iso_filename, md5_filename, log_filename,
+#            iso_basename, temp_pathname
+#            Nutzt discinfo_get_label() und discinfo_get_type()
+#            WICHTIG: Muss NACH Metadata-Auswahl aufgerufen werden!
+# ===========================================================================
 init_filenames() {
-    get_iso_filename
-    get_md5_filename
-    get_log_filename
-    get_iso_basename
-    get_temp_pathname
+    # Prüfe ob disc_label und disc_type bereits gesetzt sind
+    local disc_label
+    local disc_type
+    
+    if ! disc_label=$(discinfo_get_label); then
+        log_error \"init_filenames: disc_label nicht gesetzt!\"
+        return 1
+    fi
+    
+    if ! disc_type=$(discinfo_get_type); then
+        log_error \"init_filenames: disc_type nicht gesetzt!\"
+        return 1
+    fi
+    
+    # 1. ISO-Dateinamen generieren
+    local target_dir
+    target_dir=$(get_type_subfolder \"$disc_type\")
+    local iso_path=$(get_unique_iso_path \"$target_dir\" \"$disc_label\")
+    discinfo_set_iso_filename \"$iso_path\"
+    
+    # 2. MD5-Dateinamen ableiten
+    local md5_path=\"${iso_path%.iso}.md5\"
+    discinfo_set_md5_filename \"$md5_path\"
+    
+    # 3. Log-Dateinamen ableiten (im separaten log/ Verzeichnis)
+    local base_name=$(basename \"${iso_path%.iso}\")
+    local log_path=\"$(get_path_log)/${base_name}.log\"
+    discinfo_set_log_filename \"$log_path\"
+    
+    # 4. ISO-Basisname extrahieren
+    local iso_base=$(basename \"$iso_path\")
+    discinfo_set_iso_basename \"$iso_base\"
+    
+    # 5. Temp-Pathname erstellen (falls nicht bereits vorhanden)
+    local temp_path
+    if ! temp_path=$(discinfo_get_temp_pathname); then
+        temp_path=$(get_temp_pathname)
+        discinfo_set_temp_pathname \"$temp_path\"
+    fi
+    
+    # Setze alte globale Variablen für Rückwärtskompatibilität (DEPRECATED)
+    iso_filename=\"$iso_path\"
+    md5_filename=\"$md5_path\"
+    log_filename=\"$log_path\"
+    iso_basename=\"$iso_base\"
+    temp_pathname=\"$temp_path\"
+    
+    log_debug \"init_filenames: ISO='$iso_path', MD5='$md5_path', LOG='$log_path', TEMP='$temp_path'\"
+    return 0
 }
 
 # ============================================================================

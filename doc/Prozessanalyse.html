@@ -193,7 +193,7 @@
             <tr>
                 <td>7</td>
                 <td>WAITING_FOR_MEDIA</td>
-                <td rowspan="35" class="loop-main" title="Hauptschleife: Schritte 7-41 werden für jede Disc wiederholt">⟳</td>
+                <td rowspan="36" class="loop-main" title="Hauptschleife: Schritte 7-41 werden für jede Disc wiederholt">⟳</td>
                 <td colspan="14">Prüfe ob Medium eingelegt</td>
             </tr>
             <tr>
@@ -225,7 +225,7 @@
                 <td>13</td>
                 <td>ANALYZING</td>
                 <td class="data-disc" colspan="1" rowspan="7">Daten-Disk erkannt</td>
-                <td rowspan="8"></td>
+                <td rowspan="9"></td>
                 <td class="audio-cd"  colspan="4">Audio-CD erkannt</td>
                 <td class="dvd-video" colspan="4">Video-DVD erkannt</td>
                 <td class="bd-video"  colspan="4">Video-BD erkannt</td>
@@ -286,10 +286,18 @@
                 <td class="bd-video"  colspan="1">Ausgewählt</td>
                 <td class="bd-video"  colspan="1">TimeOut</td>
             </tr>
+            <tr>
+                <td>20</td>
+                <td>COPYING</td>
+                <td class="data-disc" colspan="1">Dateinamen initialisieren</td>
+                <td class="audio-cd"  colspan="4">Dateinamen initialisieren</td>
+                <td class="dvd-video" colspan="4">Dateinamen initialisieren</td>
+                <td class="bd-video"  colspan="4">Dateinamen initialisieren</td>
+            </tr>
             
             <!-- KOPIERVORGANG -->
             <tr>
-                <td>20</td>
+                <td>21</td>
                 <td>COPYING</td>
                 <td class="data-disc" colspan="1">Speicherplatz prüfen</td>
                 <td class="audio-cd"  colspan="4">Speicherplatz prüfen</td>
@@ -297,46 +305,46 @@
                 <td class="bd-video"  colspan="4">Speicherplatz prüfen</td>
             </tr>
             <tr>
-                <td>21</td>
-                <td>COPYING</td>
-                <td class="data-disc" colspan="1">Dateinamen initialisieren</td>
-                <td class="audio-cd loop-inner" colspan="1" rowspan="6" title="Track-Schleife: Schritte 21-26 für jeden Track">↻</td>
-                <td class="audio-cd"  colspan="4">Track rippen (WAV)</td>
-                <td class="dvd-video" colspan="4">Dateinamen initialisieren</td>
-                <td class="bd-video"  colspan="4">Dateinamen initialisieren</td>
-            </tr>
-            <tr>
                 <td>22</td>
                 <td>COPYING</td>
-                <td class="data-disc" colspan="1" rowspan="7">Disc mit ddrescue oder dd kopieren</td>
-                <td class="audio-cd"  colspan="1" rowspan="2">MP3 Encoding</td>
-                <td class="audio-cd"  colspan="2">MP3 Encoding mit ID3-Tags</td>
-                <td class="audio-cd"  colspan="1" rowspan="2">MP3 Encoding</td>
-                <td class="dvd-video" colspan="4" rowspan="7">VIDEO_TS mit dvdbackup kopieren</td>
-                <td class="bd-video"  colspan="4" rowspan="7">Disc mit ddrescue kopieren</td>
+                <td class="data-disc" colspan="1">Disc mit ddrescue oder dd kopieren</td>
+                <td class="audio-cd loop-inner" colspan="1" rowspan="6" title="Track-Schleife: Schritte 21-26 für jeden Track">↻</td>
+                <td class="audio-cd"  colspan="4">Track rippen (WAV)</td>
+                <td class="dvd-video" colspan="4">VIDEO_TS mit dvdbackup kopieren</td>
+                <td class="bd-video"  colspan="4">Disc mit ddrescue kopieren</td>
             </tr>
             <tr>
                 <td>23</td>
                 <td>COPYING</td>
-                <td class="audio-cd"  colspan="2">Cover in MP3 speichern</td>
+                <td class="data-disc" colspan="1" rowspan="7"></td>
+                <td class="audio-cd"  colspan="1" rowspan="2">MP3 Encoding</td>
+                <td class="audio-cd"  colspan="2">MP3 Encoding mit ID3-Tags</td>
+                <td class="audio-cd"  colspan="1" rowspan="2">MP3 Encoding</td>
+                <td class="dvd-video" colspan="4" rowspan="7"></td>
+                <td class="bd-video"  colspan="4" rowspan="7"></td>
             </tr>
             <tr>
                 <td>24</td>
                 <td>COPYING</td>
-                <td class="audio-cd"  colspan="4">WAV-Datei löschen (Audio-CD)</td>
+                <td class="audio-cd"  colspan="2">Cover in MP3 speichern</td>
             </tr>
             <tr>
                 <td>25</td>
                 <td>COPYING</td>
-                <td class="audio-cd" colspan="4">Fortschritt aktualisieren (Audio-CD)</td>
+                <td class="audio-cd"  colspan="4">WAV-Datei löschen (Audio-CD)</td>
             </tr>
             <tr>
                 <td>26</td>
                 <td>COPYING</td>
-                <td class="audio-cd" colspan="4">Für alle Tracks wiederholen</td>
+                <td class="audio-cd" colspan="4">Fortschritt aktualisieren (Audio-CD)</td>
             </tr>
             <tr>
                 <td>27</td>
+                <td>COPYING</td>
+                <td class="audio-cd" colspan="4">Für alle Tracks wiederholen</td>
+            </tr>
+            <tr>
+                <td>28</td>
                 <td>COPYING</td>
                 <td rowspan="6">&nbsp;</td>
                 <td class="audio-cd" colspan="1" rowspan="2">&nbsp;</td>
@@ -344,12 +352,12 @@
                 <td class="audio-cd" colspan="1" rowspan="2">&nbsp;</td>
             </tr>
             <tr>
-                <td>28</td>
+                <td>29</td>
                 <td>COPYING</td>
                 <td class="audio-cd"  colspan="2">album.nfo erstellen</td>
             </tr>
             <tr>
-                <td>29</td>
+                <td>30</td>
                 <td>COPYING</td>
                 <td class="data-disc" colspan="1">ISO-Größe validieren</td>
                 <td class="audio-cd"  colspan="4">ISO aus Temp-Verzeichnis erstellen</td>
@@ -357,7 +365,7 @@
                 <td class="bd-video"  colspan="4">ISO aus Temp-Verzeichnis erstellen</td>
             </tr>
             <tr>
-                <td>30</td>
+                <td>31</td>
                 <td>COPYING</td>
                 <td class="data-disc" colspan="1">MD5-Checksumme erstellen</td>
                 <td class="audio-cd"  colspan="4">MD5-Checksumme erstellen</td>
@@ -365,7 +373,7 @@
                 <td class="bd-video"  colspan="4">MD5-Checksumme erstellen</td>
             </tr>
             <tr>
-                <td>31</td>
+                <td>32</td>
                 <td>COPYING</td>
                 <td class="data-disc" colspan="1">&nbsp;</td>
                 <td class="audio-cd"  colspan="1">&nbsp;</td>
@@ -379,7 +387,7 @@
                 <td class="bd-video"  colspan="1">&nbsp;</td>
             </tr>
             <tr>
-                <td>32</td>
+                <td>33</td>
                 <td>COPYING</td>
                 <td class="data-disc" colspan="1">Temp-Verzeichnis löschen</td>
                 <td class="audio-cd"  colspan="4">Temp-Verzeichnis löschen</td>
@@ -389,58 +397,58 @@
                         
             <!-- ABSCHLUSS (GEMEINSAM) -->
             <tr>
-                <td>33</td>
+                <td>34</td>
                 <td>COPYING</td>
                 <td colspan="14">Kopier-Log abschließen</td>
             </tr>
             <tr>
-                <td>34</td>
+                <td>35</td>
                 <td>COPYING</td>
                 <td colspan="14">API-Status auf "completed" setzen</td>
             </tr>
             <tr>
-                <td>35</td>
+                <td>36</td>
                 <td>COPYING</td>
                 <td colspan="14">MQTT-Benachrichtigung senden</td>
             </tr>
             <tr>
-                <td>36</td>
+                <td>37</td>
                 <td>COPYING</td>
                 <td colspan="14">Aufräumen erfolgreich abschließen</td>
             </tr>
             <tr>
-                <td>37</td>
+                <td>38</td>
                 <td>COMPLETED</td>
                 <td colspan="14">State-Übergang zu COMPLETED</td>
             </tr>
             <tr>
-                <td>38</td>
+                <td>39</td>
                 <td>COMPLETED</td>
                 <td colspan="14">Kurze Pause</td>
             </tr>
             <tr>
-                <td>39</td>
+                <td>40</td>
                 <td>WAITING_FOR_REMOVAL</td>
                 <td colspan="14">Warte auf Medium-Entfernung</td>
             </tr>
             <tr>
-                <td>40</td>
+                <td>41</td>
                 <td>IDLE</td>
                 <td colspan="14">Medium entfernt</td>
             </tr>
             <tr>
-                <td>41</td>
+                <td>42</td>
                 <td>IDLE</td>
                 <td colspan="14">Zurück zu WAITING_FOR_MEDIA</td>
             </tr>
             <tr>
-                <td>42</td>
+                <td>43</td>
                 <td>SHUTDOWN</td>
                 <td colspan="1" rowspan="2">&nbsp;</td>
                 <td colspan="14">WEB-Service beenden</td>
             </tr>
             <tr>
-                <td>43</td>
+                <td>44</td>
                 <td>SHUTDOWN</td>
                 <td colspan="14">Service beenden</td>
             </tr>
