@@ -521,6 +521,54 @@ discinfo_get_created_at() {
     return 1
 }
 
+# ===========================================================================
+# get_disc_size
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittle Disc-Größe mit isoinfo
+# Parameter: keine
+# Rückgabe.: 0 = Größe ermittelt, 1 = Keine Größe verfügbar
+# Beschr...: Setzt DISC_INFO[size_sectors] und DISC_INFO[size_mb]
+#            Setzt auch alte globale Variablen (disc_block_size, 
+#            disc_volume_size, total_bytes) für Rückwärtskompatibilität
+# ===========================================================================
+get_disc_size() {
+    local block_size=2048  # Fallback-Wert für optische Medien
+    local volume_size=""
+    
+    if command -v isoinfo >/dev/null 2>&1; then
+        local isoinfo_output
+        isoinfo_output=$(isoinfo -d -i "$CD_DEVICE" 2>/dev/null)
+        
+        # Lese Block Size dynamisch aus (falls verfügbar)
+        local detected_block_size
+        detected_block_size=$(echo "$isoinfo_output" | grep -i "Logical block size is:" | awk '{print $5}')
+        if [[ -n "$detected_block_size" ]] && [[ "$detected_block_size" =~ ^[0-9]+$ ]]; then
+            block_size=$detected_block_size
+        fi
+        
+        # Lese Volume Size aus
+        volume_size=$(echo "$isoinfo_output" | grep "Volume size is:" | awk '{print $4}')
+        if [[ -n "$volume_size" ]] && [[ "$volume_size" =~ ^[0-9]+$ ]]; then
+            # Setze Größe im DISC_INFO Array
+            discinfo_set_size "$volume_size" "$block_size"
+            
+            # Setze alte globale Variablen (Rückwärtskompatibilität - DEPRECATED)
+            disc_block_size="$block_size"
+            disc_volume_size="$volume_size"
+            total_bytes=$((volume_size * block_size))
+            return 0
+        fi
+    fi
+    
+    # Keine Größe ermittelt
+    discinfo_set_size 0 2048
+    disc_volume_size=""
+    total_bytes=0
+    return 1
+}
+
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
+
 # ============================================================================
 # DISC TYPE DETECTION
 # ============================================================================

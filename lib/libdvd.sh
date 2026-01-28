@@ -245,10 +245,9 @@ copy_video_dvd() {
         log_copying "$MSG_DVD_SIZE: ${dvd_size_mb} $MSG_PROGRESS_MB"
     fi
     
-    # Prüfe Speicherplatz (DVD-Größe + 5% Puffer)
+    # Prüfe Speicherplatz (Overhead wird automatisch berechnet)
     if [[ $dvd_size_mb -gt 0 ]]; then
-        local required_mb=$((dvd_size_mb + dvd_size_mb * 5 / 100))
-        if ! check_disk_space "$required_mb"; then
+        if ! check_disk_space "$dvd_size_mb"; then
             return 1
         fi
     fi
@@ -376,11 +375,10 @@ copy_video_dvd_ddrescue() {
         log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
     fi
     
-    # Prüfe Speicherplatz (ISO-Größe + 5% Puffer)
+    # Prüfe Speicherplatz (Overhead wird automatisch berechnet)
     if [[ $total_bytes -gt 0 ]]; then
         local size_mb=$((total_bytes / 1024 / 1024))
-        local required_mb=$((size_mb + size_mb * 5 / 100))
-        if ! check_disk_space "$required_mb"; then
+        if ! check_disk_space "$size_mb"; then
             # Mapfile wird mit temp_pathname automatisch gelöscht
             return 1
         fi

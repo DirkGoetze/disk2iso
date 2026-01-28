@@ -8,8 +8,11 @@
 #   Gemeinsame Kern-Funktionen für alle Module
 #   - copy_data_disc(), copy_data_disc_ddrescue()
 #   - reset_disc_variables(), cleanup_disc_operation()
-#   - check_disk_space(), monitor_copy_progress()
-#   - init_copy_log(), finish_copy_log()
+#   - monitor_copy_progress()
+#   - Fehler-Tracking: get_disc_identifier(), register_disc_failure()
+#   
+#   Hinweis: check_disk_space() ist in libsysteminfo.sh
+#            init_copy_log(), finish_copy_log() sind in liblogging.sh
 #
 # -----------------------------------------------------------------------------
 # Dependencies: liblogging, libfolders (für Core-Funktionen)
@@ -58,7 +61,6 @@ check_dependencies_common() {
     
     # Optionale Tools (Performance-Verbesserung)
     local optional_missing=()
-    command -v isoinfo >/dev/null 2>&1 || optional_missing+=("isoinfo")
     command -v ddrescue >/dev/null 2>&1 || optional_missing+=("ddrescue")
     
     if [[ ${#optional_missing[@]} -gt 0 ]]; then
@@ -83,6 +85,8 @@ check_dependencies_common() {
     
     return 0
 }
+
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 
 # ============================================================================
 # CONFIG MANAGEMENT (NO DEPENDENCIES - must be first!)
@@ -380,45 +384,6 @@ calculate_and_log_progress() {
     fi
 }
 
-# Funktion: Ermittle Disc-Größe mit isoinfo
-# Rückgabe: Setzt DISC_INFO[size_sectors] und DISC_INFO[size_mb]
-#           Return-Code: 0 = Größe ermittelt, 1 = Keine Größe verfügbar
-get_disc_size() {
-    local block_size=2048  # Fallback-Wert für optische Medien
-    local volume_size=""
-    
-    if command -v isoinfo >/dev/null 2>&1; then
-        local isoinfo_output
-        isoinfo_output=$(isoinfo -d -i "$CD_DEVICE" 2>/dev/null)
-        
-        # Lese Block Size dynamisch aus (falls verfügbar)
-        local detected_block_size
-        detected_block_size=$(echo "$isoinfo_output" | grep -i "Logical block size is:" | awk '{print $5}')
-        if [[ -n "$detected_block_size" ]] && [[ "$detected_block_size" =~ ^[0-9]+$ ]]; then
-            block_size=$detected_block_size
-        fi
-        
-        # Lese Volume Size aus
-        volume_size=$(echo "$isoinfo_output" | grep "Volume size is:" | awk '{print $4}')
-        if [[ -n "$volume_size" ]] && [[ "$volume_size" =~ ^[0-9]+$ ]]; then
-            # Setze Größe im DISC_INFO Array
-            discinfo_set_size "$volume_size" "$block_size"
-            
-            # Setze alte globale Variablen (Rückwärtskompatibilität - DEPRECATED)
-            disc_block_size="$block_size"
-            disc_volume_size="$volume_size"
-            total_bytes=$((volume_size * block_size))
-            return 0
-        fi
-    fi
-    
-    # Keine Größe ermittelt
-    discinfo_set_size 0 2048
-    disc_volume_size=""
-    total_bytes=0
-    return 1
-}
-
 # ============================================================================
 # DATA DISC COPY - DDRESCUE (für Daten-Discs)
 # ============================================================================
@@ -440,11 +405,10 @@ copy_data_disc_ddrescue() {
         log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE 2048 $MSG_ISO_BYTES ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
     fi
     
-    # Prüfe Speicherplatz (ISO-Größe + 5% Puffer)
+    # Prüfe Speicherplatz (Overhead wird automatisch berechnet)
     if [[ $total_bytes -gt 0 ]]; then
         local size_mb=$((total_bytes / 1024 / 1024))
-        local required_mb=$((size_mb + size_mb * 5 / 100))
-        if ! check_disk_space "$required_mb"; then
+        if ! check_disk_space "$size_mb"; then
             # Mapfile wird mit temp_pathname automatisch gelöscht
             return 1
         fi
@@ -521,10 +485,9 @@ copy_data_disc() {
     if [[ $total_bytes -gt 0 ]]; then
         log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE $block_size $MSG_ISO_BYTES ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
         
-        # Prüfe Speicherplatz (ISO-Größe + 5% Puffer)
+        # Prüfe Speicherplatz (Overhead wird automatisch berechnet)
         local size_mb=$((total_bytes / 1024 / 1024))
-        local required_mb=$((size_mb + size_mb * 5 / 100))
-        if ! check_disk_space "$required_mb"; then
+        if ! check_disk_space "$size_mb"; then
             return 1
         fi
         

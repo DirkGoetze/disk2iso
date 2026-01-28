@@ -117,11 +117,10 @@ copy_bluray_ddrescue() {
         fi
     fi
     
-    # Prüfe Speicherplatz (ISO-Größe + 5% Puffer)
+    # Prüfe Speicherplatz (Overhead wird automatisch berechnet)
     if [[ $total_bytes -gt 0 ]]; then
         local size_mb=$((total_bytes / 1024 / 1024))
-        local required_mb=$((size_mb + size_mb * 5 / 100))
-        if ! check_disk_space "$required_mb"; then
+        if ! check_disk_space "$size_mb"; then
             # Mapfile wird mit temp_pathname automatisch gelöscht
             return 1
         fi

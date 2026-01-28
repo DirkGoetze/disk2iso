@@ -20,13 +20,6 @@
 # =============================================================================
 
 # ============================================================================
-# GLOBAL VARIABLES
-# ============================================================================
-
-IS_CONTAINER=false
-CONTAINER_TYPE=""
-
-# ============================================================================
 # DEPENDENCY CHECK
 # ============================================================================
 
@@ -67,9 +60,14 @@ check_dependencies_systeminfo() {
     return 0
 }
 
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
+
 # ============================================================================
 # CONTAINER DETECTION
 # ============================================================================
+# Globale Variablen für Container-Erkennung
+IS_CONTAINER=false
+CONTAINER_TYPE=""
 
 # Funktion: Erkenne Container-Umgebung
 # Setzt globale Variablen: IS_CONTAINER, CONTAINER_TYPE
@@ -134,8 +132,29 @@ detect_container_environment() {
 # Funktion zur Prüfung des verfügbaren Speicherplatzes
 # Parameter: $1 = benötigte Größe in MB
 # Rückgabe: 0 = genug Platz, 1 = zu wenig Platz
+# ===========================================================================
+# check_disk_space
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe verfügbaren Speicherplatz mit automatischem Overhead
+# Parameter: $1 = required_mb (benötigte MB für ISO/Hauptdatei)
+#            $2 = overhead_percent (optional, default: 10 für Metadaten)
+# Rückgabe.: 0 = Ausreichend Platz, 1 = Nicht genug Platz
+# Hinweis..: Overhead berücksichtigt: Cover-Bilder, NFO-Dateien, 
+#            temporäre MP3s/WAVs, ddrescue Mapfiles, Puffer
+# ===========================================================================
 check_disk_space() {
     local required_mb=$1
+    local overhead_percent="${2:-10}"  # Default: 10% für Metadaten
+    
+    # Validierung
+    if [[ -z "$required_mb" ]] || [[ ! "$required_mb" =~ ^[0-9]+$ ]]; then
+        log_warning "check_disk_space: Ungültige required_mb '$required_mb' - überspringe Prüfung"
+        return 0
+    fi
+    
+    # Berechne tatsächlich benötigten Speicherplatz mit Overhead
+    local overhead_mb=$((required_mb * overhead_percent / 100))
+    local total_required=$((required_mb + overhead_mb))
     
     # Ermittle verfügbaren Speicherplatz am Ausgabepfad
     local available_mb=$(df -BM "$OUTPUT_DIR" 2>/dev/null | tail -1 | awk '{print $4}' | sed 's/M//')
@@ -145,10 +164,17 @@ check_disk_space() {
         return 0  # Fahre fort, wenn Prüfung fehlschlägt
     fi
     
-    log_info "$MSG_DISK_SPACE_INFO ${available_mb} $MSG_DISK_SPACE_MB_AVAILABLE ${required_mb} $MSG_DISK_SPACE_MB_REQUIRED"
+    # Detailliertes Logging
+    log_info "Speicherplatz: ${available_mb} MB verfügbar, ${total_required} MB benötigt (${required_mb} MB + ${overhead_mb} MB Overhead)"
     
-    if [[ $available_mb -lt $required_mb ]]; then
-        log_error "$MSG_ERROR_INSUFFICIENT_DISK_SPACE ${required_mb} $MSG_DISK_SPACE_MB_AVAILABLE_SHORT ${available_mb} MB"
+    if [[ $available_mb -lt $total_required ]]; then
+        log_error "$MSG_ERROR_INSUFFICIENT_DISK_SPACE ${total_required} MB benötigt, nur ${available_mb} MB verfügbar"
+        
+        # API: Fehler melden
+        if declare -f api_update_status >/dev/null 2>&1; then
+            api_update_status "error" "" "" "Nicht genug Speicherplatz: ${available_mb}/${total_required} MB"
+        fi
+        
         return 1
     fi
     

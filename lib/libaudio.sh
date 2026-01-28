@@ -1001,11 +1001,10 @@ copy_audio_cd() {
     # Sichere temp_pathname bevor check_disk_space es braucht
     local audio_temp_path="$temp_pathname"
     
-    # Prüfe Speicherplatz (MP3s sind ~10x kleiner als WAV, aber ISO braucht Overhead)
+    # Prüfe Speicherplatz (Overhead wird automatisch berechnet)
     local album_size_mb=$(du -sm "$album_dir" | awk '{print $1}')
-    local required_mb=$((album_size_mb + album_size_mb / 10 + 50))  # +10% + 50MB Puffer
     
-    if ! check_disk_space "$required_mb"; then
+    if ! check_disk_space "$album_size_mb"; then
         log_error "$MSG_ERROR_INSUFFICIENT_SPACE_ISO"
         rm -rf "$audio_temp_path"
         finish_copy_log
