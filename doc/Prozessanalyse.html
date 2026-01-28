@@ -64,15 +64,6 @@
         .data-disc {
             background-color: #fff3e0;
         }
-        .metadata-0 {
-            background-color: #ffebee;
-        }
-        .metadata-1 {
-            background-color: #e8f5e9;
-        }
-        .metadata-many {
-            background-color: #fff9c4;
-        }
         .step {
             margin: 5px 0;
         }
@@ -121,6 +112,26 @@
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
         }
+        .loop-main {
+            background-color: #e8f4f8;
+            border-left: 4px solid #3498db;
+            border-right: 4px solid #3498db;
+            font-size: 1.5em;
+            font-weight: bold;
+            text-align: center;
+            vertical-align: middle;
+            color: #2980b9;
+        }
+        .loop-inner {
+            background-color: #e8f5e9;
+            border-left: 3px solid #46f312;
+            border-right: 3px solid #46f312;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            vertical-align: middle;
+            color: #46f312;
+        }
     </style>
 </head>
 <body>
@@ -128,403 +139,310 @@
     
     <div class="legend">
         <h3>Legende</h3>
+        <span class="legend-item data-disc">Daten-Disc</span>
         <span class="legend-item audio-cd">Audio-CD</span>
         <span class="legend-item dvd-video">DVD-Video</span>
         <span class="legend-item bd-video">Blu-ray Video</span>
-        <span class="legend-item data-disc">Daten-Disc</span>
-        <span class="legend-item metadata-0">0 Releases</span>
-        <span class="legend-item metadata-1">1 Release</span>
-        <span class="legend-item metadata-many">Mehrere Releases</span>
     </div>
 
-    <h2>Hauptprozess-Tabelle</h2>
+    <h2>Prozess-Ablauf (Schritt für Schritt)</h2>
     
     <table>
         <thead>
             <tr>
-                <th>Phase</th>
-                <th>State</th>
-                <th colspan="6">Ablauf / Verzweigungen</th>
+                <th style="width: 20px;">#</th>
+                <th style="width: 200px;">State</th>
+                <th colspan="15">Aufgaben</th>
             </tr>
         </thead>
         <tbody>
-            <!-- PHASE 0: INITIALISIERUNG -->
+            <!-- INITIALISIERUNG -->
             <tr>
-                <td class="phase-header" rowspan="3">Phase 0<br>Initialisierung</td>
-                <td class="state">INITIALIZING</td>
-                <td colspan="6">
-                    <div class="step"><span class="step-number">1.</span> System-Prüfung</div>
-                    <div class="step"><span class="step-number">2.</span> Module laden (libconfig, liblogging, libfolders, libapi, libintegrity, libdiskinfos, libdrivestat)</div>
-                    <div class="step"><span class="step-number">3.</span> Core-Abhängigkeiten prüfen</div>
-                    <div class="duration">Dauer: 1-2 Sekunden</div>
-                </td>
+                <td>1</td>
+                <td>INITIALIZING</td>
+                <td rowspan="6"></td>
+                <td colspan="14">System-Prüfung</td>
             </tr>
             <tr>
-                <td class="state">WAITING_FOR_DRIVE</td>
-                <td colspan="6">
-                    <div class="step"><span class="step-number">4.</span> Suche nach optischem Laufwerk (detect_device)</div>
-                    <div class="step"><span class="step-number">5.</span> Polling-Intervall: 20 Sekunden</div>
-                    <div class="duration">Dauer: Bis Laufwerk erkannt</div>
-                </td>
+                <td>2</td>
+                <td>INITIALIZING</td>
+                <td colspan="14">Module laden</td>
             </tr>
             <tr>
-                <td class="state">DRIVE_DETECTED</td>
-                <td colspan="6">
-                    <div class="step"><span class="step-number">6.</span> Laufwerk-Bereitschaft prüfen (ensure_device_ready)</div>
-                    <div class="step"><span class="step-number">7.</span> System-Informationen sammeln (collect_system_information)</div>
-                    <div class="duration">Dauer: 1-2 Sekunden</div>
-                </td>
-            </tr>
-
-            <!-- PHASE 1: MEDIEN-ERKENNUNG -->
-            <tr>
-                <td class="phase-header" rowspan="3">Phase 1<br>Medien-Erkennung</td>
-                <td class="state">WAITING_FOR_MEDIA</td>
-                <td colspan="6">
-                    <div class="step"><span class="step-number">8.</span> Prüfe ob Medium eingelegt (is_disc_inserted)</div>
-                    <div class="step"><span class="step-number">9.</span> Polling-Intervall: 2 Sekunden</div>
-                    <div class="duration">Dauer: Bis Medium erkannt</div>
-                </td>
+                <td>3</td>
+                <td>INITIALIZING</td>
+                <td colspan="14">Core-Abhängigkeiten prüfen</td>
             </tr>
             <tr>
-                <td class="state">MEDIA_DETECTED</td>
-                <td colspan="6">
-                    <div class="step"><span class="step-number">10.</span> Warte auf Disc-Bereitschaft (Spin-Up)</div>
-                    <div class="step"><span class="step-number">11.</span> wait_for_disc_ready (max 3 Versuche)</div>
-                    <div class="duration">Dauer: 2-5 Sekunden</div>
-                </td>
+                <td>4</td>
+                <td>WAITING_FOR_DRIVE</td>
+                <td colspan="14">Suche nach optischem Laufwerk</td>
             </tr>
             <tr>
-                <td class="state">ANALYZING</td>
-                <td colspan="6">
-                    <div class="step"><span class="step-number">12.</span> <span class="critical">detect_disc_type()</span> - Disc-Typ erkennen</div>
-                    <div class="step">└─ <b>Methode 1:</b> blkid (Dateisystem-Typ)</div>
-                    <div class="step">└─ <b>Methode 2:</b> isoinfo -d (ISO9660 Prüfung)</div>
-                    <div class="step">└─ <b>Methode 3:</b> isoinfo -l (Verzeichnis-Struktur: /VIDEO_TS, /BDMV)</div>
-                    <div class="step">└─ <b>Methode 4:</b> mount -o ro (Temporäres Mounten)</div>
-                    <div class="step">└─ <b>Methode 5:</b> Disc-Größe (CD < 900 MB, DVD < 9 GB, BD > 9 GB)</div>
-                    <div class="step"><span class="step-number">13.</span> get_disc_label() - Volume-Label extrahieren (außer Audio-CD)</div>
-                    <div class="step"><span class="step-number">14.</span> Unmount falls auto-gemountet</div>
-                    <div class="duration">Dauer: 5-15 Sekunden</div>
-                </td>
-            </tr>
-
-            <!-- VERZWEIGUNG: DISC-TYP -->
-            <tr>
-                <td class="phase-header" colspan="2">Disc-Typ Verzweigung</td>
-                <th class="audio-cd">Audio-CD</th>
-                <th class="dvd-video">DVD-Video</th>
-                <th class="bd-video">Blu-ray Video</th>
-                <th class="data-disc" colspan="3">Daten-Disc (CD/DVD/BD-ROM)</th>
-            </tr>
-
-            <!-- PHASE 2: METADATA (nur Audio-CD, DVD-Video, BD-Video) -->
-            <tr>
-                <td class="phase-header" rowspan="6">Phase 2<br>Metadata-Abfrage<br>(optional)</td>
-                <td class="state">ANALYZING<br>(Metadata)</td>
-                <td class="audio-cd">
-                    <div class="step"><span class="step-number">15a.</span> <b>MusicBrainz Query</b></div>
-                    <div class="step">└─ cd-discid: Disc-ID + TOC</div>
-                    <div class="step">└─ cdparanoia -Q: Leadout</div>
-                    <div class="step">└─ TOC: 1+tracks+leadout+offsets</div>
-                    <div class="step">└─ API: GET /ws/2/discid/{id}?toc={toc}</div>
-                    <div class="duration">Dauer: 5-10 Sekunden</div>
-                </td>
-                <td class="dvd-video">
-                    <div class="step"><span class="step-number">15b.</span> <b>TMDB Query</b></div>
-                    <div class="step">└─ Nutzt disc_label als Suche</div>
-                    <div class="step">└─ API: GET /search/movie?query={label}</div>
-                    <div class="duration">Dauer: 5-10 Sekunden</div>
-                </td>
-                <td class="bd-video">
-                    <div class="step"><span class="step-number">15c.</span> <b>TMDB Query</b></div>
-                    <div class="step">└─ Nutzt disc_label als Suche</div>
-                    <div class="step">└─ API: GET /search/movie?query={label}</div>
-                    <div class="duration">Dauer: 5-10 Sekunden</div>
-                </td>
-                <td class="data-disc" colspan="3">
-                    <div class="step"><span class="step-number">15d.</span> <b>Keine Metadata</b></div>
-                    <div class="step">└─ Nutzt disc_label aus ISO9660</div>
-                    <div class="step">└─ Direkt zu Phase 3</div>
-                </td>
-            </tr>
-
-            <!-- VERZWEIGUNG: ANZAHL RELEASES -->
-            <tr>
-                <td class="state">Releases<br>Verzweigung</td>
-                <td class="audio-cd" colspan="3">
-                    <div class="step"><span class="step-number">16.</span> Prüfe releases.length</div>
-                </td>
-                <td class="data-disc" colspan="3" rowspan="5">
-                    <div class="step"><b>Keine Metadata-Phase</b></div>
-                    <div class="step">└─ Überspringe zu Phase 3</div>
-                </td>
+                <td>5</td>
+                <td>DRIVE_DETECTED</td>
+                <td colspan="14">Laufwerk-Bereitschaft prüfen</td>
             </tr>
             <tr>
-                <td class="state">0 Releases</td>
-                <td class="metadata-0">
-                    <div class="step"><span class="step-number">17a.</span> <b>Keine Treffer</b></div>
-                    <div class="step">└─ Verwende generische Namen</div>
-                    <div class="step">└─ audio_cd_{discid}</div>
-                    <div class="step">└─ skip_metadata = true</div>
-                    <div class="duration">Direkt zu Phase 3</div>
-                </td>
-                <td class="metadata-0" colspan="2">
-                    <div class="step"><span class="step-number">17b.</span> <b>Keine Treffer</b></div>
-                    <div class="step">└─ Verwende disc_label</div>
-                    <div class="step">└─ Direkt zu Phase 3</div>
-                </td>
+                <td>6</td>
+                <td>DRIVE_DETECTED</td>
+                <td colspan="14">System-Informationen sammeln</td>
+            </tr>
+            
+            <!-- MEDIEN-ERKENNUNG -->
+            <tr>
+                <td>7</td>
+                <td>WAITING_FOR_MEDIA</td>
+                <td rowspan="35" class="loop-main" title="Hauptschleife: Schritte 7-41 werden für jede Disc wiederholt">⟳</td>
+                <td colspan="14">Prüfe ob Medium eingelegt</td>
             </tr>
             <tr>
-                <td class="state">1 Release</td>
-                <td class="metadata-1">
-                    <div class="step"><span class="step-number">18a.</span> <b>Genau 1 Treffer</b></div>
-                    <div class="step">└─ Direktverwendung (kein User-Input)</div>
-                    <div class="step">└─ cd_artist = releases[0].artist</div>
-                    <div class="step">└─ cd_album = releases[0].title</div>
-                    <div class="step">└─ cd_year = releases[0].date</div>
-                    <div class="step">└─ disc_label = {artist}_{album}</div>
-                    <div class="duration">Direkt zu Phase 3</div>
-                </td>
-                <td class="metadata-1" colspan="2">
-                    <div class="step"><span class="step-number">18b.</span> <b>Genau 1 Treffer</b></div>
-                    <div class="step">└─ Direktverwendung</div>
-                    <div class="step">└─ disc_label = {title}_{year}</div>
-                    <div class="duration">Direkt zu Phase 3</div>
-                </td>
+                <td>8</td>
+                <td>MEDIA_DETECTED</td>
+                <td colspan="14">Warte auf Disc-Bereitschaft</td>
             </tr>
             <tr>
-                <td class="state">Mehrere<br>Releases</td>
-                <td class="metadata-many">
-                    <div class="step"><span class="step-number">19a.</span> <b>Mehrere Treffer</b></div>
-                    <div class="step">└─ Erstelle musicbrainz_releases.json</div>
-                    <div class="step">└─ Setze Status: waiting_user_input</div>
-                    <div class="step">└─ API-Update: WAITING_FOR_METADATA</div>
-                </td>
-                <td class="metadata-many" colspan="2">
-                    <div class="step"><span class="step-number">19b.</span> <b>Mehrere Treffer</b></div>
-                    <div class="step">└─ Erstelle tmdb_results.json</div>
-                    <div class="step">└─ Setze Status: waiting_user_input</div>
-                    <div class="step">└─ API-Update: WAITING_FOR_METADATA</div>
-                </td>
+                <td>9</td>
+                <td>ANALYZING</td>
+                <td colspan="14">Auto-Mount entfernen</td>
             </tr>
             <tr>
-                <td class="state">WAITING_FOR_<br>METADATA</td>
-                <td class="metadata-many">
-                    <div class="step"><span class="step-number">20a.</span> <b>wait_for_metadata_selection()</b></div>
-                    <div class="step">└─ Schreibe .mbquery Datei</div>
-                    <div class="step">└─ Warte auf .mbselect (Timeout: 60s)</div>
-                    <div class="step">└─ Polling-Intervall: 1 Sekunde</div>
-                    <div class="step">└─ <b>Bei Timeout:</b> Generische Namen</div>
-                    <div class="step">└─ <b>Bei Auswahl:</b> cd_artist/album/year gesetzt</div>
-                    <div class="duration">Dauer: 0-60 Sekunden</div>
-                </td>
-                <td class="metadata-many" colspan="2">
-                    <div class="step"><span class="step-number">20b.</span> <b>wait_for_tmdb_selection()</b></div>
-                    <div class="step">└─ Schreibe .tmdbquery Datei</div>
-                    <div class="step">└─ Warte auf .tmdbselect (Timeout: 60s)</div>
-                    <div class="step">└─ Polling-Intervall: 1 Sekunde</div>
-                    <div class="step">└─ <b>Bei Timeout:</b> disc_label verwenden</div>
-                    <div class="step">└─ <b>Bei Auswahl:</b> Metadaten gesetzt</div>
-                    <div class="duration">Dauer: 0-60 Sekunden</div>
-                </td>
-            </tr>
-
-            <!-- PHASE 3: KOPIERVORGANG -->
-            <tr>
-                <td class="phase-header" rowspan="8">Phase 3<br>Kopiervorgang</td>
-                <td class="state">COPYING<br>(Vorbereitung)</td>
-                <td class="audio-cd">
-                    <div class="step"><span class="step-number">21a.</span> <b>Temp-Verzeichnis</b></div>
-                    <div class="step">└─ Mit Metadata: /tmp/{artist}/{album}/</div>
-                    <div class="step">└─ Ohne Metadata: /tmp/audio_cd_{discid}/</div>
-                    <div class="step"><span class="step-number">22a.</span> <b>Track-Anzahl ermitteln</b></div>
-                    <div class="step">└─ cdparanoia -Q | grep "^\s+[0-9]+"</div>
-                    <div class="step">└─ track_count für Progress-API</div>
-                    <div class="step"><span class="step-number">23a.</span> <b>Cover-Download</b></div>
-                    <div class="step">└─ Falls mb_response verfügbar</div>
-                    <div class="step">└─ coverartarchive.org/release/{id}/front</div>
-                </td>
-                <td class="dvd-video">
-                    <div class="step"><span class="step-number">21b.</span> <b>init_filenames()</b></div>
-                    <div class="step">└─ iso_filename = {disc_label}.iso</div>
-                    <div class="step">└─ md5_filename = {disc_label}.md5</div>
-                    <div class="step">└─ log_filename = {disc_label}.log</div>
-                    <div class="step"><span class="step-number">22b.</span> <b>Speicherplatz prüfen</b></div>
-                    <div class="step">└─ check_disk_space (ca. 9 GB)</div>
-                </td>
-                <td class="bd-video">
-                    <div class="step"><span class="step-number">21c.</span> <b>init_filenames()</b></div>
-                    <div class="step">└─ iso_filename = {disc_label}.iso</div>
-                    <div class="step">└─ md5_filename = {disc_label}.md5</div>
-                    <div class="step">└─ log_filename = {disc_label}.log</div>
-                    <div class="step"><span class="step-number">22c.</span> <b>Speicherplatz prüfen</b></div>
-                    <div class="step">└─ check_disk_space (ca. 25-50 GB)</div>
-                </td>
-                <td class="data-disc" colspan="3">
-                    <div class="step"><span class="step-number">21d.</span> <b>init_filenames()</b></div>
-                    <div class="step">└─ iso_filename = {disc_label}.iso</div>
-                    <div class="step">└─ md5_filename = {disc_label}.md5</div>
-                    <div class="step">└─ log_filename = {disc_label}.log</div>
-                    <div class="step"><span class="step-number">22d.</span> <b>Speicherplatz prüfen</b></div>
-                    <div class="step">└─ check_disk_space (disc-size abhängig)</div>
-                </td>
+                <td>10</td>
+                <td>ANALYZING</td>
+                <td colspan="14">Volume-Label extrahieren</td>
             </tr>
             <tr>
-                <td class="state">COPYING<br>(Haupt-Prozess)</td>
-                <td class="audio-cd">
-                    <div class="step"><span class="step-number">24a.</span> <b>Track-Ripping Loop</b></div>
-                    <div class="step">└─ for track in 1..track_count:</div>
-                    <div class="step">&nbsp;&nbsp;&nbsp;&nbsp;<b>1.</b> cdparanoia: WAV rippen</div>
-                    <div class="step">&nbsp;&nbsp;&nbsp;&nbsp;<b>2.</b> lame: MP3 encoding (VBR V2)</div>
-                    <div class="step">&nbsp;&nbsp;&nbsp;&nbsp;<b>3.</b> ID3-Tags setzen (artist, album, year, title, track#)</div>
-                    <div class="step">&nbsp;&nbsp;&nbsp;&nbsp;<b>4.</b> eyeD3: Cover einbetten</div>
-                    <div class="step">&nbsp;&nbsp;&nbsp;&nbsp;<b>5.</b> WAV löschen (Speicherplatz)</div>
-                    <div class="step">&nbsp;&nbsp;&nbsp;&nbsp;<b>6.</b> Progress: track/track_count</div>
-                    <div class="step"><b>Dateinamen:</b></div>
-                    <div class="step">└─ Mit Metadata: "Artist - Title.mp3"</div>
-                    <div class="step">└─ Ohne Metadata: "Track 01.mp3"</div>
-                    <div class="duration">Dauer: 40-60 Minuten (12 Tracks)</div>
-                </td>
-                <td class="dvd-video">
-                    <div class="step"><span class="step-number">24b.</span> <b>dvdbackup</b></div>
-                    <div class="step">└─ dvdbackup -i {device} -o /tmp/dvd -M</div>
-                    <div class="step">└─ Entschlüsselt CSS (benötigt libdvdcss)</div>
-                    <div class="step">└─ Kopiert VIDEO_TS/ nach /tmp</div>
-                    <div class="step"><span class="step-number">25b.</span> <b>genisoimage</b></div>
-                    <div class="step">└─ genisoimage -dvd-video -udf -o {iso} /tmp/dvd/*/</div>
-                    <div class="step">└─ Erstellt ISO aus VIDEO_TS/</div>
-                    <div class="duration">Dauer: 15-30 Minuten</div>
-                </td>
-                <td class="bd-video">
-                    <div class="step"><span class="step-number">24c.</span> <b>ddrescue</b></div>
-                    <div class="step">└─ ddrescue -n -b 2048 {device} {iso} /tmp/ddrescue.log</div>
-                    <div class="step">└─ Bit-für-Bit Kopie</div>
-                    <div class="step">└─ Robustes Skip bei Lesefehlern</div>
-                    <div class="step">└─ Progress-Log in /tmp/ddrescue.log</div>
-                    <div class="duration">Dauer: 30-90 Minuten</div>
-                </td>
-                <td class="data-disc" colspan="3">
-                    <div class="step"><span class="step-number">24d.</span> <b>ddrescue oder dd</b></div>
-                    <div class="step">└─ Bevorzugt: ddrescue -n -b 2048</div>
-                    <div class="step">└─ Fallback: dd if={device} of={iso} bs=2048</div>
-                    <div class="step">└─ Bit-für-Bit Kopie</div>
-                    <div class="duration">Dauer: 5-20 Minuten</div>
-                </td>
+                <td>11</td>
+                <td>ANALYZING</td>
+                <td colspan="14">Temp-Verzeichnis zum Kopieren erstellen</td>
             </tr>
             <tr>
-                <td class="state">COPYING<br>(Nachbearbeitung)</td>
-                <td class="audio-cd">
-                    <div class="step"><span class="step-number">25a.</span> <b>Cover kopieren</b></div>
-                    <div class="step">└─ cp cover.jpg {album_dir}/folder.jpg</div>
-                    <div class="step"><span class="step-number">26a.</span> <b>album.nfo erstellen</b></div>
-                    <div class="step">└─ Via metadb_export_nfo() (Jellyfin XML)</div>
-                    <div class="step">└─ Nur bei vorhandenen Metadaten</div>
-                </td>
-                <td class="dvd-video" colspan="2">
-                    <div class="step"><span class="step-number">25b.</span> <b>Cleanup</b></div>
-                    <div class="step">└─ rm -rf /tmp/dvd_$$</div>
-                </td>
-                <td class="data-disc" colspan="3">
-                    <div class="step"><span class="step-number">25c.</span> <b>Validierung</b></div>
-                    <div class="step">└─ Prüfe ISO-Größe > 0</div>
-                </td>
+                <td>12</td>
+                <td>ANALYZING</td>
+                <td colspan="14">Disc-Typ erkennen</td>
             </tr>
             <tr>
-                <td class="state">COPYING<br>(ISO-Erstellung)</td>
-                <td class="audio-cd">
-                    <div class="step"><span class="step-number">27a.</span> <b>genisoimage</b></div>
-                    <div class="step">└─ Volume-ID: Album-Name oder AUDIO_CD_{discid}</div>
-                    <div class="step">└─ genisoimage -R -J -joliet-long -V "{volume_id}" -o {iso} /tmp/artist/album/</div>
-                    <div class="step"><b>ISO-Struktur:</b></div>
-                    <div class="step">└─ /Artist Name/Album Title/Artist - Track 01.mp3</div>
-                    <div class="step">└─ /Artist Name/Album Title/folder.jpg</div>
-                    <div class="step">└─ /Artist Name/Album Title/album.nfo</div>
-                    <div class="duration">Dauer: 30 Sekunden - 2 Minuten</div>
-                </td>
-                <td class="dvd-video" colspan="2">
-                    <div class="note">ISO bereits in Schritt 25b erstellt</div>
-                </td>
-                <td class="data-disc" colspan="3">
-                    <div class="note">ISO bereits in Schritt 24d erstellt</div>
-                </td>
+                <td>13</td>
+                <td>ANALYZING</td>
+                <td class="data-disc" colspan="1" rowspan="7">Daten-Disk erkannt</td>
+                <td rowspan="8"></td>
+                <td class="audio-cd"  colspan="4">Audio-CD erkannt</td>
+                <td class="dvd-video" colspan="4">Video-DVD erkannt</td>
+                <td class="bd-video"  colspan="4">Video-BD erkannt</td>
+            </tr>
+            
+            <!-- METADATA-ABFRAGE -->
+            <tr>
+                <td>14</td>
+                <td>ANALYZING</td>
+                <td class="audio-cd" colspan="4">Track Anzahl ermitteln</td>
+                <td class="dvd-video" colspan="4">Content-Typ ermitteln</td>
+                <td class="bd-video" colspan="4">Content-Typ ermitteln</td>
             </tr>
             <tr>
-                <td class="state">COPYING<br>(Checksumme)</td>
-                <td class="audio-cd" colspan="6">
-                    <div class="step"><span class="step-number">28.</span> <b>MD5-Checksumme erstellen</b></div>
-                    <div class="step">└─ md5sum {iso} > {md5}</div>
-                    <div class="duration">Dauer: 30 Sekunden - 3 Minuten (ISO-Größe abhängig)</div>
-                </td>
+                <td>15</td>
+                <td>ANALYZING</td>
+                <td class="audio-cd"  colspan="4">MusicBrainz Query (Audio-CD)</td>
+                <td class="dvd-video" colspan="4">TMDB Query (DVD-Video)</td>
+                <td class="bd-video"  colspan="4">TMDB Query (BD-Video)</td>
             </tr>
             <tr>
-                <td class="state">COPYING<br>(Archiv-Metadata)</td>
-                <td class="audio-cd">
-                    <div class="step"><span class="step-number">29a.</span> <b>create_archive_metadata()</b></div>
-                    <div class="step">└─ {disc_label}.nfo (Einfaches Format)</div>
-                    <div class="step">└─ {disc_label}-thumb.jpg (Cover-Thumbnail)</div>
-                    <div class="step"><b>NFO-Inhalt:</b></div>
-                    <div class="step">└─ TITLE, ARTIST, DATE, COUNTRY, TRACKS, DURATION, TYPE</div>
-                </td>
-                <td class="dvd-video" colspan="2">
-                    <div class="step"><span class="step-number">29b.</span> <b>create_archive_metadata()</b></div>
-                    <div class="step">└─ {disc_label}.nfo</div>
-                    <div class="step">└─ {disc_label}-thumb.jpg (falls TMDB)</div>
-                    <div class="step"><b>NFO-Inhalt:</b></div>
-                    <div class="step">└─ TITLE, DATE, TYPE</div>
-                </td>
-                <td class="data-disc" colspan="3">
-                    <div class="step"><span class="step-number">29c.</span> <b>Keine Archiv-Metadata</b></div>
-                    <div class="step">└─ Nur ISO + MD5</div>
-                </td>
+                <td>16</td>
+                <td>ANALYZING</td>
+                <td class="audio-cd"  colspan="1" rowspan="4">Keine Treffer</td>
+                <td class="audio-cd"  colspan="1">1 Release</td>
+                <td class="audio-cd"  colspan="2">Mehrere Releases</td>
+                <td class="dvd-video" colspan="1" rowspan="4">Keine Treffer</td>
+                <td class="dvd-video" colspan="1">1 Release</td>
+                <td class="dvd-video" colspan="2">Mehrere Releases</td>
+                <td class="bd-video"  colspan="1" rowspan="4">Keine Treffer</td>
+                <td class="bd-video"  colspan="1">1 Release</td>
+                <td class="bd-video"  colspan="2">Mehrere Releases</td>
             </tr>
             <tr>
-                <td class="state">COPYING<br>(Cleanup)</td>
-                <td class="audio-cd">
-                    <div class="step"><span class="step-number">30a.</span> <b>rm -rf /tmp/artist/album/</b></div>
-                    <div class="step"><span class="step-number">31a.</span> <b>rm cover.jpg</b></div>
-                </td>
-                <td class="dvd-video" colspan="2">
-                    <div class="note">Cleanup bereits in Schritt 25b</div>
-                </td>
-                <td class="data-disc" colspan="3">
-                    <div class="step"><span class="step-number">30b.</span> <b>rm /tmp/ddrescue.log</b></div>
-                </td>
+                <td>17</td>
+                <td>ANALYZING</td>
+                <td class="audio-cd"  colspan="3">Cover-Download</td>
+                <td class="dvd-video" colspan="3">Cover-Download</td>
+                <td class="bd-video"  colspan="3">Cover-Download</td>
             </tr>
             <tr>
-                <td class="state">COPYING<br>(Abschluss)</td>
-                <td class="audio-cd" colspan="6">
-                    <div class="step"><span class="step-number">32.</span> <b>finish_copy_log()</b></div>
-                    <div class="step"><span class="step-number">33.</span> <b>API-Update: status = "completed"</b></div>
-                    <div class="step"><span class="step-number">34.</span> <b>MQTT: mqtt_publish_complete() (optional)</b></div>
-                    <div class="step"><span class="step-number">35.</span> <b>cleanup_disc_operation("success")</b></div>
-                </td>
-            </tr>
-
-            <!-- PHASE 4: FINALISIERUNG -->
-            <tr>
-                <td class="phase-header" rowspan="3">Phase 4<br>Finalisierung</td>
-                <td class="state">COMPLETED</td>
-                <td colspan="6">
-                    <div class="step"><span class="step-number">36.</span> State-Übergang zu COMPLETED</div>
-                    <div class="step"><span class="step-number">37.</span> Kurze Pause (3 Sekunden) - Status sichtbar machen</div>
-                </td>
+                <td>18</td>
+                <td>WAITING_FOR_METADATA</td>
+                <td class="audio-cd"  colspan="1" rowspan="2">Direkte Verwendung</td>
+                <td class="audio-cd"  colspan="2">User-Auswahl</td>
+                <td class="dvd-video" colspan="1" rowspan="2">Direkte Verwendung</td>
+                <td class="dvd-video" colspan="2">User-Auswahl</td>
+                <td class="bd-video"  colspan="1" rowspan="2">Direkte Verwendung</td>
+                <td class="bd-video"  colspan="2">User-Auswahl</td>
             </tr>
             <tr>
-                <td class="state">WAITING_FOR_<br>REMOVAL</td>
-                <td colspan="6">
-                    <div class="step"><span class="step-number">38.</span> Warte auf Medium-Entfernung</div>
-                    <div class="step"><span class="step-number">39.</span> Polling: is_disc_inserted() (Intervall: 5 Sekunden)</div>
-                    <div class="duration">Dauer: Bis Medium entfernt</div>
-                </td>
+                <td>19</td>
+                <td>WAITING_FOR_METADATA</td>
+                <td class="audio-cd"  colspan="1">Ausgewählt</td>
+                <td class="audio-cd"  colspan="1">TimeOut</td>
+                <td class="dvd-video" colspan="1">Ausgewählt</td>
+                <td class="dvd-video" colspan="1">TimeOut</td>
+                <td class="bd-video"  colspan="1">Ausgewählt</td>
+                <td class="bd-video"  colspan="1">TimeOut</td>
+            </tr>
+            
+            <!-- KOPIERVORGANG -->
+            <tr>
+                <td>20</td>
+                <td>COPYING</td>
+                <td class="data-disc" colspan="1">Speicherplatz prüfen</td>
+                <td class="audio-cd"  colspan="4">Speicherplatz prüfen</td>
+                <td class="dvd-video" colspan="4">Speicherplatz prüfen</td>
+                <td class="bd-video"  colspan="4">Speicherplatz prüfen</td>
             </tr>
             <tr>
-                <td class="state">IDLE</td>
-                <td colspan="6">
-                    <div class="step"><span class="step-number">40.</span> Medium entfernt</div>
-                    <div class="step"><span class="step-number">41.</span> State-Übergang zu WAITING_FOR_MEDIA (zurück zu Schritt 8)</div>
-                    <div class="step"><span class="step-number">42.</span> Bereit für nächstes Medium</div>
-                </td>
+                <td>21</td>
+                <td>COPYING</td>
+                <td class="data-disc" colspan="1">Dateinamen initialisieren</td>
+                <td class="audio-cd loop-inner" colspan="1" rowspan="6" title="Track-Schleife: Schritte 21-26 für jeden Track">↻</td>
+                <td class="audio-cd"  colspan="4">Track rippen (WAV)</td>
+                <td class="dvd-video" colspan="4">Dateinamen initialisieren</td>
+                <td class="bd-video"  colspan="4">Dateinamen initialisieren</td>
+            </tr>
+            <tr>
+                <td>22</td>
+                <td>COPYING</td>
+                <td class="data-disc" colspan="1" rowspan="7">Disc mit ddrescue oder dd kopieren</td>
+                <td class="audio-cd"  colspan="1" rowspan="2">MP3 Encoding</td>
+                <td class="audio-cd"  colspan="2">MP3 Encoding mit ID3-Tags</td>
+                <td class="audio-cd"  colspan="1" rowspan="2">MP3 Encoding</td>
+                <td class="dvd-video" colspan="4" rowspan="7">VIDEO_TS mit dvdbackup kopieren</td>
+                <td class="bd-video"  colspan="4" rowspan="7">Disc mit ddrescue kopieren</td>
+            </tr>
+            <tr>
+                <td>23</td>
+                <td>COPYING</td>
+                <td class="audio-cd"  colspan="2">Cover in MP3 speichern</td>
+            </tr>
+            <tr>
+                <td>24</td>
+                <td>COPYING</td>
+                <td class="audio-cd"  colspan="4">WAV-Datei löschen (Audio-CD)</td>
+            </tr>
+            <tr>
+                <td>25</td>
+                <td>COPYING</td>
+                <td class="audio-cd" colspan="4">Fortschritt aktualisieren (Audio-CD)</td>
+            </tr>
+            <tr>
+                <td>26</td>
+                <td>COPYING</td>
+                <td class="audio-cd" colspan="4">Für alle Tracks wiederholen</td>
+            </tr>
+            <tr>
+                <td>27</td>
+                <td>COPYING</td>
+                <td rowspan="6">&nbsp;</td>
+                <td class="audio-cd" colspan="1" rowspan="2">&nbsp;</td>
+                <td class="audio-cd" colspan="2">Cover als folder.jpg kopieren</td>
+                <td class="audio-cd" colspan="1" rowspan="2">&nbsp;</td>
+            </tr>
+            <tr>
+                <td>28</td>
+                <td>COPYING</td>
+                <td class="audio-cd"  colspan="2">album.nfo erstellen</td>
+            </tr>
+            <tr>
+                <td>29</td>
+                <td>COPYING</td>
+                <td class="data-disc" colspan="1">ISO-Größe validieren</td>
+                <td class="audio-cd"  colspan="4">ISO aus Temp-Verzeichnis erstellen</td>
+                <td class="dvd-video" colspan="4">ISO aus Temp-Verzeichnis erstellen</td>
+                <td class="bd-video"  colspan="4">ISO aus Temp-Verzeichnis erstellen</td>
+            </tr>
+            <tr>
+                <td>30</td>
+                <td>COPYING</td>
+                <td class="data-disc" colspan="1">MD5-Checksumme erstellen</td>
+                <td class="audio-cd"  colspan="4">MD5-Checksumme erstellen</td>
+                <td class="dvd-video" colspan="4">MD5-Checksumme erstellen</td>
+                <td class="bd-video"  colspan="4">MD5-Checksumme erstellen</td>
+            </tr>
+            <tr>
+                <td>31</td>
+                <td>COPYING</td>
+                <td class="data-disc" colspan="1">&nbsp;</td>
+                <td class="audio-cd"  colspan="1">&nbsp;</td>
+                <td class="audio-cd"  colspan="2">Archiv-Metadaten erstellen</td>
+                <td class="audio-cd"  colspan="1">&nbsp;</td>
+                <td class="dvd-video" colspan="1">&nbsp;</td>
+                <td class="dvd-video" colspan="2">Archiv-Metadaten erstellen</td>
+                <td class="dvd-video" colspan="1">&nbsp;</td>
+                <td class="bd-video"  colspan="1">&nbsp;</td>
+                <td class="bd-video"  colspan="2">Archiv-Metadaten erstellen</td>
+                <td class="bd-video"  colspan="1">&nbsp;</td>
+            </tr>
+            <tr>
+                <td>32</td>
+                <td>COPYING</td>
+                <td class="data-disc" colspan="1">Temp-Verzeichnis löschen</td>
+                <td class="audio-cd"  colspan="4">Temp-Verzeichnis löschen</td>
+                <td class="dvd-video" colspan="4">Temp-Verzeichnis löschen</td>
+                <td class="bd-video"  colspan="4">Temp-Verzeichnis löschen</td>
+            </tr>
+                        
+            <!-- ABSCHLUSS (GEMEINSAM) -->
+            <tr>
+                <td>33</td>
+                <td>COPYING</td>
+                <td colspan="14">Kopier-Log abschließen</td>
+            </tr>
+            <tr>
+                <td>34</td>
+                <td>COPYING</td>
+                <td colspan="14">API-Status auf "completed" setzen</td>
+            </tr>
+            <tr>
+                <td>35</td>
+                <td>COPYING</td>
+                <td colspan="14">MQTT-Benachrichtigung senden</td>
+            </tr>
+            <tr>
+                <td>36</td>
+                <td>COPYING</td>
+                <td colspan="14">Aufräumen erfolgreich abschließen</td>
+            </tr>
+            <tr>
+                <td>37</td>
+                <td>COMPLETED</td>
+                <td colspan="14">State-Übergang zu COMPLETED</td>
+            </tr>
+            <tr>
+                <td>38</td>
+                <td>COMPLETED</td>
+                <td colspan="14">Kurze Pause</td>
+            </tr>
+            <tr>
+                <td>39</td>
+                <td>WAITING_FOR_REMOVAL</td>
+                <td colspan="14">Warte auf Medium-Entfernung</td>
+            </tr>
+            <tr>
+                <td>40</td>
+                <td>IDLE</td>
+                <td colspan="14">Medium entfernt</td>
+            </tr>
+            <tr>
+                <td>41</td>
+                <td>IDLE</td>
+                <td colspan="14">Zurück zu WAITING_FOR_MEDIA</td>
+            </tr>
+            <tr>
+                <td>42</td>
+                <td>SHUTDOWN</td>
+                <td colspan="1" rowspan="2">&nbsp;</td>
+                <td colspan="14">WEB-Service beenden</td>
+            </tr>
+            <tr>
+                <td>43</td>
+                <td>SHUTDOWN</td>
+                <td colspan="14">Service beenden</td>
             </tr>
         </tbody>
     </table>
@@ -541,6 +459,20 @@
             </tr>
         </thead>
         <tbody>
+            <tr>
+                <td class="data-disc"><b>Daten-Disc</b></td>
+                <td>OUTPUT_DIR/data/</td>
+                <td>
+                    <div class="output-files">disc_label.iso</div>
+                    <div class="output-files">disc_label.md5</div>
+                    <div class="output-files">disc_label.log</div>
+                </td>
+                <td>
+                    <div>ISO (Bit-für-Bit Kopie)</div>
+                    <div>MD5-Checksumme</div>
+                    <div>ddrescue oder dd Output</div>
+                </td>
+            </tr>
             <tr>
                 <td class="audio-cd"><b>Audio-CD</b></td>
                 <td>OUTPUT_DIR/audio/</td>
@@ -591,20 +523,6 @@
                     <div>MD5-Checksumme</div>
                     <div>ddrescue Output</div>
                     <div>Archiv-Metadaten (falls TMDB)</div>
-                </td>
-            </tr>
-            <tr>
-                <td class="data-disc"><b>Daten-Disc</b></td>
-                <td>OUTPUT_DIR/data/</td>
-                <td>
-                    <div class="output-files">disc_label.iso</div>
-                    <div class="output-files">disc_label.md5</div>
-                    <div class="output-files">disc_label.log</div>
-                </td>
-                <td>
-                    <div>ISO (Bit-für-Bit Kopie)</div>
-                    <div>MD5-Checksumme</div>
-                    <div>ddrescue oder dd Output</div>
                 </td>
             </tr>
         </tbody>

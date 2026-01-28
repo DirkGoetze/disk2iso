@@ -25,18 +25,6 @@
 readonly MODULE_NAME_METADATA="metadata"     # Globale Variable für Modulname
 SUPPORT_METADATA=false                                # Globales Support Flag
 
-# Lade Metadata-Datenbank (libmetadb.sh)
-# shellcheck source=lib/libmetadb.sh
-if [[ -f "${SCRIPT_DIR}/lib/libmetadb.sh" ]]; then
-    source "${SCRIPT_DIR}/lib/libmetadb.sh" || {
-        log_error "Metadata: libmetadb.sh konnte nicht geladen werden"
-        return 1
-    }
-else
-    log_error "Metadata: libmetadb.sh nicht gefunden"
-    return 1
-fi
-
 # ===========================================================================
 # check_dependencies_metadata
 # ---------------------------------------------------------------------------
@@ -168,7 +156,7 @@ metadata_get_provider() {
     fi
     
     # Fallback: Registrierter Provider
-    local provider="${METADATA_DISC_PROVIDERS[$disc_type]}"
+    local provider="${METADATA_DISC_PROVIDERS[$(discinfo_get_type)]}"
     if [[ -n "$provider" ]]; then
         echo "$provider"
         return 0
@@ -219,10 +207,10 @@ metadata_query_before_copy() {
     
     # Hole konfigurierten Provider
     local provider
-    provider=$(metadata_get_provider "$disc_type")
+    provider=$(metadata_get_provider "$(discinfo_get_type)")
     
     if [[ -z "$provider" ]]; then
-        log_warning "Metadata: Kein Provider für '$disc_type' konfiguriert"
+        log_warning "Metadata: Kein Provider für '$(discinfo_get_type)' konfiguriert"
         return 1
     fi
     
@@ -238,7 +226,7 @@ metadata_query_before_copy() {
     
     # Rufe Provider-spezifische Query-Funktion auf
     # Übergebe: disc_type, search_term, disc_id, extra_params
-    "$query_func" "$disc_type" "$search_term" "$disc_id" "${extra_params[@]}"
+    "$query_func" "$(discinfo_get_type)" "$search_term" "$disc_id" "${extra_params[@]}"
     
     return $?
 }
@@ -260,17 +248,17 @@ metadata_wait_for_selection() {
     
     # Auto-detect Provider falls nicht übergeben
     if [[ -z "$provider" ]]; then
-        provider=$(metadata_get_provider "$disc_type")
+        provider=$(metadata_get_provider "$(discinfo_get_type)")
         
         if [[ -z "$provider" ]]; then
-            log_error "Metadata: Kein Provider für '$disc_type' gefunden"
+            log_error "Metadata: Kein Provider für '$(discinfo_get_type)' gefunden"
             return 1
         fi
     fi
     
     # Bestimme Query-Datei-Pattern basierend auf Provider
     local output_base
-    output_base=$(get_type_subfolder "$disc_type" 2>/dev/null) || output_base="${OUTPUT_DIR}"
+    output_base=$(get_type_subfolder "$(discinfo_get_type)" 2>/dev/null) || output_base="${OUTPUT_DIR}"
     
     local query_file="${output_base}/${disc_id}_${provider}.${provider}query"
     local select_file="${output_base}/${disc_id}_${provider}.${provider}select"
@@ -387,7 +375,7 @@ metadata_cleanup() {
     local provider="${3:-}"
     
     local output_base
-    output_base=$(get_type_subfolder "$disc_type" 2>/dev/null) || output_base="${OUTPUT_DIR}"
+    output_base=$(get_type_subfolder "$(discinfo_get_type)" 2>/dev/null) || output_base="${OUTPUT_DIR}"
     
     if [[ -n "$provider" ]]; then
         # Cleanup für spezifischen Provider
@@ -432,6 +420,122 @@ metadata_load_config() {
     fi
     
     return 0
+}
+
+# ============================================================================
+# NFO EXPORT - JELLYFIN FORMAT
+# ============================================================================
+
+# ===========================================================================
+# metadata_export_nfo
+# ---------------------------------------------------------------------------
+# Funktion.: Exportiere Metadaten als NFO-Datei (Jellyfin-Format)
+# Parameter: $1 = nfo_file_path
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Hinweis..: Format abhängig von disc_type, nutzt DISC_INFO/DISC_DATA Arrays
+# ===========================================================================
+metadata_export_nfo() {
+    local nfo_file="$1"
+    local disc_type
+    disc_type=$(discinfo_get_type)
+    
+    # Validierung
+    if [[ -z "$nfo_file" ]]; then
+        log_error "metadata_export_nfo: nfo_file fehlt"
+        return 1
+    fi
+    
+    case "$disc_type" in
+        audio-cd)
+            _metadata_export_audio_nfo "$nfo_file"
+            ;;
+        dvd-video|bd-video)
+            _metadata_export_video_nfo "$nfo_file"
+            ;;
+        data|data-cd|data-dvd)
+            _metadata_export_data_nfo "$nfo_file"
+            ;;
+        *)
+            log_error "metadata_export_nfo: Unbekannter disc_type '$disc_type'"
+            return 1
+            ;;
+    esac
+    
+    log_info "Metadata: NFO erstellt: $(basename "$nfo_file")"
+    return 0
+}
+
+# Interne Funktion: Audio-CD NFO (album.nfo)
+_metadata_export_audio_nfo() {
+    local nfo_file="$1"
+    
+    cat > "$nfo_file" <<EOF
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<album>
+  <title>${DISC_DATA[album]}</title>
+  <artist>${DISC_DATA[artist]}</artist>
+  <year>${DISC_DATA[year]}</year>
+  <runtime>$((DISC_DATA[duration] / 60000))</runtime>
+  <musicbrainzalbumid>${DISC_INFO[provider_id]}</musicbrainzalbumid>
+  <albumartist>${DISC_DATA[artist]}</albumartist>
+EOF
+    
+    # Track-Liste hinzufügen
+    local track_count="${DISC_DATA[track_count]}"
+    for ((i=1; i<=track_count; i++)); do
+        local track_title="${DISC_DATA[track.$i.title]}"
+        local track_duration="${DISC_DATA[track.$i.duration]}"
+        
+        if [[ -n "$track_title" ]]; then
+            cat >> "$nfo_file" <<EOF
+  <track>
+    <position>$i</position>
+    <title>${track_title}</title>
+    <duration>${track_duration}</duration>
+  </track>
+EOF
+        fi
+    done
+    
+    echo "</album>" >> "$nfo_file"
+}
+
+# Interne Funktion: Video NFO (movie.nfo)
+_metadata_export_video_nfo() {
+    local nfo_file="$1"
+    
+    cat > "$nfo_file" <<EOF
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<movie>
+  <title>${DISC_DATA[title]}</title>
+  <year>${DISC_DATA[year]}</year>
+  <director>${DISC_DATA[director]}</director>
+  <runtime>${DISC_DATA[runtime]}</runtime>
+  <plot>${DISC_DATA[overview]}</plot>
+  <tmdbid>${DISC_INFO[provider_id]}</tmdbid>
+EOF
+    
+    # Genres hinzufügen
+    local index=1
+    while [[ -v "DISC_DATA[genre.${index}]" ]]; do
+        echo "  <genre>${DISC_DATA[genre.${index}]}</genre>" >> "$nfo_file"
+        ((index++))
+    done
+    
+    echo "</movie>" >> "$nfo_file"
+}
+
+# Interne Funktion: Data-Disc NFO (einfaches Key-Value Format)
+_metadata_export_data_nfo() {
+    local nfo_file="$1"
+    
+    cat > "$nfo_file" <<EOF
+DESCRIPTION=${DISC_DATA[description]}
+BACKUP_DATE=${DISC_DATA[backup_date]}
+CREATED=${DISC_INFO[created_at]}
+SIZE_MB=${DISC_INFO[size_mb]}
+TYPE=${DISC_INFO[type]}
+EOF
 }
 
 ################################################################################

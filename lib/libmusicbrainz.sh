@@ -220,14 +220,14 @@ musicbrainz_query() {
     
     # Schreibe .mbquery Datei (für Frontend-API)
     local output_base
-    output_base=$(get_type_subfolder "$disc_type" 2>/dev/null) || output_base="${OUTPUT_DIR}"
+    output_base=$(get_type_subfolder "$(discinfo_get_type)" 2>/dev/null) || output_base="${OUTPUT_DIR}"
     
     local mbquery_file="${output_base}/${disc_id}_musicbrainz.mbquery"
     
     # Erweitere JSON mit Metadaten
     echo "$response" | jq -c "{
         provider: \"musicbrainz\",
-        disc_type: \"$disc_type\",
+        disc_type: \"$(discinfo_get_type)\",
         disc_id: \"$disc_id\",
         search_query: \"$search_term\",
         result_count: $result_count,

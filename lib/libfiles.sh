@@ -88,10 +88,10 @@ get_unique_iso_path() {
 get_iso_filename() {
     # Erstelle Typ-spezifischen Unterordner
     local target_dir
-    target_dir=$(get_type_subfolder "$disc_type")
+    target_dir=$(get_type_subfolder "$(discinfo_get_type)")
     
     # Nutze Hilfsfunktion für eindeutigen Dateinamen
-    iso_filename=$(get_unique_iso_path "$target_dir" "$disc_label")
+    iso_filename=$(get_unique_iso_path "$target_dir" "$(discinfo_get_label)")
 }
 
 # Funktion zum Erstellen des MD5-Dateinamens

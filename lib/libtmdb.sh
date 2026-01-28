@@ -223,7 +223,7 @@ tmdb_query() {
     
     # Schreibe .tmdbquery Datei (für Frontend-API)
     local output_base
-    output_base=$(get_type_subfolder "$disc_type" 2>/dev/null) || output_base="${OUTPUT_DIR}"
+    output_base=$(get_type_subfolder "$(discinfo_get_type)" 2>/dev/null) || output_base="${OUTPUT_DIR}"
     
     local tmdbquery_file="${output_base}/${disc_id}_tmdb.tmdbquery"
     
@@ -231,7 +231,7 @@ tmdb_query() {
     echo "$response" | jq -c "{
         provider: \"tmdb\",
         media_type: \"$media_type\",
-        disc_type: \"$disc_type\",
+        disc_type: \"$(discinfo_get_type)\",
         disc_id: \"$disc_id\",
         search_query: \"$search_term\",
         result_count: $result_count,

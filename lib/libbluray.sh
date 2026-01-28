@@ -79,7 +79,7 @@ get_path_bluray() {
 # KEIN Fallback - Methode wird zu Beginn gewählt
 copy_bluray_ddrescue() {
     # Initialisiere Kopiervorgang-Log
-    init_copy_log "$disc_label" "bluray"
+    init_copy_log "$(discinfo_get_label)" "bluray"
     
     log_copying "$MSG_METHOD_DDRESCUE_ENCRYPTED"
     
@@ -228,7 +228,7 @@ copy_bluray_ddrescue() {
         
         # Erstelle Metadaten für Archiv-Ansicht
         if declare -f create_dvd_archive_metadata >/dev/null 2>&1; then
-            local movie_title=$(extract_movie_title "$disc_label")
+            local movie_title=$(extract_movie_title "$(discinfo_get_label)")
             create_dvd_archive_metadata "$movie_title" "bd-video" || true
         fi
         

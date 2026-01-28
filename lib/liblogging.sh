@@ -174,7 +174,7 @@ init_copy_log() {
     echo "========================================" >> "$copy_log_filename"
     echo "Kopiervorgang gestartet: $(date '+%Y-%m-%d %H:%M:%S')" >> "$copy_log_filename"
     echo "Medium: $disc_id" >> "$copy_log_filename"
-    echo "Typ: $disc_type" >> "$copy_log_filename"
+    echo "Typ: $(discinfo_get_type)" >> "$copy_log_filename"
     echo "========================================" >> "$copy_log_filename"
 }
 

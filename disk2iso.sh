@@ -81,17 +81,6 @@ source "${SCRIPT_DIR}/lib/libconfig.sh"
 # Verhindert dass Mount-Points im Root / landen wenn OUTPUT_DIR noch nicht gesetzt ist
 OUTPUT_DIR="${DEFAULT_OUTPUT_DIR}"
 
-# Lade Kern-Bibliotheken (IMMER erforderlich)
-source "${SCRIPT_DIR}/lib/libconfig.sh"
-source "${SCRIPT_DIR}/lib/libfiles.sh"
-source "${SCRIPT_DIR}/lib/liblogging.sh"
-source "${SCRIPT_DIR}/lib/libfolders.sh"
-source "${SCRIPT_DIR}/lib/libapi.sh"
-source "${SCRIPT_DIR}/lib/libintegrity.sh"
-source "${SCRIPT_DIR}/lib/libdiskinfos.sh"
-source "${SCRIPT_DIR}/lib/libdrivestat.sh"
-source "${SCRIPT_DIR}/lib/libsysteminfo.sh"
-source "${SCRIPT_DIR}/lib/libcommon.sh"
 
 # Lade Sprachdateien für Hauptskript
 load_module_language "disk2iso"
@@ -99,54 +88,64 @@ load_module_language "disk2iso"
 # ============================================================================
 # PRÜFE KERN-ABHÄNGIGKEITEN (kritisch - Abbruch bei Fehler)
 # ============================================================================
-# Alle Core-Module müssen ihre Abhängigkeiten erfüllen, sonst kann
-# disk2iso nicht funktionieren. Die Reihenfolge entspricht der Lade-Reihenfolge.
+# Alle Core-Module werden nach einander geladen und müssen ihre Abhängigkeiten 
+# erfüllen, sonst kann disk2iso nicht funktionieren. 
 
+source "${SCRIPT_DIR}/lib/libconfig.sh"
 if ! check_dependencies_config; then
     echo "FEHLER: Config-Modul Abhängigkeiten nicht erfüllt" >&2
     exit 1
 fi
 
+source "${SCRIPT_DIR}/lib/libfiles.sh"
 if ! check_dependencies_files; then
     echo "FEHLER: Files-Modul Abhängigkeiten nicht erfüllt" >&2
     exit 1
 fi
 
+source "${SCRIPT_DIR}/lib/liblogging.sh"
 if ! check_dependencies_logging; then
     echo "FEHLER: Logging-Modul Abhängigkeiten nicht erfüllt" >&2
     exit 1
 fi
 
+source "${SCRIPT_DIR}/lib/libfolders.sh"
 if ! check_dependencies_folders; then
     log_error "Folders-Modul Abhängigkeiten nicht erfüllt"
     exit 1
 fi
 
+source "${SCRIPT_DIR}/lib/libapi.sh"
 if ! check_dependencies_api; then
     log_error "API-Modul Abhängigkeiten nicht erfüllt"
     exit 1
 fi
 
+source "${SCRIPT_DIR}/lib/libintegrity.sh"
 if ! check_dependencies_integrity; then
     log_error "Integrity-Modul Abhängigkeiten nicht erfüllt"
     exit 1
 fi
 
+source "${SCRIPT_DIR}/lib/libdiskinfos.sh"
 if ! check_dependencies_diskinfos; then
     log_error "Disk-Information-Modul Abhängigkeiten nicht erfüllt"
     exit 1
 fi
 
+source "${SCRIPT_DIR}/lib/libdrivestat.sh"
 if ! check_dependencies_drivestat; then
     log_error "Drive-Status-Modul Abhängigkeiten nicht erfüllt"
     exit 1
 fi
 
+source "${SCRIPT_DIR}/lib/libsysteminfo.sh"
 if ! check_dependencies_systeminfo; then
     log_error "$MSG_ABORT_SYSTEMINFO_DEPENDENCIES"
     exit 1
 fi
 
+source "${SCRIPT_DIR}/lib/libcommon.sh"
 if ! check_dependencies_common; then
     log_error "$MSG_ABORT_CRITICAL_DEPENDENCIES"
     exit 1
@@ -213,6 +212,8 @@ if [[ -f "${SCRIPT_DIR}/lib/libmqtt.sh" ]]; then
         mqtt_init  # Initialisiert MQTT_AVAILABLE bei Erfolg
     fi
 fi
+
+# TODO: Ab hier noch nicht optimiert
 
 # Initialisiere API (IMMER, unabhängig von MQTT)
 api_init
@@ -294,7 +295,7 @@ select_copy_method() {
 # Funktion zum Kopieren der CD/DVD/BD als ISO
 copy_disc_to_iso() {
     # Wähle Kopiermethode basierend auf Disc-Typ und verfügbaren Tools
-    local method=$(select_copy_method "$disc_type")
+    local method=$(select_copy_method "$(discinfo_get_type)")
     
     # Audio-CDs behandeln init_filenames selbst (wegen speziellem Workflow)
     if [[ "$method" == "audio-cd" ]]; then
@@ -320,17 +321,17 @@ copy_disc_to_iso() {
     # Erstelle Log-Datei
     touch "$log_filename"
     
-    log_info "$MSG_START_COPY_PROCESS $disc_label -> $iso_filename"
+    log_info "$MSG_START_COPY_PROCESS $(discinfo_get_label) -> $iso_filename"
     
     # Speichere Methode für MQTT-Attribute (MUSS vor api_update_status gesetzt werden!)
     COPY_METHOD="$method"
     
     # API: Status-Update (IMMER)
-    api_update_status "copying" "$disc_label" "$disc_type"
+    api_update_status "copying" "$(discinfo_get_label)" "$(discinfo_get_type)"
     
     # MQTT: Kopiervorgang gestartet (optional)
     if [[ "$SUPPORT_MQTT" == "true" ]]; then
-        mqtt_publish_state "copying" "$disc_label" "$disc_type"
+        mqtt_publish_state "copying" "$(discinfo_get_label)" "$(discinfo_get_type)"
     fi
     
     # Kopiere mit gewählter Methode (KEIN Fallback bei Fehler)
@@ -361,7 +362,7 @@ copy_disc_to_iso() {
             fi
             ;;
         ddrescue)
-            if [[ "$disc_type" == "dvd-video" ]] || [[ "$disc_type" == "bd-video" ]]; then
+            if [[ "$(discinfo_get_type)" == "dvd-video" ]] || [[ "$(discinfo_get_type)" == "bd-video" ]]; then
                 if copy_video_dvd_ddrescue; then
                     copy_success=true
                 fi
@@ -396,7 +397,7 @@ copy_disc_to_iso() {
         cleanup_disc_operation "success"
         return 0
     else
-        log_info "$MSG_COPY_FAILED_FINAL $disc_label"
+        log_info "$MSG_COPY_FAILED_FINAL $(discinfo_get_label)"
         
         # MQTT: Fehler
         if [[ "$SUPPORT_MQTT" == "true" ]]; then
@@ -434,22 +435,22 @@ transition_to_state() {
             api_update_status "idle" "${MSG_STATUS_WAITING_MEDIA:-Waiting for Media}" "unknown"
             ;;
         "$STATE_ANALYZING")
-            api_update_status "analyzing" "$disc_label" "$disc_type"
+            api_update_status "analyzing" "$(discinfo_get_label)" "$(discinfo_get_type)"
             ;;
         "$STATE_WAITING_FOR_METADATA")
-            api_update_status "waiting_for_metadata" "$disc_label" "$disc_type"
+            api_update_status "waiting_for_metadata" "$(discinfo_get_label)" "$(discinfo_get_type)"
             ;;
         "$STATE_COPYING")
-            api_update_status "copying" "$disc_label" "$disc_type"
+            api_update_status "copying" "$(discinfo_get_label)" "$(discinfo_get_type)"
             ;;
         "$STATE_COMPLETED")
-            api_update_status "completed" "$disc_label" "$disc_type"
+            api_update_status "completed" "$(discinfo_get_label)" "$(discinfo_get_type)"
             ;;
         "$STATE_ERROR")
-            api_update_status "error" "${disc_label:-Unknown}" "${disc_type:-unknown}" "${msg:-Unknown error}"
+            api_update_status "error" "$(discinfo_get_label || echo 'Unknown')" "$(discinfo_get_type || echo 'unknown')" "${msg:-Unknown error}"
             ;;
         "$STATE_WAITING_FOR_REMOVAL")
-            api_update_status "waiting" "$disc_label" "$disc_type"
+            api_update_status "waiting" "$(discinfo_get_label)" "$(discinfo_get_type)"
             ;;
         "$STATE_IDLE")
             api_update_status "idle"

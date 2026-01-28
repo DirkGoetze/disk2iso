@@ -306,11 +306,11 @@ wait_for_medium_change_lxc_safe() {
         get_disc_label
         
         # Prüfe ob ISO mit diesem Label bereits existiert
-        local target_dir=$(get_type_subfolder "$disc_type")
+        local target_dir=$(get_type_subfolder "$(discinfo_get_type)")
         
         # Prüfe ob target_dir erfolgreich ermittelt wurde
         if [[ -z "$target_dir" ]]; then
-            log_error "$MSG_ERROR_TARGET_DIR $disc_type"
+            log_error "$MSG_ERROR_TARGET_DIR $(discinfo_get_type)"
             # Stelle ursprüngliche Werte wieder her und fahre fort
             disc_type="$original_disc_type"
             disc_label="$original_disc_label"
@@ -319,7 +319,7 @@ wait_for_medium_change_lxc_safe() {
         
         # Prüfe ob eine Datei mit diesem Label bereits existiert
         local iso_exists=false
-        local potential_iso="${target_dir}/${disc_label}.iso"
+        local potential_iso="${target_dir}/$(discinfo_get_label).iso"
         
         if [[ -f "$potential_iso" ]]; then
             iso_exists=true
@@ -327,7 +327,7 @@ wait_for_medium_change_lxc_safe() {
             # Prüfe auch auf nummerierte Duplikate (_1, _2, _3, ...)
             # Breche bei erster Lücke ab (wie get_iso_filename())
             local counter=1
-            while [[ -f "${target_dir}/${disc_label}_${counter}.iso" ]]; do
+            while [[ -f "${target_dir}/$(discinfo_get_label)_${counter}.iso" ]]; do
                 iso_exists=true
                 # Erste Duplikat gefunden - reicht für unsere Prüfung
                 break
@@ -336,7 +336,7 @@ wait_for_medium_change_lxc_safe() {
         
         if $iso_exists; then
             # Disk wurde bereits konvertiert → weiter warten
-            log_info "$MSG_DISC_ALREADY_CONVERTED ${disc_label}.iso $MSG_WAITING_FOR_NEW_DISC"
+            log_info "$MSG_DISC_ALREADY_CONVERTED $(discinfo_get_label).iso $MSG_WAITING_FOR_NEW_DISC"
             
             # Stelle ursprüngliche Werte wieder her
             disc_type="$original_disc_type"
@@ -348,7 +348,7 @@ wait_for_medium_change_lxc_safe() {
         else
             # Neue Disk gefunden! (ISO existiert noch nicht)
             # Globale Variablen bleiben auf neue Werte gesetzt (disc_type und disc_label)
-            log_info "$MSG_NEW_MEDIUM_DETECTED (${disc_type}: ${disc_label})"
+            log_info "$MSG_NEW_MEDIUM_DETECTED ($(discinfo_get_type): $(discinfo_get_label))"
             return 0
         fi
     done

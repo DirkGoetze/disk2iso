@@ -83,7 +83,7 @@ readonly FAILED_DISCS_FILE=".failed_dvds"
 # Funktion: Ermittle eindeutigen Identifier für DVD
 # Rückgabe: String mit disc_label und disc_type (z.B. "supernatural_season_10_disc_3:dvd-video")
 get_dvd_identifier() {
-    echo "${disc_label}:${disc_type}"
+    echo "$(discinfo_get_label):$(discinfo_get_type)"
 }
 
 # Funktion: Prüfe ob DVD bereits fehlgeschlagen ist
@@ -139,7 +139,7 @@ clear_dvd_failures() {
 # Mit intelligentem Fallback: dvdbackup → ddrescue → Ablehnung
 copy_video_dvd() {
     # Initialisiere Kopiervorgang-Log
-    init_copy_log "$disc_label" "dvd"
+    init_copy_log "$(discinfo_get_label)" "dvd"
     
     # Nutze zentrale Fehler-Tracking Funktionen aus libcommon.sh
     local failure_count=$(get_disc_failure_count)
@@ -156,22 +156,22 @@ copy_video_dvd() {
         # Extrahiere Filmtitel aus disc_label
         local movie_title
         if declare -f extract_movie_title_from_label >/dev/null 2>&1; then
-            movie_title=$(extract_movie_title_from_label "$disc_label")
+            movie_title=$(extract_movie_title_from_label "$(discinfo_get_label)")
         else
             # Fallback: Einfache Konvertierung
-            movie_title=$(echo "$disc_label" | tr '_' ' ' | sed 's/\b\(.)/ \u\1/g')
+            movie_title=$(echo "$(discinfo_get_label)" | tr '_' ' ' | sed 's/\b\(.)/ \u\1/g')
         fi
         
         log_info "TMDB: Suche nach '$movie_title'..."
         
         # Query TMDB
-        if query_tmdb_before_copy "$movie_title" "$disc_type" "$disc_id"; then
+        if query_tmdb_before_copy "$movie_title" "$(discinfo_get_type)" "$disc_id"; then
             # TMDB Query erfolgreich - warte auf User-Auswahl
             log_info "TMDB: Warte auf User-Auswahl..."
             
             # Hole TMDB Response (aus .tmdbquery Datei)
             local output_base
-            output_base=$(get_type_subfolder "$disc_type")
+            output_base=$(get_type_subfolder "$(discinfo_get_type)")
             local tmdbquery_file="${output_base}/${dvd_id}_tmdb.tmdbquery"
             
             if [[ -f "$tmdbquery_file" ]]; then
@@ -182,10 +182,10 @@ copy_video_dvd() {
                 if declare -f wait_for_tmdb_selection >/dev/null 2>&1; then
                     if wait_for_tmdb_selection "$disc_id" "$tmdb_json"; then
                         # User hat ausgewählt - disc_label wurde aktualisiert
-                        log_info "TMDB: Metadata-Auswahl erfolgreich - neues Label: $disc_label"
+                        log_info "TMDB: Metadata-Auswahl erfolgreich - neues Label: $(discinfo_get_label)"
                         
                         # Re-initialisiere Log mit neuem Label
-                        init_copy_log "$disc_label" "dvd"
+                        init_copy_log "$(discinfo_get_label)" "dvd"
                     else
                         log_info "TMDB: Metadata übersprungen - verwende generisches Label"
                         skip_tmdb=true
@@ -325,7 +325,7 @@ copy_video_dvd() {
     
     # Erstelle ISO aus VIDEO_TS Struktur
     log_copying "$MSG_CREATE_DECRYPTED_ISO"
-    if genisoimage -dvd-video -V "$disc_label" -o "$iso_filename" "$(dirname "$video_ts_dir")" 2>>"$copy_log_filename"; then
+    if genisoimage -dvd-video -V "$(discinfo_get_label)" -o "$iso_filename" "$(dirname "$video_ts_dir")" 2>>"$copy_log_filename"; then
         log_copying "$MSG_DECRYPTED_DVD_SUCCESS"
         
         # Erfolg → Lösche eventuelle Fehler-Historie (zentrale Funktion)
@@ -333,7 +333,7 @@ copy_video_dvd() {
         
         # Erstelle Metadaten für Archiv-Ansicht
         if declare -f create_dvd_archive_metadata >/dev/null 2>&1; then
-            local movie_title=$(extract_movie_title "$disc_label")
+            local movie_title=$(extract_movie_title "$(discinfo_get_label)")
             create_dvd_archive_metadata "$movie_title" "dvd-video" || true
         fi
         
@@ -362,7 +362,7 @@ copy_video_dvd() {
 copy_video_dvd_ddrescue() {
     # Initialisiere Kopiervorgang-Log (falls noch nicht von copy_video_dvd initialisiert)
     if [[ -z "$copy_log_filename" ]]; then
-        init_copy_log "$disc_label" "dvd"
+        init_copy_log "$(discinfo_get_label)" "dvd"
     fi
     
     log_copying "$MSG_METHOD_DDRESCUE_ENCRYPTED"
@@ -432,8 +432,8 @@ copy_video_dvd_ddrescue() {
         
         # Erstelle Metadaten für Archiv-Ansicht (verwende disc_type für DVD/Blu-ray)
         if declare -f create_dvd_archive_metadata >/dev/null 2>&1; then
-            local movie_title=$(extract_movie_title "$disc_label")
-            create_dvd_archive_metadata "$movie_title" "$disc_type" || true
+            local movie_title=$(extract_movie_title "$(discinfo_get_label)")
+            create_dvd_archive_metadata "$movie_title" "$(discinfo_get_type)" || true
         fi
         
         # Mapfile wird mit temp_pathname automatisch gelöscht

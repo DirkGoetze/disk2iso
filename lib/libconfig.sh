@@ -50,17 +50,17 @@ check_dependencies_config() {
 # ============================================================================
 # Diese Variablen werden zur Laufzeit gesetzt und sollten NICHT manuell
 # in disk2iso.conf geändert werden.
+# 
+# HINWEIS: disc_label, disc_type, disc_block_size und disc_volume_size
+# wurden durch DISC_INFO/DISC_DATA Arrays ersetzt (siehe libdiskinfos.sh)
+# Zugriff über Getter-Funktionen: discinfo_get_label(), discinfo_get_type(), etc.
 
 OUTPUT_DIR=""      # Ausgabeordner für ISO-Dateien (wird per Parameter oder DEFAULT gesetzt)
-disc_label=""      # Normalisierter Label-Name der Disc
 iso_filename=""    # Vollständiger Pfad zur ISO-Datei
 md5_filename=""    # Vollständiger Pfad zur MD5-Datei
 log_filename=""    # Vollständiger Pfad zur Log-Datei
 iso_basename=""    # Basis-Dateiname ohne Pfad (z.B. "dvd_video.iso")
 temp_pathname=""   # Temp-Verzeichnis für aktuellen Kopiervorgang
-disc_type=""       # "data" (vereinfacht)
-disc_block_size="" # Block Size des Mediums (wird gecacht)
-disc_volume_size="" # Volume Size des Mediums in Blöcken (wird gecacht)
 
 # ============================================================================
 # CONFIG MANAGEMENT - NEUE ARCHITEKTUR

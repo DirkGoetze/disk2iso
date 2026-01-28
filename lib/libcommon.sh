@@ -242,7 +242,7 @@ get_path_data() {
 # Rückgabe: String mit disc_label und disc_type (z.B. "album_name:audio-cd")
 # Nutzt globale Variablen: disc_label, disc_type
 get_disc_identifier() {
-    echo "${disc_label}:${disc_type}"
+    echo "$(discinfo_get_label):$(discinfo_get_type)"
 }
 
 # Funktion: Prüfe ob Disc bereits fehlgeschlagen ist
@@ -276,7 +276,7 @@ register_disc_failure() {
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     
     # Format: identifier|timestamp|method|disc_type
-    echo "${identifier}|${timestamp}|${method}|${disc_type}" >> "$failed_file"
+    echo "${identifier}|${timestamp}|${method}|$(discinfo_get_type)" >> "$failed_file"
     
     log_warning "Disc-Fehler registriert: $identifier ($method)"
 }
@@ -381,12 +381,11 @@ calculate_and_log_progress() {
 }
 
 # Funktion: Ermittle Disc-Größe mit isoinfo
-# Rückgabe: Setzt globale Variablen $volume_size (Blöcke), $total_bytes und $block_size
+# Rückgabe: Setzt DISC_INFO[size_sectors] und DISC_INFO[size_mb]
 #           Return-Code: 0 = Größe ermittelt, 1 = Keine Größe verfügbar
 get_disc_size() {
-    block_size=2048  # Fallback-Wert für optische Medien
-    volume_size=""
-    total_bytes=0
+    local block_size=2048  # Fallback-Wert für optische Medien
+    local volume_size=""
     
     if command -v isoinfo >/dev/null 2>&1; then
         local isoinfo_output
@@ -402,13 +401,20 @@ get_disc_size() {
         # Lese Volume Size aus
         volume_size=$(echo "$isoinfo_output" | grep "Volume size is:" | awk '{print $4}')
         if [[ -n "$volume_size" ]] && [[ "$volume_size" =~ ^[0-9]+$ ]]; then
+            # Setze Größe im DISC_INFO Array
+            discinfo_set_size "$volume_size" "$block_size"
+            
+            # Setze alte globale Variablen (Rückwärtskompatibilität - DEPRECATED)
+            disc_block_size="$block_size"
+            disc_volume_size="$volume_size"
             total_bytes=$((volume_size * block_size))
             return 0
         fi
     fi
     
     # Keine Größe ermittelt
-    volume_size=""
+    discinfo_set_size 0 2048
+    disc_volume_size=""
     total_bytes=0
     return 1
 }
@@ -421,7 +427,7 @@ get_disc_size() {
 # Schneller und robuster als dd
 copy_data_disc_ddrescue() {
     # Initialisiere Kopiervorgang-Log
-    init_copy_log "$disc_label" "data"
+    init_copy_log "$(discinfo_get_label)" "data"
     
     log_copying "$MSG_METHOD_DDRESCUE"
     
@@ -507,7 +513,7 @@ copy_data_disc_ddrescue() {
 # Sendet Fortschritt via systemd-notify für Service-Betrieb
 copy_data_disc() {
     # Initialisiere Kopiervorgang-Log
-    init_copy_log "$disc_label" "data"
+    init_copy_log "$(discinfo_get_label)" "data"
     
     # Versuche Volume-Größe mit isoinfo zu ermitteln
     get_disc_size
@@ -581,6 +587,10 @@ monitor_copy_progress() {
 
 # Funktion zum Zurücksetzen aller Disc-Variablen
 reset_disc_variables() {
+    # Setze DISC_INFO und DISC_DATA Arrays zurück
+    discinfo_init
+    
+    # Setze alte globale Variablen zurück (Rückwärtskompatibilität - DEPRECATED)
     disc_label=""
     disc_type=""
     iso_filename=""
@@ -588,6 +598,8 @@ reset_disc_variables() {
     log_filename=""
     iso_basename=""
     temp_pathname=""
+    disc_volume_size=""
+    disc_block_size=""
 }
 
 # Funktion zum vollständigen Aufräumen nach Disc-Operation

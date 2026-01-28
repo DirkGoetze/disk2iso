@@ -698,17 +698,6 @@ copy_audio_cd() {
     fi
     
     # ========================================================================
-    # METADATA DATABASE INITIALISIERUNG
-    # ========================================================================
-    # Initialisiere Metadaten-Datenbank für Audio-CD
-    if declare -f metadb_init >/dev/null 2>&1; then
-        metadb_init "audio-cd"
-        log_debug "Metadaten-Datenbank für audio-cd initialisiert"
-    else
-        log_warning "libmetadb.sh nicht geladen - verwende Legacy-Variablen"
-    fi
-    
-    # ========================================================================
     # METADATA BEFORE COPY - Neue Strategie
     # ========================================================================
     # Metadaten VOR dem Rippen abfragen und auf User-Auswahl warten
@@ -799,16 +788,17 @@ copy_audio_cd() {
         # ISO-Label (lowercase, human-readable!)
         local label_artist=$(echo "$cd_artist" | sed 's/[^a-zA-Z0-9_-]/_/g' | tr '[:upper:]' '[:lower:]')
         local label_album=$(echo "$cd_album" | sed 's/[^a-zA-Z0-9_-]/_/g' | tr '[:upper:]' '[:lower:]')
-        disc_label="${label_artist}_${label_album}"
+        local new_label="${label_artist}_${label_album}"
+        discinfo_set_label "$new_label"
     else
         # Keine Metadaten - einfache DiskID-Struktur
         if [[ -n "$cd_discid" ]]; then
             album_dir="${temp_pathname}/audio_cd_${cd_discid}"
-            disc_label="audio_cd_${cd_discid}"
+            discinfo_set_label "audio_cd_${cd_discid}"
         else
             local timestamp=$(date +%Y%m%d_%H%M%S)
             album_dir="${temp_pathname}/audio_cd_${timestamp}"
-            disc_label="audio_cd_${timestamp}"
+            discinfo_set_label "audio_cd_${timestamp}"
         fi
     fi
     
@@ -826,12 +816,12 @@ copy_audio_cd() {
     fi
     
     # Initialisiere Kopiervorgang-Log (NEUES SYSTEM)
-    init_copy_log "$disc_label" "audio-cd"
+    init_copy_log "$(discinfo_get_label)" "audio-cd"
     
     # Setze ISO- und MD5-Dateinamen (früher von init_filenames())
     local target_dir="$(get_path_audio)"
-    iso_filename="${target_dir}/${disc_label}.iso"
-    md5_filename="${target_dir}/${disc_label}.md5"
+    iso_filename="${target_dir}/$(discinfo_get_label).iso"
+    md5_filename="${target_dir}/$(discinfo_get_label).md5"
     
     log_copying "$MSG_TRACKS_FOUND: $track_count"
     log_copying "$MSG_ALBUM_DIRECTORY: $album_dir"
@@ -843,17 +833,17 @@ copy_audio_cd() {
         log_info "Rippe Album: $cd_artist - $cd_album ($track_count Tracks)"
     else
         log_copying "Disc-ID: ${cd_discid:-unbekannt}"
-        log_info "Rippe Audio-CD: $disc_label ($track_count Tracks)"
+        log_info "Rippe Audio-CD: $(discinfo_get_label) ($track_count Tracks)"
     fi
     
     # API: Aktualisiere Status
     if declare -f api_update_status >/dev/null 2>&1; then
-        api_update_status "copying" "$disc_label" "audio-cd"
+        api_update_status "copying" "$(discinfo_get_label)" "audio-cd"
     fi
     
     # MQTT: Sende Update mit DiskID
     if [[ "$SUPPORT_MQTT" == "true" ]] && declare -f mqtt_publish_state >/dev/null 2>&1; then
-        mqtt_publish_state "copying" "$disc_label" "audio-cd"
+        mqtt_publish_state "copying" "$(discinfo_get_label)" "audio-cd"
     fi
     
     # Initialisiere Fortschritt mit korrekter Track-Anzahl (0/24 statt 0/0)
@@ -1002,17 +992,10 @@ copy_audio_cd() {
     log_copying "$MSG_RIPPING_COMPLETE_CREATE_ISO"
     
     # Erstelle album.nfo für Jellyfin (falls Metadaten verfügbar)
-    # HINWEIS: Nutzt metadb_export_nfo() aus libmetadb.sh
-    if [[ "$skip_metadata" == "false" ]]; then
+    # HINWEIS: Nutzt metadata_export_nfo() aus libmetadata.sh
+    if [[ "$skip_metadata" == "false" ]] && declare -f metadata_export_nfo >/dev/null 2>&1; then
         local nfo_file="${album_dir}/album.nfo"
-        
-        # Validiere ob Metadaten gesetzt sind
-        if metadb_validate 2>/dev/null; then
-            metadb_export_nfo "$nfo_file"
-            log_info "$MSG_NFO_FILE_CREATED"
-        else
-            log_warning "$MSG_INFO_NO_MUSICBRAINZ_NFO_SKIPPED"
-        fi
+        metadata_export_nfo "$nfo_file" && log_info "$MSG_NFO_FILE_CREATED" || log_warning "$MSG_INFO_NO_MUSICBRAINZ_NFO_SKIPPED"
     fi
     
     # Sichere temp_pathname bevor check_disk_space es braucht
