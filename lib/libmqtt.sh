@@ -24,6 +24,8 @@
 # ===========================================================================
 readonly MODULE_NAME_MQTT="mqtt"             # Globale Variable für Modulname
 SUPPORT_MQTT=false                                    # Globales Support Flag
+INITIALIZED_MQTT=false                      # Initialisierung war erfolgreich
+ACTIVATED_MQTT=false                             # In Konfiguration aktiviert
 
 # ===========================================================================
 # check_dependencies_mqtt
@@ -41,6 +43,10 @@ check_dependencies_mqtt() {
 
     #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_MQTT" || return 1
+
+    #-- Lade MQTT-Konfiguration aus INI -------------------------------------
+    load_mqtt_config || return 1
+    log_debug "$MSG_DEBUG_MQTT_CONFIG_LOADED: $MQTT_BROKER:$MQTT_PORT"
 
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_MQTT=true
@@ -68,6 +74,76 @@ get_path_mqtt() {
     echo "${OUTPUT_DIR}/${MODULE_NAME_MQTT}"
 }
 
+# ============================================================================
+# MQTT API CONFIGURATION
+# ============================================================================
+
+# ===========================================================================
+# load_mqtt_config
+# ---------------------------------------------------------------------------
+# Funktion.: Lade MQTT-Konfiguration aus libmqtt.ini [api] Sektion
+# .........  und setze Defaults falls INI-Werte fehlen
+# Parameter: keine
+# Rückgabe.: 0 = Erfolgreich geladen
+# Setzt....: MQTT_BROKER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD,
+# .........  MQTT_TOPIC_PREFIX, MQTT_CLIENT_ID, MQTT_QOS, MQTT_RETAIN
+# Nutzt....: get_ini_value() aus libconfig.sh
+# Hinweis..: Wird von check_dependencies_mqtt() aufgerufen
+# .........  MQTT_ENABLED wird aus disk2iso.conf gelesen (bleibt unverändert)
+# ===========================================================================
+load_mqtt_config() {
+    local ini_file=$(get_module_ini_path "mqtt")
+    
+    # Lese MQTT-Konfiguration aus INI (falls existiert)
+    local broker port user password topic_prefix client_id qos retain
+    
+    if [[ -f "$ini_file" ]]; then
+        broker=$(get_ini_value "$ini_file" "api" "broker")
+        port=$(get_ini_value "$ini_file" "api" "port")
+        user=$(get_ini_value "$ini_file" "api" "user")
+        password=$(get_ini_value "$ini_file" "api" "password")
+        topic_prefix=$(get_ini_value "$ini_file" "api" "topic_prefix")
+        client_id=$(get_ini_value "$ini_file" "api" "client_id")
+        qos=$(get_ini_value "$ini_file" "api" "qos")
+        retain=$(get_ini_value "$ini_file" "api" "retain")
+    fi
+    
+    # Setze Variablen mit Defaults (INI-Werte überschreiben Defaults)
+    # Prüfe zuerst ob Wert bereits aus disk2iso.conf gesetzt wurde
+    MQTT_BROKER="${MQTT_BROKER:-${broker:-192.168.20.13}}"
+    MQTT_PORT="${MQTT_PORT:-${port:-1883}}"
+    MQTT_USER="${MQTT_USER:-${user:-}}"
+    MQTT_PASSWORD="${MQTT_PASSWORD:-${password:-}}"
+    MQTT_TOPIC_PREFIX="${MQTT_TOPIC_PREFIX:-${topic_prefix:-homeassistant/sensor/disk2iso}}"
+    MQTT_CLIENT_ID="${MQTT_CLIENT_ID:-${client_id:-disk2iso-${HOSTNAME}}}"
+    MQTT_QOS="${MQTT_QOS:-${qos:-0}}"
+    MQTT_RETAIN="${MQTT_RETAIN:-${retain:-true}}"
+    
+    # Setze ACTIVATED_MQTT basierend auf MQTT_ENABLED aus disk2iso.conf
+    ACTIVATED_MQTT="${MQTT_ENABLED:-false}"
+    
+    # Setze Initialisierungs-Flag
+    INITIALIZED_MQTT=true
+
+    log_info "MQTT: Konfiguration geladen (Broker: $MQTT_BROKER:$MQTT_PORT, Aktiviert: $ACTIVATED_MQTT)"
+    return 0
+}
+
+# ===========================================================================
+# is_mqtt_ready
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe ob MQTT Modul supported wird, initialisiert wurde und in 
+# .........  den Einstellungen aktviert wurde. Wenn true ist alles bereit 
+# .........  ist für die Nutzung.
+# Parameter: keine
+# Rückgabe.: 0 = Bereit, 1 = Nicht bereit
+# ===========================================================================
+is_mqtt_ready() {
+    [[ "$SUPPORT_MQTT" == "true" ]] && \
+    [[ "$INITIALIZED_MQTT" == "true" ]] && \
+    [[ "$ACTIVATED_MQTT" == "true" ]]
+}
+
 # TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 
 # ============================================================================
@@ -77,20 +153,6 @@ get_path_mqtt() {
 # ============================================================================
 # MQTT CONFIGURATION (aus config.sh)
 # ============================================================================
-
-# Diese Variablen werden aus config.sh geladen:
-# MQTT_ENABLED=false
-# MQTT_BROKER="192.168.20.10"
-# MQTT_PORT=1883
-# MQTT_USER=""
-# MQTT_PASSWORD=""
-# MQTT_TOPIC_PREFIX="homeassistant/sensor/disk2iso"
-# MQTT_CLIENT_ID="disk2iso-${HOSTNAME}"
-# MQTT_QOS=0
-# MQTT_RETAIN=true
-# MQTT-Status (wird durch check_dependencies_mqtt gesetzt)
-
-MQTT_AVAILABLE=false
 
 # Aktuelle Werte (für Delta-Publishing)
 MQTT_LAST_STATE=""
@@ -109,39 +171,43 @@ MQTT_LAST_UPDATE=0
 # Prüft Konfiguration und Verfügbarkeit
 # Rückgabe: 0 = OK, 1 = MQTT nicht verfügbar/deaktiviert
 mqtt_init() {
-    # Prüfe ob MQTT aktiviert ist
-    if [[ "${MQTT_ENABLED:-false}" != "true" ]]; then
+    # Prüfe ob MQTT bereit ist (Support + Aktiviert + Initialisiert)
+    if ! is_mqtt_ready; then
         log_info "$MSG_MQTT_DISABLED"
-        MQTT_AVAILABLE=false
         return 1
     fi
     
-    # Prüfe ob MQTT-Support verfügbar ist (wurde bereits von check_dependencies_mqtt geprüft)
-    if [[ "$SUPPORT_MQTT" != "true" ]]; then
-        log_warning "$MSG_MQTT_NOT_AVAILABLE"
-        MQTT_AVAILABLE=false
+    # Prüfe Broker-Erreichbarkeit mit Test-Publish
+    local test_topic="${MQTT_TOPIC_PREFIX}/connection_test"
+    local test_payload="online"
+    
+    if [[ -n "${MQTT_USER:-}" ]] && [[ -n "${MQTT_PASSWORD:-}" ]]; then
+        mosquitto_pub \
+            -h "${MQTT_BROKER}" \
+            -p "${MQTT_PORT}" \
+            -i "${MQTT_CLIENT_ID}-init" \
+            -u "${MQTT_USER}" \
+            -P "${MQTT_PASSWORD}" \
+            -t "${test_topic}" \
+            -m "${test_payload}" \
+            -q 0 \
+            2>/dev/null
+    else
+        mosquitto_pub \
+            -h "${MQTT_BROKER}" \
+            -p "${MQTT_PORT}" \
+            -i "${MQTT_CLIENT_ID}-init" \
+            -t "${test_topic}" \
+            -m "${test_payload}" \
+            -q 0 \
+            2>/dev/null
+    fi
+    
+    if [[ $? -ne 0 ]]; then
+        log_error "$MSG_MQTT_ERROR_BROKER_UNREACHABLE $MQTT_BROKER:$MQTT_PORT"
         return 1
     fi
     
-    # Prüfe Broker-Konfiguration
-    if [[ -z "${MQTT_BROKER:-}" ]]; then
-        log_error "$MSG_MQTT_ERROR_NO_BROKER"
-        MQTT_AVAILABLE=false
-        return 1
-    fi
-    
-    # Setze Client-ID falls nicht definiert
-    if [[ -z "${MQTT_CLIENT_ID:-}" ]]; then
-        MQTT_CLIENT_ID="disk2iso-${HOSTNAME}"
-    fi
-    
-    # Setze Defaults
-    MQTT_PORT="${MQTT_PORT:-1883}"
-    MQTT_QOS="${MQTT_QOS:-0}"
-    MQTT_RETAIN="${MQTT_RETAIN:-true}"
-    MQTT_TOPIC_PREFIX="${MQTT_TOPIC_PREFIX:-homeassistant/sensor/disk2iso}"
-    
-    MQTT_AVAILABLE=true
     log_info "$MSG_MQTT_INITIALIZED $MQTT_BROKER:$MQTT_PORT"
     
     # Sende Initial Availability
@@ -168,7 +234,7 @@ mqtt_init() {
 # Parameter: $1 = Topic (relativ zu PREFIX), $2 = Payload
 # Beispiel: mqtt_publish "state" "copying"
 mqtt_publish() {
-    if [[ "$MQTT_AVAILABLE" != "true" ]]; then
+    if ! is_mqtt_ready; then
         return 1
     fi
     
@@ -228,7 +294,7 @@ mqtt_publish() {
 mqtt_publish_availability() {
     local status="$1"
     
-    if [[ "$MQTT_AVAILABLE" != "true" ]]; then
+    if ! is_mqtt_ready; then
         return 1
     fi
     
@@ -314,7 +380,7 @@ EOF
     api_write_json "attributes.json" "${attr_json}"
     
     # Ab hier: Nur MQTT-spezifische Logik
-    if [[ "$MQTT_AVAILABLE" != "true" ]]; then
+    if ! is_mqtt_ready; then
         return 0
     fi
     
@@ -392,7 +458,7 @@ mqtt_publish_progress() {
     # mqtt_publish_progress ist NUR für MQTT-Publishing zuständig
     
     # Ab hier: Nur MQTT-spezifische Logik
-    if [[ "$MQTT_AVAILABLE" != "true" ]]; then
+    if ! is_mqtt_ready; then
         return 0
     fi
     
@@ -459,7 +525,7 @@ EOF
 #   $1 = Filename (ISO)
 #   $2 = Dauer (optional, Format: "HH:MM:SS" oder Sekunden)
 mqtt_publish_complete() {
-    if [[ "$MQTT_AVAILABLE" != "true" ]]; then
+    if ! is_mqtt_ready; then
         return 0
     fi
     
@@ -488,7 +554,7 @@ mqtt_publish_complete() {
 # Parameter:
 #   $1 = Error Message
 mqtt_publish_error() {
-    if [[ "$MQTT_AVAILABLE" != "true" ]]; then
+    if ! is_mqtt_ready; then
         return 0
     fi
     
@@ -512,7 +578,7 @@ mqtt_publish_error() {
 # Funktion: MQTT Cleanup beim Beenden
 # Setzt Availability auf offline
 mqtt_cleanup() {
-    if [[ "$MQTT_AVAILABLE" == "true" ]]; then
+    if is_mqtt_ready; then
         mqtt_publish_availability "offline"
     fi
 }

@@ -27,6 +27,7 @@ readonly MSG_MQTT_NOT_AVAILABLE="MQTT support not available"
 
 readonly MSG_MQTT_DISABLED="MQTT is disabled (MQTT_ENABLED=false)"
 readonly MSG_MQTT_ERROR_NO_BROKER="ERROR: MQTT_BROKER not configured"
+readonly MSG_MQTT_ERROR_BROKER_UNREACHABLE="ERROR: MQTT broker unreachable:"
 readonly MSG_MQTT_INITIALIZED="MQTT initialized:"
 readonly MSG_MQTT_ONLINE="MQTT: Status → online"
 readonly MSG_MQTT_OFFLINE="MQTT: Status → offline"

@@ -370,7 +370,7 @@ calculate_and_log_progress() {
         fi
         
         # MQTT: Fortschritt senden (optional)
-        if [[ "$SUPPORT_MQTT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
+        if is_mqtt_ready && declare -f mqtt_publish_progress >/dev/null 2>&1; then
             mqtt_publish_progress "$percent" "$current_mb" "$total_mb" "$eta"
         fi
         

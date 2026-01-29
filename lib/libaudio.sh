@@ -24,6 +24,8 @@
 # ===========================================================================
 readonly MODULE_NAME_AUDIO="audio"           # Globale Variable für Modulname
 SUPPORT_AUDIO=false                                   # Globales Support Flag
+INITIALIZED_AUDIO=false                     # Initialisierung war erfolgreich
+ACTIVATED_AUDIO=false                            # In Konfiguration aktiviert
 
 # ===========================================================================
 # check_dependencies_audio
@@ -42,6 +44,9 @@ check_dependencies_audio() {
     #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_AUDIO" || return 1
 
+    #-- Lade Modul-Konfiguration --------------------------------------------
+    load_config_audio || return 1
+
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_AUDIO=true
     log_debug "$MSG_DEBUG_AUDIO_CHECK_COMPLETE"
@@ -49,6 +54,41 @@ check_dependencies_audio() {
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_AUDIO_SUPPORT_AVAILABLE"
     return 0
+}
+
+# ===========================================================================
+# load_config_audio
+# ---------------------------------------------------------------------------
+# Funktion.: Lade Audio-Modul Konfiguration und setze Initialisierung
+# Parameter: keine
+# Rückgabe.: 0 = Erfolgreich geladen
+# Setzt....: INITIALIZED_AUDIO=true, ACTIVATED_AUDIO=true
+# Hinweis..: Audio-Modul hat keine API-Config, daher nur Flags setzen
+# .........  Modul ist immer aktiviert wenn Support vorhanden
+# ===========================================================================
+load_config_audio() {
+    # Audio-CD ist immer aktiviert wenn Support verfügbar (keine Runtime-Deaktivierung)
+    ACTIVATED_AUDIO=true
+    
+    # Setze Initialisierungs-Flag
+    INITIALIZED_AUDIO=true
+    
+    log_info "Audio-CD: Konfiguration geladen"
+    return 0
+}
+
+# ===========================================================================
+# is_audio_ready
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe ob Audio-Modul supported wird, initialisiert wurde und
+# .........  aktiviert ist. Wenn true ist alles bereit für die Nutzung.
+# Parameter: keine
+# Rückgabe.: 0 = Bereit, 1 = Nicht bereit
+# ===========================================================================
+is_audio_ready() {
+    [[ "$SUPPORT_AUDIO" == "true" ]] && \
+    [[ "$INITIALIZED_AUDIO" == "true" ]] && \
+    [[ "$ACTIVATED_AUDIO" == "true" ]]
 }
 
 # ============================================================================
@@ -1081,7 +1121,7 @@ copy_audio_cd() {
     fi
     
     # MQTT: Sende Update mit DiskID
-    if [[ "$SUPPORT_MQTT" == "true" ]] && declare -f mqtt_publish_state >/dev/null 2>&1; then
+    if is_mqtt_ready && declare -f mqtt_publish_state >/dev/null 2>&1; then
         mqtt_publish_state "copying" "$(discinfo_get_label)" "audio-cd"
     fi
     
@@ -1218,7 +1258,7 @@ copy_audio_cd() {
         fi
         
         # MQTT: Fortschritt senden
-        if [[ "$SUPPORT_MQTT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
+        if is_mqtt_ready && declare -f mqtt_publish_progress >/dev/null 2>&1; then
             local remaining_tracks=$((total_tracks - processed_tracks))
             local eta_minutes=$((remaining_tracks * 4))
             local eta=$(printf "%02d:%02d:00" $((eta_minutes / 60)) $((eta_minutes % 60)))

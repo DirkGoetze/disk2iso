@@ -24,6 +24,8 @@
 # ===========================================================================
 readonly MODULE_NAME_TMDB="tmdb"             # Globale Variable für Modulname
 SUPPORT_TMDB=false                                    # Globales Support Flag
+INITIALIZED_TMDB=false                      # Initialisierung war erfolgreich
+ACTIVATED_TMDB=false                             # In Konfiguration aktiviert
 
 # ===========================================================================
 # check_dependencies_tmdb
@@ -150,8 +152,28 @@ load_api_config_tmdb() {
     TMDB_TIMEOUT="${timeout:-10}"
     TMDB_LANGUAGE="${language:-de-DE}"
     
+    # TMDB ist immer aktiviert wenn Support verfügbar (keine Runtime-Deaktivierung)
+    ACTIVATED_TMDB=true
+    
+    # Setze Initialisierungs-Flag
+    INITIALIZED_TMDB=true
+    
     log_info "TMDB: API-Konfiguration geladen (Base: $TMDB_API_BASE_URL)"
     return 0
+}
+
+# ===========================================================================
+# is_tmdb_ready
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe ob TMDB Modul supported wird, initialisiert wurde und
+# .........  aktiviert ist. Wenn true ist alles bereit für die Nutzung.
+# Parameter: keine
+# Rückgabe.: 0 = Bereit, 1 = Nicht bereit
+# ===========================================================================
+is_tmdb_ready() {
+    [[ "$SUPPORT_TMDB" == "true" ]] && \
+    [[ "$INITIALIZED_TMDB" == "true" ]] && \
+    [[ "$ACTIVATED_TMDB" == "true" ]]
 }
 
 # TODO: Ab hier ist das Modul noch nicht fertig implementiert!

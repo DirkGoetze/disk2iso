@@ -24,6 +24,8 @@
 # ===========================================================================
 readonly MODULE_NAME_DVD="dvd"               # Globale Variable für Modulname
 SUPPORT_DVD=false                                     # Globales Support Flag
+INITIALIZED_DVD=false                       # Initialisierung war erfolgreich
+ACTIVATED_DVD=false                              # In Konfiguration aktiviert
 
 # ===========================================================================
 # check_dependencies_dvd
@@ -42,6 +44,9 @@ check_dependencies_dvd() {
     #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_DVD" || return 1
 
+    #-- Lade Modul-Konfiguration --------------------------------------------
+    load_config_dvd || return 1
+
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_DVD=true
     log_debug "$MSG_DEBUG_DVD_CHECK_COMPLETE"
@@ -49,6 +54,41 @@ check_dependencies_dvd() {
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_VIDEO_SUPPORT_AVAILABLE"
     return 0
+}
+
+# ===========================================================================
+# load_config_dvd
+# ---------------------------------------------------------------------------
+# Funktion.: Lade DVD-Modul Konfiguration und setze Initialisierung
+# Parameter: keine
+# Rückgabe.: 0 = Erfolgreich geladen
+# Setzt....: INITIALIZED_DVD=true, ACTIVATED_DVD=true
+# Hinweis..: DVD-Modul hat keine API-Config, daher nur Flags setzen
+# .........  Modul ist immer aktiviert wenn Support vorhanden
+# ===========================================================================
+load_config_dvd() {
+    # DVD-Video ist immer aktiviert wenn Support verfügbar (keine Runtime-Deaktivierung)
+    ACTIVATED_DVD=true
+    
+    # Setze Initialisierungs-Flag
+    INITIALIZED_DVD=true
+    
+    log_info "DVD-Video: Konfiguration geladen"
+    return 0
+}
+
+# ===========================================================================
+# is_dvd_ready
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe ob DVD-Modul supported wird, initialisiert wurde und
+# .........  aktiviert ist. Wenn true ist alles bereit für die Nutzung.
+# Parameter: keine
+# Rückgabe.: 0 = Bereit, 1 = Nicht bereit
+# ===========================================================================
+is_dvd_ready() {
+    [[ "$SUPPORT_DVD" == "true" ]] && \
+    [[ "$INITIALIZED_DVD" == "true" ]] && \
+    [[ "$ACTIVATED_DVD" == "true" ]]
 }
 
 # ============================================================================

@@ -24,6 +24,8 @@
 # ===========================================================================
 readonly MODULE_NAME_MUSICBRAINZ="musicbrainz"    # Globale Var für Modulname
 SUPPORT_MUSICBRAINZ=false                             # Globales Support Flag
+INITIALIZED_MUSICBRAINZ=false              # Initialisierung war erfolgreich
+ACTIVATED_MUSICBRAINZ=false                     # In Konfiguration aktiviert
 
 # ===========================================================================
 # check_dependencies_musicbrainz
@@ -148,8 +150,28 @@ load_api_config_musicbrainz() {
     MUSICBRAINZ_USER_AGENT="${user_agent:-disk2iso/1.2.0}"
     MUSICBRAINZ_TIMEOUT="${timeout:-10}"
     
+    # MusicBrainz ist immer aktiviert wenn Support verfügbar (keine Runtime-Deaktivierung)
+    ACTIVATED_MUSICBRAINZ=true
+    
+    # Setze Initialisierungs-Flag
+    INITIALIZED_MUSICBRAINZ=true
+    
     log_info "MusicBrainz: API-Konfiguration geladen (Base: $MUSICBRAINZ_API_BASE_URL)"
     return 0
+}
+
+# ===========================================================================
+# is_musicbrainz_ready
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe ob MusicBrainz Modul supported wird, initialisiert wurde
+# .........  und aktiviert ist. Wenn true ist alles bereit für die Nutzung.
+# Parameter: keine
+# Rückgabe.: 0 = Bereit, 1 = Nicht bereit
+# ===========================================================================
+is_musicbrainz_ready() {
+    [[ "$SUPPORT_MUSICBRAINZ" == "true" ]] && \
+    [[ "$INITIALIZED_MUSICBRAINZ" == "true" ]] && \
+    [[ "$ACTIVATED_MUSICBRAINZ" == "true" ]]
 }
 
 # TODO: Ab hier ist das Modul noch nicht fertig implementiert!

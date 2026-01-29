@@ -175,9 +175,7 @@ if [[ -f "${SCRIPT_DIR}/lib/libbluray.sh" ]]; then
 fi
 
 # Metadata Framework nur laden wenn mindestens ein Disc-Type unterstützt wird
-if [[ "$SUPPORT_AUDIO" == "true" ]] || 
-   [[ "$SUPPORT_DVD" == "true" ]] || 
-   [[ "$SUPPORT_BLURAY" == "true" ]]; then
+if is_audio_ready || is_dvd_ready || is_bluray_ready; then
     
     if [[ -f "${SCRIPT_DIR}/lib/libmetadata.sh" ]]; then
         source "${SCRIPT_DIR}/lib/libmetadata.sh"
@@ -186,14 +184,14 @@ if [[ "$SUPPORT_AUDIO" == "true" ]] ||
         # Lade Provider nur wenn Framework verfügbar
         if [[ "$SUPPORT_METADATA" == "true" ]]; then
             # MusicBrainz Provider nur wenn Audio-CD Support vorhanden
-            if [[ "$SUPPORT_AUDIO" == "true" ]] && 
+            if is_audio_ready && 
                [[ -f "${SCRIPT_DIR}/lib/libmusicbrainz.sh" ]]; then
                 source "${SCRIPT_DIR}/lib/libmusicbrainz.sh"
                 check_dependencies_musicbrainz  # Setzt SUPPORT_MUSICBRAINZ=true bei Erfolg
             fi
             
             # TMDB Provider nur wenn DVD/BD Support vorhanden
-            if { [[ "$SUPPORT_DVD" == "true" ]] || [[ "$SUPPORT_BLURAY" == "true" ]]; } && 
+            if { is_dvd_ready || is_bluray_ready; } && 
                [[ -f "${SCRIPT_DIR}/lib/libtmdb.sh" ]]; then
                 source "${SCRIPT_DIR}/lib/libtmdb.sh"
                 check_dependencies_tmdb  # Setzt SUPPORT_TMDB=true bei Erfolg
@@ -207,9 +205,9 @@ if [[ -f "${SCRIPT_DIR}/lib/libmqtt.sh" ]]; then
     source "${SCRIPT_DIR}/lib/libmqtt.sh"
     check_dependencies_mqtt  # Setzt SUPPORT_MQTT=true bei Erfolg
     
-    # mqtt_init prüft selbst ob MQTT_ENABLED=true und SUPPORT_MQTT verfügbar
-    if [[ "$MQTT_SUPPORT" == "true" ]]; then
-        mqtt_init  # Initialisiert MQTT_AVAILABLE bei Erfolg
+    # mqtt_init prüft selbst ob MQTT bereit ist (Support + Aktiviert + Initialisiert)
+    if is_mqtt_ready; then
+        mqtt_init  # Sendet Initial-Messages wenn Broker erreichbar
     fi
 fi
 
@@ -226,7 +224,7 @@ select_copy_method() {
     
     # Für Audio-CDs
     if [[ "$disc_type" == "audio-cd" ]]; then
-        if [[ "$SUPPORT_AUDIO" == true ]]; then
+        if is_audio_ready; then
             echo "audio-cd"
             return 0
         else
@@ -239,7 +237,7 @@ select_copy_method() {
     
     # Für Video-DVDs
     if [[ "$disc_type" == "dvd-video" ]]; then
-        if [[ "$SUPPORT_DVD" == true ]]; then
+        if is_dvd_ready; then
             # Priorität 1: dvdbackup (entschlüsselt, schnell)
             if command -v dvdbackup >/dev/null 2>&1 && command -v genisoimage >/dev/null 2>&1; then
                 echo "dvdbackup"
@@ -259,7 +257,7 @@ select_copy_method() {
     
     # Für Blu-ray Video: ddrescue (Priorität 1) oder dd (Fallback)
     elif [[ "$disc_type" == "bd-video" ]]; then
-        if [[ "$SUPPORT_BLURAY" == true ]]; then
+        if is_bluray_ready; then
             # Priorität 1: ddrescue (verschlüsselt/unverschlüsselt, robust, schnell)
             if command -v ddrescue >/dev/null 2>&1; then
                 echo "bluray-ddrescue"
@@ -296,7 +294,7 @@ copy_disc_to_iso() {
     
     # Audio-CDs: Workflow ruft init_filenames() nach Metadata-Abfrage auf
     if [[ "$method" == "audio-cd" ]]; then
-        if [[ "$SUPPORT_AUDIO" == true ]] && declare -f copy_audio_cd >/dev/null 2>&1; then
+        if is_audio_ready && declare -f copy_audio_cd >/dev/null 2>&1; then
             if copy_audio_cd; then
                 return 0
             else
@@ -327,7 +325,7 @@ copy_disc_to_iso() {
     api_update_status "copying" "$(discinfo_get_label)" "$(discinfo_get_type)"
     
     # MQTT: Kopiervorgang gestartet (optional)
-    if [[ "$SUPPORT_MQTT" == "true" ]]; then
+    if is_mqtt_ready; then
         mqtt_publish_state "copying" "$(discinfo_get_label)" "$(discinfo_get_type)"
     fi
     
@@ -339,7 +337,7 @@ copy_disc_to_iso() {
             # Wird oben behandelt
             ;;
         dvdbackup)
-            if [[ "$SUPPORT_DVD" == true ]] && declare -f copy_video_dvd >/dev/null 2>&1; then
+            if is_dvd_ready && declare -f copy_video_dvd >/dev/null 2>&1; then
                 if copy_video_dvd; then
                     copy_success=true
                 fi
@@ -349,7 +347,7 @@ copy_disc_to_iso() {
             fi
             ;;
         bluray-ddrescue)
-            if [[ "$SUPPORT_BLURAY" == true ]] && declare -f copy_bluray_ddrescue >/dev/null 2>&1; then
+            if is_bluray_ready && declare -f copy_bluray_ddrescue >/dev/null 2>&1; then
                 if copy_bluray_ddrescue; then
                     copy_success=true
                 fi
@@ -420,39 +418,10 @@ transition_to_state() {
         log_info "$msg"
     fi
     
-    # Update API status for state
-    case "$new_state" in
-        "$STATE_WAITING_FOR_DRIVE")
-            api_update_status "waiting" "${MSG_STATUS_WAITING_DRIVE:-Waiting for drive...}" "unknown"
-            ;;
-        "$STATE_DRIVE_DETECTED")
-            api_update_status "idle" "${MSG_STATUS_DRIVE_DETECTED:-Drive Ready}" "unknown"
-            ;;
-        "$STATE_WAITING_FOR_MEDIA")
-            api_update_status "idle" "${MSG_STATUS_WAITING_MEDIA:-Waiting for Media}" "unknown"
-            ;;
-        "$STATE_ANALYZING")
-            api_update_status "analyzing" "$(discinfo_get_label)" "$(discinfo_get_type)"
-            ;;
-        "$STATE_WAITING_FOR_METADATA")
-            api_update_status "waiting_for_metadata" "$(discinfo_get_label)" "$(discinfo_get_type)"
-            ;;
-        "$STATE_COPYING")
-            api_update_status "copying" "$(discinfo_get_label)" "$(discinfo_get_type)"
-            ;;
-        "$STATE_COMPLETED")
-            api_update_status "completed" "$(discinfo_get_label)" "$(discinfo_get_type)"
-            ;;
-        "$STATE_ERROR")
-            api_update_status "error" "$(discinfo_get_label || echo 'Unknown')" "$(discinfo_get_type || echo 'unknown')" "${msg:-Unknown error}"
-            ;;
-        "$STATE_WAITING_FOR_REMOVAL")
-            api_update_status "waiting" "$(discinfo_get_label)" "$(discinfo_get_type)"
-            ;;
-        "$STATE_IDLE")
-            api_update_status "idle"
-            ;;
-    esac
+    # Update API status via helper function (delegiert State→Status Mapping)
+    local disc_label="$(discinfo_get_label 2>/dev/null || echo '')"
+    local disc_type="$(discinfo_get_type 2>/dev/null || echo '')"
+    api_update_from_state "$new_state" "$disc_label" "$disc_type" "${msg:-}"
     
     # MQTT (optional)
     if [[ "$SUPPORT_MQTT" == "true" ]]; then

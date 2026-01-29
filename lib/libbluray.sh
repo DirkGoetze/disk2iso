@@ -24,6 +24,8 @@
 # ===========================================================================
 readonly MODULE_NAME_BLURAY="bluray"         # Globale Variable für Modulname
 SUPPORT_BLURAY=false                                  # Globales Support Flag
+INITIALIZED_BLURAY=false                    # Initialisierung war erfolgreich
+ACTIVATED_BLURAY=false                           # In Konfiguration aktiviert
 
 # ===========================================================================
 # check_dependencies_bluray
@@ -42,6 +44,9 @@ check_dependencies_bluray() {
     #-- Alle Modul Abhängigkeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_BLURAY" || return 1
 
+    #-- Lade Modul-Konfiguration --------------------------------------------
+    load_config_bluray || return 1
+
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_BLURAY=true
     log_debug "$MSG_DEBUG_BLURAY_CHECK_COMPLETE"
@@ -49,6 +54,41 @@ check_dependencies_bluray() {
     #-- Abhängigkeiten erfüllt ----------------------------------------------
     log_info "$MSG_BLURAY_SUPPORT_AVAILABLE"
     return 0
+}
+
+# ===========================================================================
+# load_config_bluray
+# ---------------------------------------------------------------------------
+# Funktion.: Lade Bluray-Modul Konfiguration und setze Initialisierung
+# Parameter: keine
+# Rückgabe.: 0 = Erfolgreich geladen
+# Setzt....: INITIALIZED_BLURAY=true, ACTIVATED_BLURAY=true
+# Hinweis..: Bluray-Modul hat keine API-Config, daher nur Flags setzen
+# .........  Modul ist immer aktiviert wenn Support vorhanden
+# ===========================================================================
+load_config_bluray() {
+    # Blu-ray ist immer aktiviert wenn Support verfügbar (keine Runtime-Deaktivierung)
+    ACTIVATED_BLURAY=true
+    
+    # Setze Initialisierungs-Flag
+    INITIALIZED_BLURAY=true
+    
+    log_info "Blu-ray: Konfiguration geladen"
+    return 0
+}
+
+# ===========================================================================
+# is_bluray_ready
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe ob Bluray-Modul supported wird, initialisiert wurde und
+# .........  aktiviert ist. Wenn true ist alles bereit für die Nutzung.
+# Parameter: keine
+# Rückgabe.: 0 = Bereit, 1 = Nicht bereit
+# ===========================================================================
+is_bluray_ready() {
+    [[ "$SUPPORT_BLURAY" == "true" ]] && \
+    [[ "$INITIALIZED_BLURAY" == "true" ]] && \
+    [[ "$ACTIVATED_BLURAY" == "true" ]]
 }
 
 # ============================================================================
@@ -205,7 +245,7 @@ copy_bluray_ddrescue() {
                 fi
                 
                 # MQTT: Fortschritt senden (optional)
-                if [[ "$SUPPORT_MQTT" == "true" ]] && declare -f mqtt_publish_progress >/dev/null 2>&1; then
+                if is_mqtt_ready && declare -f mqtt_publish_progress >/dev/null 2>&1; then
                     mqtt_publish_progress "$percent" "$copied_mb" "$total_mb" "$eta"
                 fi
             else

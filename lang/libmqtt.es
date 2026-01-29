@@ -25,6 +25,7 @@ readonly MSG_DEBUG_MQTT_CHECK_COMPLETE="Módulo MQTT inicializado correctamente"
 
 readonly MSG_MQTT_DISABLED="MQTT está desactivado (MQTT_ENABLED=false)"
 readonly MSG_MQTT_ERROR_NO_BROKER="ERROR: MQTT_BROKER no configurado"
+readonly MSG_MQTT_ERROR_BROKER_UNREACHABLE="ERROR: Broker MQTT no alcanzable:"
 readonly MSG_MQTT_INITIALIZED="MQTT inicializado:"
 readonly MSG_MQTT_ONLINE="MQTT: Estado → en línea"
 readonly MSG_MQTT_OFFLINE="MQTT: Estado → fuera de línea"
