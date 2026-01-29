@@ -279,3 +279,60 @@ EOF
     return 0
 }
 
+# ============================================================================
+# STATE MACHINE INTEGRATION
+# ============================================================================
+
+# ===========================================================================
+# api_update_from_state
+# ---------------------------------------------------------------------------
+# Funktion.: Aktualisiere API-Status basierend auf State Machine State
+# .........  Mappt disk2iso.sh States auf API-Status-Werte
+# Parameter: $1 = State Machine State (z.B. "waiting_for_drive", "analyzing")
+#            $2 = Disc-Label (optional)
+#            $3 = Disc-Type (optional)
+#            $4 = Error-Message (optional, nur bei state=error)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beispiel.: api_update_from_state "analyzing" "My Disc" "dvd-video"
+# ===========================================================================
+api_update_from_state() {
+    local state="$1"
+    local disc_label="${2:-}"
+    local disc_type="${3:-}"
+    local error_msg="${4:-}"
+    
+    # Mappe State Machine States auf API-Status
+    case "$state" in
+        "initializing"|"waiting_for_drive"|"drive_detected"|"waiting_for_media"|"idle")
+            api_update_status "idle" "$disc_label" "$disc_type"
+            ;;
+        "media_detected")
+            api_update_status "waiting" "$disc_label" "$disc_type"
+            ;;
+        "analyzing")
+            api_update_status "analyzing" "$disc_label" "$disc_type"
+            ;;
+        "waiting_for_metadata")
+            api_update_status "waiting_for_metadata" "$disc_label" "$disc_type"
+            ;;
+        "copying")
+            api_update_status "copying" "$disc_label" "$disc_type"
+            ;;
+        "completed")
+            api_update_status "completed" "$disc_label" "$disc_type"
+            ;;
+        "error")
+            api_update_status "error" "$disc_label" "$disc_type" "$error_msg"
+            ;;
+        "waiting_for_removal")
+            api_update_status "waiting" "$disc_label" "$disc_type"
+            ;;
+        *)
+            # Unbekannter State - idle als Fallback
+            api_update_status "idle" "$disc_label" "$disc_type"
+            ;;
+    esac
+    
+    return 0
+}
+
