@@ -19,14 +19,18 @@ readonly MSG_MQTT_SUPPORT_AVAILABLE="MQTT Support verfügbar"
 # Debug-Meldungen
 readonly MSG_DEBUG_MQTT_CHECK_START="Prüfe MQTT Modul-Abhängigkeiten..."
 readonly MSG_DEBUG_MQTT_CHECK_COMPLETE="MQTT Modul erfolgreich initialisiert"
-readonly MSG_MQTT_NOT_AVAILABLE="MQTT Support nicht verfügbar"
+readonly MSG_DEBUG_MQTT_NOT_SUPPORTED="MQTT: Support-Flag nicht gesetzt (Dependencies fehlen)"
+readonly MSG_DEBUG_MQTT_NOT_INITIALIZED="MQTT: Initialisierungs-Flag nicht gesetzt (Konfiguration nicht geladen)"
+readonly MSG_DEBUG_MQTT_NOT_ACTIVATED="MQTT: Aktivierungs-Flag nicht gesetzt (MQTT_ENABLED=false)"
+readonly MSG_DEBUG_MQTT_READY="MQTT: Modul bereit (Support + Initialisiert + Aktiviert)"
+readonly MSG_DEBUG_MQTT_CONFIG_LOADED="MQTT Konfiguration geladen"
+readonly MSG_MQTT_INI_NOT_FOUND="MQTT INI-Datei nicht gefunden (Standardwerte werden verwendet)"
+readonly MSG_MQTT_CONFIG_LOADED="MQTT: Konfiguration geladen"
 
 # ============================================================================
 # INITIALISIERUNG
 # ============================================================================
 
-readonly MSG_MQTT_DISABLED="MQTT ist deaktiviert (MQTT_ENABLED=false)"
-readonly MSG_MQTT_ERROR_NO_BROKER="FEHLER: MQTT_BROKER nicht konfiguriert"
 readonly MSG_MQTT_ERROR_BROKER_UNREACHABLE="FEHLER: MQTT Broker nicht erreichbar:"
 readonly MSG_MQTT_INITIALIZED="MQTT initialisiert:"
 readonly MSG_MQTT_ONLINE="MQTT: Status → online"
@@ -38,20 +42,14 @@ readonly MSG_MQTT_OFFLINE="MQTT: Status → offline"
 
 readonly MSG_MQTT_PUBLISH_FAILED="MQTT Publish fehlgeschlagen für Topic"
 
-# ============================================================================
-# STATE UPDATES
-# ============================================================================
+# Debug-Meldungen (Observer Pattern)
+readonly MSG_DEBUG_MQTT_PATH="MQTT Modul Pfad:"
+readonly MSG_DEBUG_MQTT_ACTIVATED="Aktiviert:"
+readonly MSG_DEBUG_MQTT_UNKNOWN_FILE="mqtt_publish_from_api: Unbekannte Datei"
+readonly MSG_DEBUG_MQTT_STATE_PUBLISHED="MQTT: State publiziert"
+readonly MSG_DEBUG_MQTT_PROGRESS_PUBLISHED="MQTT: Progress publiziert"
 
-readonly MSG_MQTT_STATE_IDLE="MQTT: Status → idle (bereit)"
-readonly MSG_MQTT_STATE_COPYING="MQTT: Status → copying"
-readonly MSG_MQTT_STATE_WAITING="MQTT: Status → waiting (Medium entfernen)"
-readonly MSG_MQTT_STATE_COMPLETED="MQTT: Status → completed"
-readonly MSG_MQTT_STATE_ERROR="MQTT: Status → error"
-
-# ============================================================================
-# PROGRESS
-# ============================================================================
-
-readonly MSG_MQTT_PROGRESS="MQTT: Fortschritt →"
-readonly MSG_MQTT_COMPLETED="MQTT: Abgeschlossen →"
-readonly MSG_MQTT_ERROR="MQTT: Fehler →"
+# Warn-Meldungen (API File Read Errors)
+readonly MSG_WARN_MQTT_STATUS_UNREADABLE="MQTT: status.json nicht lesbar, überspringe State-Update"
+readonly MSG_WARN_MQTT_ATTRIBUTES_UNREADABLE="MQTT: attributes.json nicht lesbar, überspringe Attributes-Update"
+readonly MSG_WARN_MQTT_PROGRESS_UNREADABLE="MQTT: progress.json nicht lesbar, überspringe Progress-Update"

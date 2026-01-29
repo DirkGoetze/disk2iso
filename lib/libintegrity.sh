@@ -73,6 +73,8 @@ check_dependencies_integrity() {
 # Prüft....: - Modul-Dateien (lib, lang, conf, www)
 #            - Modul-Ordner (output, cache, logs, etc.)
 #            - Externe Tools (critical + optional)
+# TODO.....: Interne Modul-Abhängigkeiten prüfen (z.B. [moduledependencies] required=liblogging,libconfig)
+#            Implementierung: declare -f Prüfung für benötigte Funktionen aus anderen lib*.sh Modulen
 # ===========================================================================
 check_module_dependencies() {
     local module_name="$1"

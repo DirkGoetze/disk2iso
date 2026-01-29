@@ -195,46 +195,8 @@
         </div>
         
         <!-- MQTT Integration -->
-        <div class="form-section">
-            <h2><img src="{{ url_for('static', filename='img/mqtt.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">MQTT Integration</h2>
-            
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="mqtt_enabled" name="mqtt_enabled" {{ 'checked' if config.mqtt_enabled else '' }}>
-                    {{ t.SYSTEM_MQTT_ENABLED }}
-                </label>
-                <div class="help-text">Aktiviert Home Assistant Integration via MQTT</div>
-            </div>
-            
-            <div class="form-group">
-                <label for="mqtt_broker">MQTT Broker</label>
-                <input type="text" id="mqtt_broker" name="mqtt_broker" value="{{ config.mqtt_broker }}" placeholder="192.168.20.10">
-                <div class="help-text">IP-Adresse oder Hostname des MQTT Brokers</div>
-            </div>
-            
-            <div class="form-group">
-                <label for="mqtt_port">MQTT Port</label>
-                <input type="number" id="mqtt_port" name="mqtt_port" value="{{ config.mqtt_port }}" min="1" max="65535">
-                <div class="help-text">Standard: 1883</div>
-            </div>
-            
-            <div class="form-group">
-                <label for="mqtt_user">MQTT Benutzername (optional)</label>
-                <input type="text" id="mqtt_user" name="mqtt_user" value="{{ config.mqtt_user }}" placeholder="">
-                <div class="help-text">Leer lassen wenn keine Authentifizierung erforderlich</div>
-            </div>
-            
-            <div class="form-group">
-                <label for="mqtt_password">MQTT Passwort (optional)</label>
-                <div class="password-input-wrapper">
-                    <input type="password" id="mqtt_password" name="mqtt_password" class="password-input" value="{{ config.mqtt_password }}" placeholder="">
-                    <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('mqtt_password')" title="Passwort anzeigen/verbergen">
-                        <span class="toggle-icon" id="mqtt_password_icon">👁️</span>
-                    </button>
-                </div>
-                <div class="help-text">Leer lassen wenn keine Authentifizierung erforderlich. Passwort wird nach 20 Sekunden automatisch verborgen.</div>
-            </div>
-        </div>
+        <!-- Widget wird dynamisch geladen via mqtt_config.js -->
+        <div id="mqtt-config-container"></div>
         
         <!-- TMDB API Integration -->
         <div class="form-section">
@@ -283,5 +245,6 @@
 {% endblock %}
 
 {% block scripts %}
+    <script src="{{ url_for('static', filename='js/widgets/mqtt_config.js') }}"></script>
     <script src="{{ url_for('static', filename='js/config.js') }}"></script>
 {% endblock %}

@@ -17,20 +17,14 @@ function loadConfig() {
         .then(data => {
             console.log('Config geladen:', data);
             
-            // Setze Werte und speichere Originale
+            // Setze Werte und speichere Originale (außer MQTT - wird vom Widget gehandelt)
             setFieldValue('output_dir', data.output_dir || '/media/iso', 'DEFAULT_OUTPUT_DIR');
             setFieldValue('mp3_quality', data.mp3_quality || 2, 'MP3_QUALITY');
             setFieldValue('ddrescue_retries', data.ddrescue_retries || 1, 'DDRESCUE_RETRIES');
             setFieldValue('usb_detection_attempts', data.usb_detection_attempts || 5, 'USB_DRIVE_DETECTION_ATTEMPTS');
             setFieldValue('usb_detection_delay', data.usb_detection_delay || 10, 'USB_DRIVE_DETECTION_DELAY');
-            setFieldValue('mqtt_enabled', data.mqtt_enabled || false, 'MQTT_ENABLED', true);
-            setFieldValue('mqtt_broker', data.mqtt_broker || '', 'MQTT_BROKER');
-            setFieldValue('mqtt_port', data.mqtt_port || 1883, 'MQTT_PORT');
-            setFieldValue('mqtt_user', data.mqtt_user || '', 'MQTT_USER');
-            setFieldValue('mqtt_password', data.mqtt_password || '', 'MQTT_PASSWORD');
             setFieldValue('tmdb_api_key', data.tmdb_api_key || '', 'TMDB_API_KEY');
             
-            toggleMqttFields();
             updateSaveButtonState();
         })
         .catch(error => {
@@ -405,13 +399,12 @@ function hidePassword(fieldId) {
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    loadConfig();
-    
-    // Event-Listener für MQTT-Toggle
-    const mqttEnabledField = document.getElementById('mqtt_enabled');
-    if (mqttEnabledField) {
-        mqttEnabledField.addEventListener('change', toggleMqttFields);
+    // Lade MQTT Config Widget (wenn verfügbar)
+    if (window.mqttConfig) {
+        window.mqttConfig.init();
     }
+    
+    loadConfig();
     
     // Event-Listener für Save-Button
     const saveButton = document.getElementById('save-config-button');

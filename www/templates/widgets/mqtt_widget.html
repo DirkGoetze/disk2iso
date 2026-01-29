@@ -1,0 +1,25 @@
+<!-- MQTT Service Widget -->
+<!-- Dynamisch geladen via mqtt.js -->
+<div class="card" id="mqtt-service-widget">
+    <h2>MQTT Service</h2>
+    <div class="info-row">
+        <span class="info-label">{{ t.INDEX_STATE }}</span>
+        <span class="info-value">
+            <span class="status-indicator {{ 'running' if mqtt_status.running else 'stopped' }}" id="mqtt-indicator"></span>
+            <span id="mqtt-status">{{ 'Running' if mqtt_status.running else 'Stopped' }}</span>
+        </span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">{{ t.SYSTEM_SERVICE_STATUS }}</span>
+        <span class="badge {{ 'success' if mqtt_status.status == 'active' else ('error' if mqtt_status.status == 'error' else 'warning') }}" id="mqtt-badge">
+            {% if mqtt_status.status == 'active' %}{{ t.SERVICE_STATUS_ACTIVE }}
+            {% elif mqtt_status.status == 'inactive' %}{{ t.SERVICE_STATUS_INACTIVE }}
+            {% elif mqtt_status.status == 'error' %}{{ t.SERVICE_STATUS_ERROR }}
+            {% else %}{{ t.SERVICE_STATUS_NOT_INSTALLED }}{% endif %}
+        </span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">{{ t.LOGS_TIMESTAMP }}</span>
+        <span class="info-value" id="mqtt-updated">{{ current_time }}</span>
+    </div>
+</div>

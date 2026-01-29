@@ -689,6 +689,37 @@ discinfo_get_temp_pathname() {
 }
 
 # ===========================================================================
+# discinfo_get_container_type
+# ---------------------------------------------------------------------------
+# Funktion.: Lese Container-Typ
+# Parameter: keine
+# Ausgabe..: Container-Typ (stdout)
+# Rückgabe.: 0
+# Beschr...: Leitet Container-Typ aus globalen Variablen ab
+# ===========================================================================
+discinfo_get_container_type() {
+    if [[ "${IS_CONTAINER:-false}" == "true" ]]; then
+        echo "${CONTAINER_TYPE:-unknown}"
+    else
+        echo "none"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# discinfo_get_copy_method
+# ---------------------------------------------------------------------------
+# Funktion.: Lese Kopier-Methode
+# Parameter: keine
+# Ausgabe..: Kopier-Methode (stdout)
+# Rückgabe.: 0
+# ===========================================================================
+discinfo_get_copy_method() {
+    echo "${COPY_METHOD:-unknown}"
+    return 0
+}
+
+# ===========================================================================
 # DISC_DATA GETTER/SETTER - AUDIO-CD METADATA
 # ===========================================================================
 

@@ -205,9 +205,9 @@ if [[ -f "${SCRIPT_DIR}/lib/libmqtt.sh" ]]; then
     source "${SCRIPT_DIR}/lib/libmqtt.sh"
     check_dependencies_mqtt  # Setzt SUPPORT_MQTT=true bei Erfolg
     
-    # mqtt_init prüft selbst ob MQTT bereit ist (Support + Aktiviert + Initialisiert)
+    # mqtt_init_connection prüft selbst ob MQTT bereit ist (Support + Aktiviert + Initialisiert)
     if is_mqtt_ready; then
-        mqtt_init  # Sendet Initial-Messages wenn Broker erreichbar
+        mqtt_init_connection  # Sendet Initial-Messages wenn Broker erreichbar
     fi
 fi
 
@@ -321,13 +321,8 @@ copy_disc_to_iso() {
     # Speichere Methode für MQTT-Attribute (MUSS vor api_update_status gesetzt werden!)
     COPY_METHOD="$method"
     
-    # API: Status-Update (IMMER)
+    # API: Status-Update (IMMER) - triggert automatisch MQTT via Observer Pattern
     api_update_status "copying" "$(discinfo_get_label)" "$(discinfo_get_type)"
-    
-    # MQTT: Kopiervorgang gestartet (optional)
-    if is_mqtt_ready; then
-        mqtt_publish_state "copying" "$(discinfo_get_label)" "$(discinfo_get_type)"
-    fi
     
     # Kopiere mit gewählter Methode (KEIN Fallback bei Fehler)
     local copy_success=false
@@ -384,20 +379,16 @@ copy_disc_to_iso() {
         
         log_info "$MSG_COPY_SUCCESS_FINAL $iso_filename"
         
-        # MQTT: Erfolgreich abgeschlossen
-        if [[ "$SUPPORT_MQTT" == "true" ]]; then
-            mqtt_publish_complete "$iso_basename"
-        fi
+        # API: Status auf "completed" setzen (triggert automatisch MQTT)
+        api_update_status "completed" "$(discinfo_get_label)" "$(discinfo_get_type)"
         
         cleanup_disc_operation "success"
         return 0
     else
         log_info "$MSG_COPY_FAILED_FINAL $(discinfo_get_label)"
         
-        # MQTT: Fehler
-        if [[ "$SUPPORT_MQTT" == "true" ]]; then
-            mqtt_publish_error "Kopiervorgang fehlgeschlagen"
-        fi
+        # API: Status auf "error" setzen (triggert automatisch MQTT)
+        api_update_status "error" "$(discinfo_get_label)" "$(discinfo_get_type)" "Kopiervorgang fehlgeschlagen"
         
         cleanup_disc_operation "failure"
         return 1
@@ -419,36 +410,10 @@ transition_to_state() {
     fi
     
     # Update API status via helper function (delegiert State→Status Mapping)
+    # Observer Pattern: api_update_from_state() triggert automatisch MQTT-Updates
     local disc_label="$(discinfo_get_label 2>/dev/null || echo '')"
     local disc_type="$(discinfo_get_type 2>/dev/null || echo '')"
     api_update_from_state "$new_state" "$disc_label" "$disc_type" "${msg:-}"
-    
-    # MQTT (optional)
-    if [[ "$SUPPORT_MQTT" == "true" ]]; then
-        case "$new_state" in
-            "$STATE_WAITING_FOR_DRIVE"|"$STATE_DRIVE_DETECTED"|"$STATE_WAITING_FOR_MEDIA"|"$STATE_IDLE")
-                mqtt_publish_state "idle"
-                ;;
-            "$STATE_ANALYZING")
-                mqtt_publish_state "analyzing" "$disc_label" "$disc_type"
-                ;;
-            "$STATE_WAITING_FOR_METADATA")
-                mqtt_publish_state "waiting" "$disc_label" "$disc_type"
-                ;;
-            "$STATE_COPYING")
-                mqtt_publish_state "copying" "$disc_label" "$disc_type"
-                ;;
-            "$STATE_COMPLETED")
-                mqtt_publish_state "completed" "$disc_label" "$disc_type"
-                ;;
-            "$STATE_ERROR")
-                mqtt_publish_state "error" "${disc_label:-Unknown}" "${disc_type:-unknown}"
-                ;;
-            "$STATE_WAITING_FOR_REMOVAL")
-                mqtt_publish_state "waiting"
-                ;;
-        esac
-    fi
 }
 
 # State Machine Main Loop

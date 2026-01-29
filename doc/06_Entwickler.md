@@ -193,7 +193,31 @@ done
 
 ## Modul-System
 
-### Modul-Template
+### Architektur-Prinzip (seit v1.2.0)
+
+**Ziel**: Python nur als Mittler, komplette Business-Logic in Bash
+
+```
+Browser/User
+    ↓
+Python Routes (www/routes/routes_module.py)
+    ↓ (subprocess + JSON)
+Bash CLI-Interface (lib/libmodule.sh)
+    ↓
+Business-Logic (Bash-Funktionen)
+    ↓
+Externe Tools (dd, dvdbackup, mosquitto_pub, etc.)
+```
+
+**Vorteile**:
+- ✅ Python-unabhängige CLI-Tools (direkt testbar)
+- ✅ Keine Config-/Tool-Kenntnisse in Python
+- ✅ Wiederverwendbare Helper-Funktionen
+- ✅ DRY-Prinzip durchgesetzt
+
+### Modul-Template (mit CLI-Interface)
+
+> 💡 **Vollständiges Pattern**: Siehe [todo/Modul-CLI-Interface-Pattern.md](../../todo/Modul-CLI-Interface-Pattern.md)
 
 ```bash
 #!/bin/bash
@@ -208,12 +232,36 @@ EXAMPLE_MODULE_VERSION="1.0.0"
 
 # Abhängigkeiten (für check_dependencies)
 EXAMPLE_REQUIRED_TOOLS=(
+    "jq"        # JSON-Parsing
     "tool1"
     "tool2"
 )
 
 # =====================================================
-# HAUPT-FUNKTION
+# HELPER-FUNKTIONEN (Wiederverwendbar)
+# =====================================================
+
+# Zentrale Default-Definition (Single Source of Truth)
+_example_get_defaults() {
+    local key="$1"
+    case "$key" in
+        enabled) echo "false" ;;
+        setting_x) echo "default_value" ;;
+        setting_y) echo "42" ;;
+    esac
+}
+
+# Wiederverwendbare Test-Logik
+_example_test_feature() {
+    local param1="$1"
+    local param2="$2"
+    
+    # Test-Logik...
+    return 0  # 0 = success, 1 = failure
+}
+
+# =====================================================
+# HAUPT-FUNKTION (Legacy, für disk2iso.sh)
 # =====================================================
 
 copy_example_media() {
@@ -232,7 +280,7 @@ copy_example_media() {
     # Verzeichnis sicherstellen
     ensure_example_dir
     
-    # Kopiervorgang
+    # Kopiervorgang (nutzt Helper)
     local output_file="$output_dir/example/${disc_label}.ext"
     
     if ! example_copy_method "$device" "$output_file"; then
@@ -243,13 +291,9 @@ copy_example_media() {
     # Checksumme
     create_md5_checksum "$output_file"
     
-    log_success "$(get_text 'example.complete' "$output_file")"
+    log_success "$(get_text 'example.complete' "$output_file')"
     return 0
 }
-
-# =====================================================
-# HILFSFUNKTIONEN
-# =====================================================
 
 example_copy_method() {
     local device="$1"
@@ -262,6 +306,157 @@ example_copy_method() {
 ensure_example_dir() {
     mkdir -p "$OUTPUT_DIR/example"
 }
+
+# =====================================================
+# CLI-INTERFACE (für Web-UI / externe Aufrufe)
+# =====================================================
+
+# Export Config als JSON
+example_export_config_json() {
+    # 1. Source libconfig.sh für get_ini_value
+    local lib_dir="$(dirname "$BASH_SOURCE")"
+    source "$lib_dir/libconfig.sh"
+    
+    # 2. Read main config
+    local conf_file="$BASE_DIR/conf/disk2iso.conf"
+    local example_enabled=$(get_ini_value "$conf_file" "example" "enabled")
+    
+    # 3. Read module config
+    local ini_file="$BASE_DIR/conf/libexample.ini"
+    local setting_x=$(get_ini_value "$ini_file" "section" "setting_x")
+    
+    # 4. Apply defaults
+    example_enabled=${example_enabled:-$(_example_get_defaults enabled)}
+    setting_x=${setting_x:-$(_example_get_defaults setting_x)}
+    
+    # 5. Build JSON
+    cat <<EOF
+{
+  "example_enabled": ${example_enabled},
+  "setting_x": "${setting_x}"
+}
+EOF
+}
+
+# Update Config via JSON
+example_update_config() {
+    # 1. Source dependencies
+    local lib_dir="$(dirname "$BASH_SOURCE")"
+    source "$lib_dir/libconfig.sh"
+    
+    # 2. Parse JSON from stdin (jq bevorzugt)
+    read -r json_input
+    local example_enabled=$(echo "$json_input" | jq -r '.example_enabled // "false"')
+    local setting_x=$(echo "$json_input" | jq -r '.setting_x // ""')
+    
+    # 3. Validate (Business-Logic in Bash!)
+    if [[ ! "$example_enabled" =~ ^(true|false)$ ]]; then
+        echo '{"success": false, "error": "Invalid enabled value"}'
+        return 1
+    fi
+    
+    # 4. Write via libconfig.sh (nutzt set_example_* Funktionen)
+    set_example_enabled "$example_enabled"
+    set_example_setting_x "$setting_x"
+    
+    # 5. Response
+    echo '{"success": true, "updated_keys": ["EXAMPLE_ENABLED", "SETTING_X"], "restart_required": true}'
+}
+
+# Test Feature via JSON
+example_test_feature() {
+    # 1. Parse JSON
+    read -r json_input
+    local param1=$(echo "$json_input" | jq -r '.param1')
+    local param2=$(echo "$json_input" | jq -r '.param2 // "default"')
+    
+    # 2. Use helper function
+    if _example_test_feature "$param1" "$param2"; then
+        echo '{"success": true, "message": "Test erfolgreich"}'
+    else
+        echo '{"success": false, "error": "Test fehlgeschlagen"}'
+    fi
+}
+
+# =====================================================
+# MAIN ENTRY POINT
+# =====================================================
+
+main() {
+    local command="$1"
+    
+    case "$command" in
+        "export-config")
+            example_export_config_json
+            ;;
+        "update-config")
+            example_update_config
+            ;;
+        "test-feature")
+            example_test_feature
+            ;;
+        *)
+            echo '{"success": false, "error": "Ungültiger Befehl"}' >&2
+            exit 1
+            ;;
+    esac
+}
+
+# Conditional execution (nur bei direktem Aufruf, nicht wenn gesourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
+```
+
+### CLI-Nutzung
+
+**Direkt im Terminal**:
+
+```bash
+# Config exportieren
+/opt/disk2iso/lib/libexample.sh export-config
+
+# Config updaten (JSON via stdin)
+echo '{"example_enabled": true, "setting_x": "new_value"}' | \
+  /opt/disk2iso/lib/libexample.sh update-config
+
+# Feature testen (JSON via stdin)
+echo '{"param1": "test", "param2": "value"}' | \
+  /opt/disk2iso/lib/libexample.sh test-feature
+```
+
+**Via Python (routes_example.py)**:
+
+```python
+import subprocess
+import json
+from pathlib import Path
+
+BASE_DIR = Path('/opt/disk2iso')
+
+def get_example_config():
+    """Config via Bash-Script lesen"""
+    result = subprocess.run(
+        [f'{BASE_DIR}/lib/libexample.sh', 'export-config'],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+    return json.loads(result.stdout)
+
+@app.route('/api/example/save', methods=['POST'])
+def api_example_save():
+    """Config via Bash-Script schreiben"""
+    data = request.get_json()
+    
+    result = subprocess.run(
+        [f'{BASE_DIR}/lib/libexample.sh', 'update-config'],
+        input=json.dumps(data),
+        capture_output=True,
+        text=True
+    )
+    
+    return jsonify(json.loads(result.stdout))
 ```
 
 ### Modul-Integration
@@ -307,6 +502,114 @@ case "$DISC_TYPE" in
         ;;
 esac
 ```
+
+### Best Practices (DRY-Prinzip)
+
+#### ❌ Anti-Pattern: Code-Duplikation
+
+```bash
+# FALSCH: Defaults an mehreren Stellen
+mqtt_export_config_json() {
+    local mqtt_enabled="false"
+    local mqtt_broker="192.168.20.13"
+    # ...
+}
+
+load_mqtt_config() {
+    MQTT_BROKER="${MQTT_BROKER:-${broker:-192.168.20.13}}"
+    # ...
+}
+```
+
+#### ✅ Best Practice: Single Source of Truth
+
+```bash
+# RICHTIG: Zentrale Default-Definition
+_mqtt_get_defaults() {
+    local key="$1"
+    case "$key" in
+        enabled) echo "false" ;;
+        broker) echo "192.168.20.13" ;;
+        port) echo "1883" ;;
+    esac
+}
+
+# Nutzung überall
+mqtt_export_config_json() {
+    local mqtt_enabled=$(_mqtt_get_defaults enabled)
+    local mqtt_broker=$(_mqtt_get_defaults broker)
+}
+
+load_mqtt_config() {
+    MQTT_BROKER="${MQTT_BROKER:-${broker:-$(_mqtt_get_defaults broker)}}"
+}
+```
+
+#### ✅ Best Practice: libconfig.sh nutzen
+
+```bash
+# FALSCH: Eigene awk-Implementierung (16 Zeilen)
+local ini_value=$(awk -F'=' '/^\[section\]/,/^\[/ {if ($1 ~ /^key/) {print $2}}' "$ini_file")
+
+# RICHTIG: libconfig.sh sourcing (1 Zeile)
+source "$lib_dir/libconfig.sh"
+local ini_value=$(get_ini_value "$ini_file" "section" "key")
+```
+
+**Vorteile**:
+- 75% weniger Code
+- Nutzt getestete Core-Funktionen
+- Konsistente INI-Parsing-Logik
+
+#### ✅ Best Practice: Helper-Funktionen
+
+```bash
+# Wiederverwendbare Logik mit _ Präfix (private)
+_mqtt_test_broker() {
+    local broker="$1"
+    local port="$2"
+    # Test-Logik...
+    return $?
+}
+
+# Nutzung in Legacy-Funktion
+mqtt_init_connection() {
+    if ! _mqtt_test_broker "$MQTT_BROKER" "$MQTT_PORT"; then
+        log_error "Broker unreachable"
+        return 1
+    fi
+}
+
+# Nutzung in CLI-Funktion
+mqtt_test_connection() {
+    read -r json_input
+    local broker=$(echo "$json_input" | jq -r '.broker')
+    
+    if _mqtt_test_broker "$broker" "$port"; then
+        echo '{"success": true}'
+    fi
+}
+```
+
+**Vorteile**:
+- Keine Code-Duplikation
+- Einfacher zu testen
+- Business-Logic bleibt zentral
+
+### Modul-Checkliste
+
+- [ ] Helper-Funktionen mit `_` Präfix für Wiederverwendung
+- [ ] `_module_get_defaults()` für zentrale Default-Definition
+- [ ] `module_export_config_json()` für Config-Export
+- [ ] `module_update_config()` für Config-Update (nutzt libconfig.sh)
+- [ ] `module_test_feature()` für Feature-Tests (optional)
+- [ ] `main()` Entry Point mit case-Statement
+- [ ] `if [[ "${BASH_SOURCE[0]}" == "${0}" ]]` Conditional
+- [ ] Source libconfig.sh für get_ini_value() + Setter
+- [ ] jq für JSON-Parsing nutzen
+- [ ] Keine Code-Duplikation (DRY-Prinzip prüfen)
+
+**Referenz-Implementierung**: [lib/libmqtt.sh](../../lib/libmqtt.sh) (100% architektur-konform seit v1.2.0)
 
 ---
 

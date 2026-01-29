@@ -38,8 +38,13 @@
             init: null
         },
         'mqtt': {
-            files: [],  // MQTT-spezifische JS (falls später benötigt)
-            init: null
+            files: ['widgets/mqtt.js'],  // MQTT Widget Loader
+            init: function() {
+                // MQTT initialisiert sich selbst
+                if (typeof window.mqtt !== 'undefined' && typeof window.mqtt.init === 'function') {
+                    window.mqtt.init();
+                }
+            }
         }
     };
     

@@ -114,6 +114,62 @@ api_write_json() {
     mv -f "$temp_file" "${API_DIR}/${filename}" 2>/dev/null || return 1
     chmod 644 "${API_DIR}/${filename}" 2>/dev/null || true
     
+    # Benachrichtige Observer über Änderung
+    notify_api_update "$filename"
+    
+    return 0
+}
+
+# ===========================================================================
+# api_read_json
+# ---------------------------------------------------------------------------
+# Funktion.: Lese JSON aus API-Datei
+# Parameter: $1 = Dateiname (z.B. "status.json")
+# Ausgabe..: JSON-Content (stdout)
+# Rückgabe.: 0 = OK, 1 = Fehler (Datei nicht gefunden oder nicht lesbar)
+# ===========================================================================
+api_read_json() {
+    local filename="$1"
+    local filepath="${API_DIR}/${filename}"
+    
+    # Prüfe ob Datei existiert
+    if [[ ! -f "$filepath" ]]; then
+        log_debug "api_read_json: ${filename} nicht gefunden"
+        return 1
+    fi
+    
+    # Lese Datei
+    cat "$filepath" 2>/dev/null || {
+        log_error "api_read_json: Fehler beim Lesen von ${filename}"
+        return 1
+    }
+    
+    return 0
+}
+
+# ===========================================================================
+# notify_api_update
+# ---------------------------------------------------------------------------
+# Funktion.: Benachrichtige Observer über API-Änderungen (Observer Pattern)
+# Parameter: $1 = Dateiname der geänderten JSON (z.B. "status.json")
+# Rückgabe.: 0
+# Beschr...: Ruft registrierte Observer-Callbacks auf (MQTT, WebSocket, etc.)
+#            Observer müssen eine Funktion *_publish_from_api() bereitstellen
+# ===========================================================================
+notify_api_update() {
+    local changed_file="$1"
+    
+    # Benachrichtige MQTT (falls Funktion verfügbar)
+    if declare -f mqtt_publish_from_api >/dev/null 2>&1; then
+        mqtt_publish_from_api "$changed_file"
+    fi
+    
+    # Weitere Observer können hier hinzugefügt werden
+    # Beispiel: WebSocket-Modul
+    # if declare -f websocket_publish_from_api >/dev/null 2>&1; then
+    #     websocket_publish_from_api "$changed_file"
+    # fi
+    
     return 0
 }
 
@@ -146,20 +202,11 @@ EOF
 )
     api_write_json "status.json" "${status_json}"
     
-    # Berechne Disc-Größe (falls verfügbar)
-    local disc_size_mb=0
-    if [[ -n "${disc_volume_size:-}" ]] && [[ -n "${disc_block_size:-}" ]]; then
-        disc_size_mb=$(( disc_volume_size * disc_block_size / 1024 / 1024 ))
-    fi
-    
-    # Container-Info
-    local container="${CONTAINER_TYPE:-none}"
-    if [[ "${IS_CONTAINER:-false}" == "true" ]]; then
-        container="${CONTAINER_TYPE:-unknown}"
-    fi
-    
-    # Methode (aus globalem Kontext)
-    local method="${COPY_METHOD:-unknown}"
+    # Hole Werte über Getter aus libdiskinfos
+    local disc_size_mb=$(discinfo_get_size_mb)
+    local container=$(discinfo_get_container_type)
+    local method=$(discinfo_get_copy_method)
+    local filename=$(discinfo_get_iso_basename)
     
     # Schreibe attributes.json
     local attr_json=$(cat <<EOF
@@ -172,7 +219,7 @@ EOF
   "total_mb": ${disc_size_mb},
   "total_tracks": 0,
   "eta": "",
-  "filename": "${iso_basename:-}",
+  "filename": "${filename}",
   "method": "${method}",
   "container_type": "${container}",
   "error_message": ${error_msg:+"\"${error_msg}\""}${error_msg:-null}

@@ -17,14 +17,20 @@
 readonly MSG_MQTT_SUPPORT_AVAILABLE="Soporte MQTT disponible"
 # Mensajes de depuración
 readonly MSG_DEBUG_MQTT_CHECK_START="Comprobando dependencias del módulo MQTT..."
-readonly MSG_DEBUG_MQTT_CHECK_COMPLETE="Módulo MQTT inicializado correctamente"readonly MSG_MQTT_NOT_AVAILABLE="Soporte MQTT no disponible"
+readonly MSG_DEBUG_MQTT_CHECK_COMPLETE="Módulo MQTT inicializado correctamente"
+readonly MSG_DEBUG_MQTT_NOT_SUPPORTED="MQTT: Bandera de soporte no establecida (faltan dependencias)"
+readonly MSG_DEBUG_MQTT_NOT_INITIALIZED="MQTT: Bandera de inicialización no establecida (configuración no cargada)"
+readonly MSG_DEBUG_MQTT_NOT_ACTIVATED="MQTT: Bandera de activación no establecida (MQTT_ENABLED=false)"
+readonly MSG_DEBUG_MQTT_READY="MQTT: Módulo listo (Soporte + Inicializado + Activado)"
+readonly MSG_DEBUG_MQTT_CONFIG_LOADED="Configuración MQTT cargada"
+readonly MSG_MQTT_INI_NOT_FOUND="Archivo INI MQTT no encontrado (usando valores predeterminados)"
+readonly MSG_MQTT_CONFIG_LOADED="MQTT: Configuración cargada"
+readonly MSG_MQTT_NOT_AVAILABLE="Soporte MQTT no disponible"
 
 # ============================================================================
 # INICIALIZACIÓN
 # ============================================================================
 
-readonly MSG_MQTT_DISABLED="MQTT está desactivado (MQTT_ENABLED=false)"
-readonly MSG_MQTT_ERROR_NO_BROKER="ERROR: MQTT_BROKER no configurado"
 readonly MSG_MQTT_ERROR_BROKER_UNREACHABLE="ERROR: Broker MQTT no alcanzable:"
 readonly MSG_MQTT_INITIALIZED="MQTT inicializado:"
 readonly MSG_MQTT_ONLINE="MQTT: Estado → en línea"
@@ -36,20 +42,14 @@ readonly MSG_MQTT_OFFLINE="MQTT: Estado → fuera de línea"
 
 readonly MSG_MQTT_PUBLISH_FAILED="Publicación MQTT fallida para el topic"
 
-# ============================================================================
-# ACTUALIZACIONES DE ESTADO
-# ============================================================================
+# Mensajes de depuración (Patrón Observer)
+readonly MSG_DEBUG_MQTT_PATH="Ruta del módulo MQTT:"
+readonly MSG_DEBUG_MQTT_ACTIVATED="Activado:"
+readonly MSG_DEBUG_MQTT_UNKNOWN_FILE="mqtt_publish_from_api: Archivo desconocido"
+readonly MSG_DEBUG_MQTT_STATE_PUBLISHED="MQTT: Estado publicado"
+readonly MSG_DEBUG_MQTT_PROGRESS_PUBLISHED="MQTT: Progreso publicado"
 
-readonly MSG_MQTT_STATE_IDLE="MQTT: Estado → inactivo (listo)"
-readonly MSG_MQTT_STATE_COPYING="MQTT: Estado → copiando"
-readonly MSG_MQTT_STATE_WAITING="MQTT: Estado → esperando (retirar medio)"
-readonly MSG_MQTT_STATE_COMPLETED="MQTT: Estado → completado"
-readonly MSG_MQTT_STATE_ERROR="MQTT: Estado → error"
-
-# ============================================================================
-# PROGRESO
-# ============================================================================
-
-readonly MSG_MQTT_PROGRESS="MQTT: Progreso →"
-readonly MSG_MQTT_COMPLETED="MQTT: Completado →"
-readonly MSG_MQTT_ERROR="MQTT: Error →"
+# Mensajes de advertencia (Errores de lectura de archivos API)
+readonly MSG_WARN_MQTT_STATUS_UNREADABLE="MQTT: status.json no legible, omitiendo actualización de estado"
+readonly MSG_WARN_MQTT_ATTRIBUTES_UNREADABLE="MQTT: attributes.json no legible, omitiendo actualización de atributos"
+readonly MSG_WARN_MQTT_PROGRESS_UNREADABLE="MQTT: progress.json no legible, omitiendo actualización de progreso"

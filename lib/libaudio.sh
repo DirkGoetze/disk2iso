@@ -536,9 +536,9 @@ get_musicbrainz_metadata() {
             api_write_json "musicbrainz_selection.json" "{\"status\":\"waiting_user_input\",\"selected_index\":$best_release_index,\"confidence\":\"medium\",\"message\":\"Mehrere Alben gefunden. Bitte wählen Sie das richtige Album aus.\"}"
         fi
         
-        # MQTT-Benachrichtigung: Benutzereingriff erforderlich
-        if declare -f mqtt_publish_state >/dev/null 2>&1; then
-            mqtt_publish_state "waiting" "MusicBrainz: $releases_count Alben gefunden" "CD"
+        # API-Update: Benutzereingriff erforderlich (triggert automatisch MQTT)
+        if declare -f api_update_status >/dev/null 2>&1; then
+            api_update_status "waiting" "MusicBrainz: $releases_count Alben gefunden" "CD"
         fi
         
         # Markiere, dass User-Input benötigt wird
@@ -1115,14 +1115,9 @@ copy_audio_cd() {
         log_info "Rippe Audio-CD: $(discinfo_get_label) ($track_count Tracks)"
     fi
     
-    # API: Aktualisiere Status
+    # API: Aktualisiere Status (triggert automatisch MQTT via Observer Pattern)
     if declare -f api_update_status >/dev/null 2>&1; then
         api_update_status "copying" "$(discinfo_get_label)" "audio-cd"
-    fi
-    
-    # MQTT: Sende Update mit DiskID
-    if is_mqtt_ready && declare -f mqtt_publish_state >/dev/null 2>&1; then
-        mqtt_publish_state "copying" "$(discinfo_get_label)" "audio-cd"
     fi
     
     # Initialisiere Fortschritt mit korrekter Track-Anzahl (0/24 statt 0/0)
@@ -1247,7 +1242,7 @@ copy_audio_cd() {
         processed_tracks=$((processed_tracks + 1))
         local percent=$((processed_tracks * 100 / total_tracks))
         
-        # API: Fortschritt senden
+        # API: Fortschritt senden (triggert automatisch MQTT via Observer Pattern)
         if declare -f api_update_progress >/dev/null 2>&1; then
             # Schätze verbleibende Zeit (ca. 4 Minuten pro Track als Durchschnitt)
             local remaining_tracks=$((total_tracks - processed_tracks))
@@ -1255,16 +1250,6 @@ copy_audio_cd() {
             local eta=$(printf "%02d:%02d:00" $((eta_minutes / 60)) $((eta_minutes % 60)))
             
             api_update_progress "$percent" "$processed_tracks" "$total_tracks" "$eta"
-        fi
-        
-        # MQTT: Fortschritt senden
-        if is_mqtt_ready && declare -f mqtt_publish_progress >/dev/null 2>&1; then
-            local remaining_tracks=$((total_tracks - processed_tracks))
-            local eta_minutes=$((remaining_tracks * 4))
-            local eta=$(printf "%02d:%02d:00" $((eta_minutes / 60)) $((eta_minutes % 60)))
-            
-            # Für Audio-CDs: Sende Tracks statt MB
-            mqtt_publish_progress "$percent" "$processed_tracks" "$total_tracks" "$eta"
         fi
     done
     

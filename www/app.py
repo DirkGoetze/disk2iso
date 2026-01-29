@@ -16,6 +16,16 @@ from i18n import get_translations
 
 app = Flask(__name__)
 
+# Register Blueprints für modulare Routen
+# Conditional Import: Nur registrieren wenn Modul installiert
+try:
+    from routes import mqtt_bp
+    app.register_blueprint(mqtt_bp)
+    MQTT_MODULE_AVAILABLE = True
+except ImportError:
+    MQTT_MODULE_AVAILABLE = False
+    print("INFO: MQTT module not installed (optional)", file=sys.stderr)
+
 # Konfiguration
 INSTALL_DIR = Path("/opt/disk2iso")
 CONFIG_FILE = INSTALL_DIR / "conf" / "disk2iso.conf"
@@ -32,18 +42,13 @@ def get_version():
     return "1.2.0"
 
 def get_config():
-    """Liest Konfiguration aus config.sh"""
+    """Liest Core-Konfiguration aus config.sh (ohne Modul-spezifische Werte)"""
     config = {
         "output_dir": "/media/iso",
         "mp3_quality": 2,
         "ddrescue_retries": 1,
         "usb_detection_attempts": 5,
         "usb_detection_delay": 10,
-        "mqtt_enabled": False,
-        "mqtt_broker": "",
-        "mqtt_port": 1883,
-        "mqtt_user": "",
-        "mqtt_password": "",
         "tmdb_api_key": "",
         # Module-Schalter (Standard: alle aktiviert)
         "metadata_enabled": True,
@@ -79,32 +84,6 @@ def get_config():
                             config['usb_detection_delay'] = int(line.split('=', 1)[1].strip())
                         except:
                             pass
-                    elif line.startswith('MQTT_ENABLED='):
-                        config['mqtt_enabled'] = 'true' in line.lower()
-                    elif line.startswith('MQTT_BROKER='):
-                        value = line.split('=', 1)[1]
-                        # Entferne Anführungszeichen und Kommentare
-                        if '#' in value:
-                            value = value.split('#')[0]
-                        value = value.strip().strip('"').strip()
-                        config['mqtt_broker'] = value
-                    elif line.startswith('MQTT_PORT='):
-                        try:
-                            config['mqtt_port'] = int(line.split('=', 1)[1].strip())
-                        except:
-                            pass
-                    elif line.startswith('MQTT_USER='):
-                        value = line.split('=', 1)[1]
-                        if '#' in value:
-                            value = value.split('#')[0]
-                        value = value.strip().strip('"').strip()
-                        config['mqtt_user'] = value
-                    elif line.startswith('MQTT_PASSWORD='):
-                        value = line.split('=', 1)[1]
-                        if '#' in value:
-                            value = value.split('#')[0]
-                        value = value.strip().strip('"').strip()
-                        config['mqtt_password'] = value
                     elif line.startswith('TMDB_API_KEY='):
                         value = line.split('=', 1)[1].strip()
                         if '#' in value:
@@ -122,6 +101,14 @@ def get_config():
                         config['bluray_enabled'] = 'true' in line.lower()
     except Exception as e:
         print(f"Fehler beim Lesen der Konfiguration: {e}", file=sys.stderr)
+    
+    # Module-spezifische Configs hinzufügen (wenn Module verfügbar)
+    if MQTT_MODULE_AVAILABLE:
+        try:
+            from routes.routes_mqtt import get_mqtt_config
+            config.update(get_mqtt_config())
+        except Exception as e:
+            print(f"MQTT config error: {e}", file=sys.stderr)
     
     return config
 
@@ -401,11 +388,7 @@ def index():
     disk2iso_status = get_service_status_detailed('disk2iso')
     webui_status = {'status': 'active', 'running': True}  # Web-UI läuft wenn diese Route aufgerufen wird
     
-    # MQTT-Status basierend auf config.sh
-    if config['mqtt_enabled']:
-        mqtt_status = {'status': 'active', 'running': True}
-    else:
-        mqtt_status = {'status': 'inactive', 'running': False}
+    # MQTT-Status wird nicht mehr hier übergeben - Widget lädt dynamisch via /api/mqtt/widget
     
     disk_space = get_disk_space(config['output_dir'])
     iso_count = count_iso_files(config['output_dir'])
@@ -426,7 +409,6 @@ def index():
         service_running=service_running,
         disk2iso_status=disk2iso_status,
         webui_status=webui_status,
-        mqtt_status=mqtt_status,
         config=config,
         disk_space=disk_space,
         iso_count=iso_count,
@@ -513,8 +495,11 @@ def api_modules():
         'cd': config.get('cd_enabled', True),              # CD_ENABLED
         'dvd': config.get('dvd_enabled', True),            # DVD_ENABLED
         'bluray': config.get('bluray_enabled', True),      # BLURAY_ENABLED
-        'mqtt': config.get('mqtt_enabled', False)          # MQTT_ENABLED
     }
+    
+    # MQTT nur hinzufügen wenn Modul installiert UND aktiviert
+    if MQTT_MODULE_AVAILABLE:
+        enabled_modules['mqtt'] = config.get('mqtt_enabled', False)
     
     return jsonify({
         'enabled_modules': enabled_modules,
@@ -541,18 +526,24 @@ def api_status():
         'bluray': len(all_files.get('bluray', []))
     }
     
-    return jsonify({
+    # MQTT-Status nur wenn Modul verfügbar
+    result = {
         'version': get_version(),
         'service_running': get_service_status(),
         'output_dir': config['output_dir'],
-        'mqtt_enabled': config['mqtt_enabled'],
-        'mqtt_broker': config['mqtt_broker'],
         'disk_space': get_disk_space(config['output_dir']),
         'iso_count': count_iso_files(config['output_dir']),
         'archive_counts': archive_counts,
         'live_status': live_status,
         'timestamp': datetime.now().isoformat()
-    })
+    }
+    
+    # MQTT-Informationen nur hinzufügen wenn Modul verfügbar
+    if MQTT_MODULE_AVAILABLE:
+        result['mqtt_enabled'] = config.get('mqtt_enabled', False)
+        result['mqtt_broker'] = config.get('mqtt_broker', '')
+    
+    return jsonify(result)
 
 @app.route('/api/history')
 def api_history():
