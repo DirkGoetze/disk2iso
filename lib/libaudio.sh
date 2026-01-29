@@ -1056,13 +1056,11 @@ copy_audio_cd() {
         return 1
     fi
     
+    # Initialisiere alle Dateinamen zentral (jetzt wo Label bekannt ist)
+    init_filenames
+    
     # Initialisiere Kopiervorgang-Log (NEUES SYSTEM)
     init_copy_log "$(discinfo_get_label)" "audio-cd"
-    
-    # Setze ISO- und MD5-Dateinamen (früher von init_filenames())
-    local target_dir="$(get_path_audio)"
-    iso_filename="${target_dir}/$(discinfo_get_label).iso"
-    md5_filename="${target_dir}/$(discinfo_get_label).md5"
     
     log_copying "$MSG_TRACKS_FOUND: $track_count"
     log_copying "$MSG_ALBUM_DIRECTORY: $album_dir"

@@ -7,9 +7,9 @@
 # Beschreibung:
 #   API-Schnittstelle für Status-Informationen via JSON-Dateien
 #   - Schreibt JSON für Web-UI und externe Tools
-#   - Unabhängig von MQTT - funktioniert IMMER
 #   - api_write_json(), api_update_status(), api_update_progress()
 #   - api_add_history()
+#
 #
 # -----------------------------------------------------------------------------
 # Dependencies: Keine (nutzt nur Bash-Funktionen)
@@ -39,13 +39,62 @@
 # .........  Laden der libcommon.sh.
 # ===========================================================================
 check_dependencies_api() {
-    # API-Modul benötigt keine externen Tools
-    # Schreibt nur JSON-Dateien mit Bash-Funktionen
+    # Prüfe ob API-Verzeichnis existiert (von install.sh erstellt)
+    local api_test
+    api_test=$(get_api_dir)
+    
+    if [[ -z "$api_test" ]]; then
+        echo "FEHLER: API-Verzeichnis nicht gefunden!"
+        echo "Bitte reparieren Sie die Installation mit: sudo ${INSTALL_DIR}/install.sh"
+        return 1
+    fi
+    
+    # Initialisiere API-Infrastruktur (leere JSONs)
+    api_init || return 1
+    
     return 0
 }
 
-# API-Verzeichnis
-readonly API_DIR="${INSTALL_DIR:-/opt/disk2iso}/api"
+
+# ============================================================================
+# INITIALIZATION
+# ============================================================================
+
+# API-Verzeichnis (via libfolders.sh)
+API_DIR=""
+
+# ===========================================================================
+# check_dependencies_api
+# ---------------------------------------------------------------------------
+# Funktion.: Initialisiere API (erstelle Verzeichnis, leere JSONs)
+# .........  Wird beim Service-Start aufgerufen
+# Parameter: keine
+# Rückgabe.: 0 = Verfügbar (API nutzbar)
+# .........  1 = Nicht verfügbar (API deaktiviert)
+# ===========================================================================
+api_init() {
+    # Hole API-Verzeichnis (erstellt automatisch falls nicht vorhanden)
+    API_DIR=$(get_api_dir) || return 1
+    
+    # Erstelle leere/default JSONs falls nicht vorhanden
+    if [[ ! -f "${API_DIR}/status.json" ]]; then
+        api_update_status "idle"
+    fi
+    
+    if [[ ! -f "${API_DIR}/progress.json" ]]; then
+        api_update_progress 0 0 0 ""
+    fi
+    
+    if [[ ! -f "${API_DIR}/history.json" ]]; then
+        echo "[]" > "${API_DIR}/history.json"
+        chmod 644 "${API_DIR}/history.json" 2>/dev/null || true
+    fi
+    
+    return 0
+}
+
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
+
 
 # ============================================================================
 # LOW-LEVEL HELPER
@@ -58,13 +107,8 @@ api_write_json() {
     local filename="$1"
     local json_content="$2"
     
-    # Erstelle API-Verzeichnis falls nicht vorhanden
-    if [[ ! -d "$API_DIR" ]]; then
-        mkdir -p "$API_DIR" 2>/dev/null || return 1
-        chmod 755 "$API_DIR" 2>/dev/null || true
-    fi
-    
     # Schreibe JSON-Datei (atomar mit temp-file)
+    # API_DIR wurde bereits in api_init() via get_api_dir() erstellt
     local temp_file="${API_DIR}/.${filename}.tmp"
     echo "$json_content" > "$temp_file" 2>/dev/null || return 1
     mv -f "$temp_file" "${API_DIR}/${filename}" 2>/dev/null || return 1
@@ -235,32 +279,3 @@ EOF
     return 0
 }
 
-# ============================================================================
-# INITIALIZATION
-# ============================================================================
-
-# Funktion: Initialisiere API (erstelle Verzeichnis, leere JSONs)
-# Wird beim Service-Start aufgerufen
-api_init() {
-    # Erstelle API-Verzeichnis
-    if [[ ! -d "$API_DIR" ]]; then
-        mkdir -p "$API_DIR" 2>/dev/null || return 1
-        chmod 755 "$API_DIR" 2>/dev/null || true
-    fi
-    
-    # Erstelle leere/default JSONs falls nicht vorhanden
-    if [[ ! -f "${API_DIR}/status.json" ]]; then
-        api_update_status "idle"
-    fi
-    
-    if [[ ! -f "${API_DIR}/progress.json" ]]; then
-        api_update_progress 0 0 0 ""
-    fi
-    
-    if [[ ! -f "${API_DIR}/history.json" ]]; then
-        echo "[]" > "${API_DIR}/history.json"
-        chmod 644 "${API_DIR}/history.json" 2>/dev/null || true
-    fi
-    
-    return 0
-}

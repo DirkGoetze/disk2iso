@@ -285,6 +285,7 @@ readonly MODULE_LIB_DIR="lib"                    # Bash-Module
 readonly MODULE_LANG_DIR="lang"                  # Sprachdateien
 readonly MODULE_CONF_DIR="conf"                  # Konfiguration
 readonly MODULE_DOC_DIR="doc"                    # Dokumentation
+readonly MODULE_API_DIR="api"                    # API JSON-Dateien
 
 # Web-Frontend Ordner
 readonly MODULE_HTML_DIR="www/templates"         # HTML-Partials
@@ -299,12 +300,47 @@ readonly MODULE_ROUTER_DIR="www/routes"          # Python-Routes
 # ---------------------------------------------------------------------------
 # Funktion.: Liefert den Pfad zum Konfigurations-Verzeichnis
 # Parameter: keine
-# Rückgabe.: Vollständiger Pfad zum conf/ Verzeichnis
+# Rückgabe.: 0 = Ordner existiert (Pfad in stdout)
+#            1 = Ordner fehlt (leerer String in stdout)
 # Beispiel.: get_conf_dir
 #            → "/opt/disk2iso/conf"
+# Hinweis..: Erstellt KEINEN Ordner - nur von install.sh erstellt
 # ===========================================================================
 get_conf_dir() {
-    echo "${INSTALL_DIR}/${MODULE_CONF_DIR}"
+    local conf_dir="${INSTALL_DIR}/${MODULE_CONF_DIR}"
+    
+    # Prüfe ob Verzeichnis existiert
+    if [[ ! -d "$conf_dir" ]]; then
+        echo ""
+        return 1
+    fi
+    
+    echo "$conf_dir"
+    return 0
+}
+
+# ===========================================================================
+# get_api_dir
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert den Pfad zum API-Verzeichnis für JSON-Dateien
+# Parameter: keine
+# Rückgabe.: 0 = Ordner existiert (Pfad in stdout)
+#            1 = Ordner fehlt (leerer String in stdout)
+# Beispiel.: get_api_dir
+#            → "/opt/disk2iso/api"
+# Hinweis..: Erstellt KEINEN Ordner - nur von install.sh erstellt
+# ===========================================================================
+get_api_dir() {
+    local api_dir="${INSTALL_DIR}/${MODULE_API_DIR}"
+    
+    # Prüfe ob Verzeichnis existiert
+    if [[ ! -d "$api_dir" ]]; then
+        echo ""
+        return 1
+    fi
+    
+    echo "$api_dir"
+    return 0
 }
 
 # ===========================================================================

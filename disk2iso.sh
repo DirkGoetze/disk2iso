@@ -215,9 +215,6 @@ fi
 
 # TODO: Ab hier noch nicht optimiert
 
-# Initialisiere API (IMMER, unabhängig von MQTT)
-api_init
-
 # ============================================================================
 # HAUPTLOGIK - VEREINFACHT (nur Daten-Discs)
 # ============================================================================
@@ -297,7 +294,7 @@ copy_disc_to_iso() {
     # Wähle Kopiermethode basierend auf Disc-Typ und verfügbaren Tools
     local method=$(select_copy_method "$(discinfo_get_type)")
     
-    # Audio-CDs behandeln init_filenames selbst (wegen speziellem Workflow)
+    # Audio-CDs: Workflow ruft init_filenames() nach Metadata-Abfrage auf
     if [[ "$method" == "audio-cd" ]]; then
         if [[ "$SUPPORT_AUDIO" == true ]] && declare -f copy_audio_cd >/dev/null 2>&1; then
             if copy_audio_cd; then
