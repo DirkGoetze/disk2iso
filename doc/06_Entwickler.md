@@ -14,6 +14,7 @@ Technische Dokumentation für Entwickler, die disk2iso erweitern oder anpassen m
 8. [Coding-Standards](#coding-standards)
 9. [Testing](#testing)
 10. [Debugging](#debugging)
+11. [DISC_INFO Best Practices](#disc_info-best-practices)
 
 ---
 

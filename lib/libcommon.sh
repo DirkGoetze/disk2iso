@@ -86,6 +86,196 @@ check_dependencies_common() {
     return 0
 }
 
+# ===========================================================================
+# DATEN DISK KOPIEREN
+# ===========================================================================
+
+# ===========================================================================
+# copy_data_disc()
+# ---------------------------------------------------------------------------
+# Funktion.: Kopiert Daten-Discs oder alle anderen Disc-Tpen ohne eigenes 
+# .........  Kopiermodul (Audio-CD, DVD-Video, Blu-ray Video). Wählt die 
+# .........  beste verfügbare Methode basierend auf Fehler-Historie.
+# Parameter: keine (nutzt globale Variablen: disc_label, disc_type, iso_filename)
+# Rückgabe.: 0 = Erfolg
+# .........  1 = Fehler
+# Extras...: Nutzt copy_data_disc_ddrescue() und copy_data_disc_dd()
+# ===========================================================================
+copy_data_disc() {
+    #-- Prüfe Disc-Typ: Audio-CDs können nicht als ISO kopiert werden -------
+    local disc_type="$(discinfo_get_type)"
+    if [[ "$disc_type" == "audio-cd" ]]; then
+        log_error "Audio-CD erkannt, aber kann nicht als Daten-Disc kopiert werden"
+        log_error "Das Audio-Modul (libaudio.sh) ist nicht installiert oder deaktiviert"
+        log_info "Installiere das Audio-Modul um Audio-CDs zu rippen (cdparanoia + lame)"
+        return 1
+    fi
+    
+    #-- Prüfe ob diese Disc bereits fehlgeschlagen ist ----------------------
+    local failure_count=$(get_disc_failure_count)
+    
+    #-- Prüfe ob ddrescue vorhanden, es ist optional ------------------------
+    if command -v ddrescue >/dev/null 2>&1 && [[ $failure_count -eq 0 ]]; then
+        log_info "Kopiere Daten-Disc mit ddrescue (robust)"
+        #-- 1. Versuch: ddrescue verwenden ----------------------------------
+        if copy_data_disc_ddrescue; then
+            return 0
+        else
+            #-- Kopiervorgang fehlgeschlagen - registriere Fehler -----------
+            register_disc_failure "ddrescue"
+            log_warning "ddrescue fehlgeschlagen - versuche Fallback zu dd"
+        fi
+    fi
+    
+    #-- 2. Versuch: dd verwenden --------------------------------------------
+    log_info "Kopiere Daten-Disc mit dd (Standard)"
+    if copy_data_disc_dd; then
+        #-- Erfolg - lösche Fehler-Historie falls vorhanden -----------------
+        [[ $failure_count -gt 0 ]] && clear_disc_failures
+        return 0
+    else
+        #-- Kopiervorgang fehlgeschlagen - registriere Fehler ---------------
+        log_error "Daten-Disc Kopieren mit dd fehlgeschlagen"
+        register_disc_failure "dd"
+        return 1
+    fi
+}
+
+# ===========================================================================
+# copy_data_disc_ddrescue()
+# ---------------------------------------------------------------------------
+# Funktion.: Kopiert Daten-Discs mit ddrescue (robust, mit Fehlerkorrektur)
+# .........  Nutzt vorberechnete DISC_INFO-Werte und zeitgesteuertes
+# .........  Fortschritts-Monitoring (alle 60 Sekunden).
+# Parameter: keine (nutzt DISC_INFO Array)
+# Rückgabe.: 0 = Erfolg
+# .........  1 = Fehler (Speicherplatz, Kopiervorgang fehlgeschlagen)
+# Extras...: Schneller und robuster als dd, erfordert ddrescue-Installation
+# .........  Erstellt Map-Datei für Wiederherstellung bei Abbruch
+# .........  Sendet Fortschritt via API, MQTT und systemd-notify
+# ===========================================================================
+copy_data_disc_ddrescue() {
+    # Initialisiere Kopiervorgang-Log
+    init_copy_log "$(discinfo_get_label)" "data"
+    
+    log_copying "$MSG_METHOD_DDRESCUE"
+    
+    # Alle Disc-Infos wurden bereits von init_disc_info() gesetzt
+    local iso_filename=$(discinfo_get_iso_filename)
+    local temp_pathname=$(discinfo_get_temp_pathname)
+    local copy_log_filename=$(discinfo_get_log_filename)
+    
+    # ddrescue benötigt Map-Datei (im .temp Verzeichnis, wird auto-gelöscht)
+    local mapfile="${temp_pathname}/$(basename "${iso_filename}").mapfile"
+    
+    # Nutze vorberechnete Werte aus DISC_INFO
+    local size_mb=$(discinfo_get_size_mb)
+    local block_size=$(discinfo_get_block_size)
+    local total_bytes=$((size_mb * 1024 * 1024))
+    
+    if [[ $size_mb -gt 0 ]]; then
+        log_copying "$MSG_ISO_VOLUME_DETECTED $(discinfo_get_size_sectors) $MSG_ISO_BLOCKS_SIZE 2048 $MSG_ISO_BYTES (${size_mb} $MSG_PROGRESS_MB)"
+        
+        # Prüfe Speicherplatz mit vorberechneter Größe (inkl. Overhead)
+        if ! check_disk_space "$(discinfo_get_estimated_size_mb)"; then
+            return 1
+        fi
+    fi
+    
+    # Kopiere mit ddrescue
+    # Starte ddrescue im Hintergrund (mit oder ohne Größenbeschränkung)
+    if [[ $total_bytes -gt 0 ]]; then
+        ddrescue -b "${block_size:-2048}" -r "$DDRESCUE_RETRIES" -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
+    else
+        ddrescue -b "${block_size:-2048}" -r "$DDRESCUE_RETRIES" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
+    fi
+    local ddrescue_pid=$!
+    
+    # Überwache Fortschritt (alle 60 Sekunden)
+    monitor_copy_progress "$ddrescue_pid" "$total_bytes" "$iso_filename"
+    
+    # Warte auf ddrescue Prozess-Ende
+    wait "$ddrescue_pid"
+    local ddrescue_exit=$?
+    
+    # Prüfe Ergebnis
+    if [[ $ddrescue_exit -eq 0 ]]; then
+        log_copying "$MSG_DATA_DISC_SUCCESS_DDRESCUE"
+        finish_copy_log
+        return 0
+    else
+        log_error "$MSG_ERROR_DDRESCUE_FAILED"
+        finish_copy_log
+        return 1
+    fi
+}
+
+# ===========================================================================
+# copy_data_disc_dd()
+# ---------------------------------------------------------------------------
+# Funktion.: Kopiert Daten-Discs mit dd (Fallback-Methode, immer verfügbar)
+# .........  Nutzt vorberechnete DISC_INFO-Werte und zeitgesteuertes
+# .........  Fortschritts-Monitoring (alle 60 Sekunden).
+# Parameter: keine (nutzt DISC_INFO Array)
+# Rückgabe.: 0 = Erfolg
+# .........  1 = Fehler (Speicherplatz, Kopiervorgang fehlgeschlagen)
+# Extras...: Langsamste Methode, aber immer verfügbar (keine Abhängigkeiten)
+# .........  Unterstützt Kopieren mit/ohne Größenangabe
+# .........  Sendet Fortschritt via API, MQTT und systemd-notify
+# ===========================================================================
+copy_data_disc_dd() {
+    # Initialisiere Kopiervorgang-Log
+    init_copy_log "$(discinfo_get_label)" "data"
+    
+    log_copying "$MSG_METHOD_DD"
+
+    # Alle Disc-Infos wurden bereits von init_disc_info() gesetzt
+    local iso_filename=$(discinfo_get_iso_filename)
+    local copy_log_filename=$(discinfo_get_log_filename)
+    
+    # Nutze vorberechnete Werte aus DISC_INFO
+    local size_mb=$(discinfo_get_size_mb)
+    local volume_size=$(discinfo_get_size_sectors)
+    local block_size=$(discinfo_get_block_size)
+    local total_bytes=$((size_mb * 1024 * 1024))
+
+    # Prüfe Speicherplatz (falls Größe bekannt)
+    if [[ $size_mb -gt 0 ]]; then
+        log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE $block_size $MSG_ISO_BYTES (${size_mb} $MSG_PROGRESS_MB)"
+        
+        # Prüfe Speicherplatz mit vorberechneter Größe (inkl. Overhead)
+        if ! check_disk_space "$(discinfo_get_estimated_size_mb)"; then
+            return 1
+        fi
+    fi
+    
+    # Kopiere mit dd
+    # Starte dd im Hintergrund (mit oder ohne count-Parameter)
+    if [[ $volume_size -gt 0 ]]; then
+        dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" count="$volume_size" conv=noerror,sync status=progress 2>>"$copy_log_filename" &
+    else
+        dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" conv=noerror,sync status=progress 2>>"$copy_log_filename" &
+    fi
+    local dd_pid=$!
+    
+    # Überwache Fortschritt (alle 60 Sekunden)
+    monitor_copy_progress "$dd_pid" "$total_bytes" "$iso_filename"
+    
+    # Warte auf dd und hole Exit-Code
+    wait "$dd_pid"
+    local dd_exit=$?
+    
+    # Prüfe Ergebnis
+    if [[ $dd_exit -eq 0 ]]; then
+        finish_copy_log
+        return 0
+    else
+        finish_copy_log
+        return 1
+    fi
+}
+
+
 # TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 
 # ============================================================================
@@ -388,49 +578,25 @@ calculate_and_log_progress() {
 # DATA DISC COPY - DDRESCUE (für Daten-Discs)
 # ============================================================================
 
-# Funktion zum Kopieren von Daten-Discs mit ddrescue
-# Schneller und robuster als dd
-copy_data_disc_ddrescue() {
-    # Initialisiere Kopiervorgang-Log
-    init_copy_log "$(discinfo_get_label)" "data"
-    
-    log_copying "$MSG_METHOD_DDRESCUE"
-    
-    # ddrescue benötigt Map-Datei (im .temp Verzeichnis, wird auto-gelöscht)
-    local mapfile="${temp_pathname}/$(basename "${iso_filename}").mapfile"
-    
-    # Ermittle Disc-Größe mit isoinfo
-    get_disc_size
-    if [[ $total_bytes -gt 0 ]]; then
-        log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE 2048 $MSG_ISO_BYTES ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
-    fi
-    
-    # Prüfe Speicherplatz (Overhead wird automatisch berechnet)
-    if [[ $total_bytes -gt 0 ]]; then
-        local size_mb=$((total_bytes / 1024 / 1024))
-        if ! check_disk_space "$size_mb"; then
-            # Mapfile wird mit temp_pathname automatisch gelöscht
-            return 1
-        fi
-    fi
-    
-    # Kopiere mit ddrescue
-    # Starte ddrescue im Hintergrund
-    # -b: Blockgröße (dynamisch ermittelt)
-    # -r: Retry-Count aus Konfiguration
-    # -n: No-scrape (erster Durchlauf ohne Retry)
-    if [[ $total_bytes -gt 0 ]]; then
-        ddrescue -b "$block_size" -r "$DDRESCUE_RETRIES" -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
-    else
-        ddrescue -b "$block_size" -r "$DDRESCUE_RETRIES" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
-    fi
-    local ddrescue_pid=$!
-    
-    # Überwache Fortschritt (alle 60 Sekunden)
+
+# ============================================================================
+# DATA DISC COPY - DD (Methode 3 - Langsamste, immer verfügbar)
+# ============================================================================
+
+# Hilfsfunktion: Überwacht Kopierfortschritt für dd/ddrescue
+# Verwendet zeitgesteuertes Monitoring (alle 60 Sekunden) - konsistent mit Web-UI
+# Parameter: $1 = PID des Kopierprozesses
+#            $2 = Gesamtgröße in Bytes
+#            $3 = ISO-Dateiname (für Größenermittlung)
+# Hinweis: Diese Funktion macht KEIN wait - das muss die aufrufende Funktion tun
+monitor_copy_progress() {
+    local copy_pid=$1
+    local total_bytes=$2
+    local iso_file=$3
     local start_time=$(date +%s)
     local last_log_time=$start_time
     
-    while kill -0 "$ddrescue_pid" 2>/dev/null; do
+    while kill -0 "$copy_pid" 2>/dev/null; do
         sleep 30
         
         local current_time=$(date +%s)
@@ -439,8 +605,8 @@ copy_data_disc_ddrescue() {
         # Log alle 60 Sekunden
         if [[ $elapsed -ge 60 ]]; then
             local current_bytes=0
-            if [[ -f "$iso_filename" ]]; then
-                current_bytes=$(stat -c %s "$iso_filename" 2>/dev/null || echo 0)
+            if [[ -f "$iso_file" ]]; then
+                current_bytes=$(stat -c %s "$iso_file" 2>/dev/null || echo 0)
             fi
             
             # Nutze zentrale Fortschrittsberechnung
@@ -448,94 +614,6 @@ copy_data_disc_ddrescue() {
             
             last_log_time=$current_time
         fi
-    done
-    
-    # Warte auf ddrescue Prozess-Ende
-    wait "$ddrescue_pid"
-    local ddrescue_exit=$?
-    
-    # Prüfe Ergebnis
-    if [[ $ddrescue_exit -eq 0 ]]; then
-        log_copying "$MSG_DATA_DISC_SUCCESS_DDRESCUE"
-        # Mapfile wird mit temp_pathname automatisch gelöscht
-        finish_copy_log
-        return 0
-    else
-        log_error "$MSG_ERROR_DDRESCUE_FAILED"
-        # Mapfile wird mit temp_pathname automatisch gelöscht
-        finish_copy_log
-        return 1
-    fi
-}
-
-# ============================================================================
-# DATA DISC COPY - DD (Methode 3 - Langsamste, immer verfügbar)
-# ============================================================================
-
-# Funktion zum Kopieren von Daten-Discs (CD/DVD/BD) mit dd
-# Nutzt isoinfo (falls verfügbar) um exakte Volume-Größe zu ermitteln
-# Sendet Fortschritt via systemd-notify für Service-Betrieb
-copy_data_disc() {
-    # Initialisiere Kopiervorgang-Log
-    init_copy_log "$(discinfo_get_label)" "data"
-    
-    # Versuche Volume-Größe mit isoinfo zu ermitteln
-    get_disc_size
-    
-    if [[ $total_bytes -gt 0 ]]; then
-        log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE $block_size $MSG_ISO_BYTES ($(( total_bytes / 1024 / 1024 )) $MSG_PROGRESS_MB)"
-        
-        # Prüfe Speicherplatz (Overhead wird automatisch berechnet)
-        local size_mb=$((total_bytes / 1024 / 1024))
-        if ! check_disk_space "$size_mb"; then
-            return 1
-        fi
-        
-        # Starte dd im Hintergrund
-        dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" count="$volume_size" conv=noerror,sync status=progress 2>>"$copy_log_filename" &
-        local dd_pid=$!
-        
-        # Überwache Fortschritt und sende systemd-notify Status
-        monitor_copy_progress "$dd_pid" "$total_bytes"
-        
-        # Warte auf dd und hole Exit-Code
-        wait "$dd_pid"
-        local dd_exit=$?
-        finish_copy_log
-        return $dd_exit
-    fi
-    
-    # Fallback: Kopiere komplette Disc (ohne Fortschrittsanzeige, da Größe unbekannt)
-    log_copying "$MSG_COPYING_COMPLETE_DISC"
-    if dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" conv=noerror,sync status=progress 2>>"$copy_log_filename"; then
-        finish_copy_log
-        return 0
-    else
-        finish_copy_log
-        return 1
-    fi
-}
-
-# Hilfsfunktion: Überwacht Kopierfortschritt für dd-Methode
-monitor_copy_progress() {
-    local dd_pid=$1
-    local total_bytes=$2
-    local start_time=$(date +%s)
-    local last_log_mb=0
-    
-    while kill -0 "$dd_pid" 2>/dev/null; do
-        if [[ -f "$iso_filename" ]]; then
-            local current_bytes=$(stat -c%s "$iso_filename" 2>/dev/null || echo 0)
-            local current_mb=$((current_bytes / 1024 / 1024))
-            
-            # Log-Eintrag alle 500 MB
-            if (( current_mb >= last_log_mb + 500 )); then
-                calculate_and_log_progress "$current_bytes" "$total_bytes" "$start_time" "$MSG_DATA_PROGRESS"
-                last_log_mb=$current_mb
-            fi
-        fi
-        
-        sleep 2
     done
     
     # Abschluss-Status

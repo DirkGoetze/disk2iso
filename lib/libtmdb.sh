@@ -66,8 +66,6 @@ check_dependencies_tmdb() {
 # ===========================================================================
 # PATH CONSTANTS / GETTER
 # ===========================================================================
-# DEPRECATED: CACHEDIR_TMDB und COVERDIR_TMDB werden nicht mehr verwendet
-# Ordnerpfade werden aus conf/libtmdb.ini [folders] gelesen (via check_module_dependencies)
 
 # ===========================================================================
 # get_path_tmdb
@@ -479,13 +477,64 @@ EOF
 # PROVIDER REGISTRATION
 # ============================================================================
 
-# Auto-Register beim Laden (wenn Metadata-Framework verfügbar)
-if declare -f metadata_register_provider >/dev/null 2>&1; then
-    metadata_register_provider "tmdb" "dvd-video,bd-video" \
+# ===========================================================================
+# init_tmdb_provider
+# ---------------------------------------------------------------------------
+# Funktion.: Initialisiere TMDB Provider (wird von libmetadata aufgerufen)
+# .........  Prüft eigene INI ob Provider aktiv sein soll
+# Parameter: keine
+# Rückgabe.: 0 = Provider registriert, 1 = Provider nicht aktiv oder Fehler
+# Hinweis..: Standardisierte Init-Funktion (Naming-Convention)
+# .........  Wird von metadata_load_registered_providers() aufgerufen
+# ===========================================================================
+init_tmdb_provider() {
+    log_debug "TMDB: Starte Provider-Initialisierung"
+    
+    #-- Prüfe ob Framework bereit ist ---------------------------------------
+    if ! metadata_can_register_provider; then
+        log_warning "TMDB: Metadata-Framework nicht bereit"
+        return 1
+    fi
+    
+    #-- Lade Provider-Konfiguration -----------------------------------------
+    local ini_file=$(get_module_ini_path "tmdb")
+    
+    # Prüfe ob Provider aktiviert ist (Provider verwaltet sich selbst!)
+    local is_active="true"  # Default: aktiv
+    if [[ -f "$ini_file" ]]; then
+        is_active=$(get_ini_value "$ini_file" "settings" "active")
+    fi
+    
+    if [[ "$is_active" == "false" ]]; then
+        log_info "TMDB: Provider installiert aber nicht aktiviert (settings.active=false)"
+        return 1  # KEIN Fehler - einfach nicht registrieren
+    fi
+    
+    #-- Prüfe Provider-Abhängigkeiten ---------------------------------------
+    if ! check_dependencies_tmdb; then
+        log_warning "TMDB: Abhängigkeiten nicht erfüllt"
+        return 1
+    fi
+    
+    #-- Registriere Provider beim Framework ---------------------------------
+    metadata_register_provider \
+        "tmdb" \
+        "dvd-video,bd-video" \
         "tmdb_query" \
         "tmdb_parse_selection" \
         "tmdb_apply_selection"
-fi
+    
+    local reg_result=$?
+    
+    if [[ $reg_result -eq 0 ]]; then
+        log_info "TMDB: Provider erfolgreich registriert"
+        ACTIVATED_TMDB=true
+    else
+        log_error "TMDB: Registrierung fehlgeschlagen"
+    fi
+    
+    return $reg_result
+}
 
 ################################################################################
 # ENDE lib-tmdb.sh

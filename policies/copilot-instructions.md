@@ -7,6 +7,46 @@
 
 ---
 
+## Kommunikationsrichtlinien - Prompt-Keywords
+
+### #Frage - Analyse und Diskussion ohne Code-Änderungen
+
+Wenn ein Prompt mit **#Frage** beginnt oder die Formulierung eine Frage impliziert:
+
+- **Schreibweise**: Case-insensitive – `#Frage`, `#frage`, `#FRAGE` werden alle akzeptiert
+- **Ziel**: Analyse durchführen, verschiedene Lösungsansätze vergleichen, Konzepte erklären
+- **KEINE Code-Änderungen**: Es dürfen keine Dateien editiert, erstellt oder gelöscht werden
+- **Erweiterte Analyse**: Think-Modus und gesamte Codebasis können genutzt werden
+- **Antwort-Format**: Diskussion, Erklärung, Vor-/Nachteile, Optionen aufzeigen
+
+**Signalwörter für #Frage-Modus:**
+- "Was sind die Auswirkungen..."
+- "Wie beeinflusst das..."
+- "Was müssen wir bedenken..."
+- "Macht das Sinn..."
+- "Sollen wir..." / "Sollten wir..."
+
+### #Analyse - Tiefgehende Code-Analyse mit Dokumentation
+
+Wenn ein Prompt mit **#Analyse** beginnt:
+
+- **Schreibweise**: Case-insensitive – `#Analyse`, `#analyse`, `#ANALYSE` werden alle akzeptiert
+- **Ziel**: Detaillierte Analyse über gesamte Codebasis ohne Code-Änderungen
+- **KEINE Code-Änderungen**: Es dürfen keine Dateien außer Dokumentation bearbeitet werden
+- **Erweiterte Analyse**: Think-Modus nutzen für komplexe Zusammenhänge
+- **Ergebnis-Optionen**:
+  1. Detaillierte Auswertung im Chat
+  2. Dokument im `todo/` Ordner (z.B. `todo/Analyse_Thema.md`)
+  3. Einschätzung zur User-Interpretation
+  4. 1-3 konkrete Lösungsansätze mit Vor-/Nachteilen
+
+**Beispiele:**
+- `#Analyse Provider-Abhängigkeiten im Metadata-Framework`
+- `#Analyse Performance-Optimierung bei großen Disc-Sammlungen`
+- `#Frage Wie wirkt sich Multi-Provider-Support auf die Ladeordnung aus?`
+
+---
+
 ## disk2iso-spezifische Entwicklungsrichtlinien
 
 ### Provider-System Pattern

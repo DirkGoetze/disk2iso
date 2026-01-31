@@ -148,16 +148,145 @@ disc_label="$label"   # DEPRECATED
 
 ---
 
+## ✅ Phase 7: 3-Tier Pattern Implementation (ABGESCHLOSSEN)
+
+**Datum:** 31. Januar 2026  
+**Ziel:** Einführung eines konsistenten Get/Set/Detect-Patterns für alle DISC_INFO Felder
+
+### **Pattern-Definition:**
+
+```bash
+# GETTER: Lesen ohne Seiteneffekte
+discinfo_get_<field>()     # Ausgabe: stdout, Return: 0=vorhanden, 1=leer
+
+# SETTER: Schreiben mit Validierung/Normalisierung
+discinfo_set_<field>($1)   # Parameter: Wert, Return: 0=OK, 1=Fehler
+
+# DETECT: Auto-Erkennung + Setter-Aufruf
+discinfo_detect_<field>()  # Parameter: keine, Return: 0=OK, 1=Fehler
+```
+
+### **Implementierte Funktionen:**
+
+#### **Technische Disc-Eigenschaften:**
+| Funktion-Gruppe | Get | Set | Detect | Abhängigkeiten |
+|-----------------|-----|-----|--------|----------------|
+| `disc_id` | ✅ | ✅ | ✅ | Benötigt `type` |
+| `disc_identifier` | ✅ | ✅ | ✅ | Benötigt `id`, `label`, `size_mb` |
+| `label` | ✅ | ✅ | ✅ | Keine |
+| `type` | ✅ | ✅ | ✅ | Setzt auch `filesystem` |
+| `size_mb` / `size_sectors` | ✅ (2x) | ✅ (1x) | ✅ (1x) | **Hinweis:** Ein Setter für beide! |
+| `filesystem` | ✅ | ✅ | ✅ | Keine |
+| `created_at` | ✅ | ✅ | ✅ | Keine |
+
+#### **Metadaten:**
+| Funktion-Gruppe | Get | Set | Detect | Fallback |
+|-----------------|-----|-----|--------|-----------|
+| `title` | ✅ | ✅ | ✅ | → `label` |
+| `release_date` | ✅ | ✅ | ✅ | → `created_at` (Datum-Teil) |
+| `country` | ✅ | ✅ | ✅ | → `"XX"` |
+| `publisher` | ✅ | ✅ | ✅ | → `"Unknown Publisher"` |
+| `provider` | ✅ | ✅ | ✅ | → basiert auf `type` |
+| `provider_id` | ✅ | ✅ | ✅ | → `""` (leer) |
+| `cover_path` | ✅ | ✅ | ✅ | → `""` (leer) |
+| `cover_url` | ✅ | ✅ | ✅ | → `""` (leer) |
+
+#### **Dateinamen (ohne Detect - werden von init_filenames() gesetzt):**
+| Funktion-Gruppe | Get | Set | Hinweis |
+|-----------------|-----|-----|----------|
+| `iso_filename` | ✅ | ✅ | Von `init_filenames()` |
+| `md5_filename` | ✅ | ✅ | Von `init_filenames()` |
+| `log_filename` | ✅ | ✅ | Von `init_filenames()` |
+| `iso_basename` | ✅ | ✅ | Von `init_filenames()` |
+| `temp_pathname` | ✅ | ✅ | Von `init_filenames()` |
+
+**Gesamt:** 60+ Funktionen implementiert ✅
+
+---
+
+### **init_disc_info() - Orchestrierung mit Abhängigkeiten:**
+
+```bash
+# Korrekte Aufruf-Reihenfolge (Abhängigkeiten beachten!):
+init_disc_info() {
+    # 1. Typ + Filesystem (keine Abhängigkeiten)
+    discinfo_detect_type()           # → DISC_INFO[type], DISC_INFO[filesystem]
+    
+    # 2. Label (keine Abhängigkeiten)
+    discinfo_detect_label()          # → DISC_INFO[label]
+    
+    # 3. Größe (keine Abhängigkeiten)
+    discinfo_detect_size()           # → DISC_INFO[size_sectors, size_mb]
+    
+    # 4. Erstellungsdatum (keine Abhängigkeiten)
+    discinfo_detect_created_at()     # → DISC_INFO[created_at]
+    
+    # 5. Disc-ID (benötigt type)
+    discinfo_detect_id()             # → DISC_INFO[disc_id]
+    
+    # 6. Identifier (benötigt id, label, size_mb)
+    discinfo_detect_identifier()     # → DISC_INFO[disc_identifier]
+    
+    # 7. Titel (benötigt label)
+    discinfo_detect_title()          # → DISC_INFO[title]
+    
+    # 8. Release-Datum (benötigt created_at)
+    discinfo_detect_release_date()   # → DISC_INFO[release_date]
+    
+    # 9. Provider (benötigt type)
+    discinfo_detect_provider()       # → DISC_INFO[provider]
+    
+    # 10. Dateinamen (benötigt type, label)
+    init_filenames()                 # → DISC_INFO[iso_filename, ...]
+}
+```
+
+---
+
+### **DEPRECATED Wrapper (Rückwärtskompatibilität):**
+
+```bash
+# Alte Funktionen → Neue Funktionen
+get_disc_size()      → discinfo_detect_size()      # + setzt alte Variablen
+detect_disc_type()   → discinfo_detect_type()      # Direkter Wrapper
+get_volume_label()   → discinfo_detect_label()     # + gibt Label zurück
+get_disc_label()     → discinfo_detect_label()     # Direkter Wrapper
+```
+
+**Hinweis:** Diese Wrapper existieren nur zur Übergangszeit. Neue Entwicklungen sollten direkt die `discinfo_*` Funktionen verwenden!
+
+---
+
+### **Besonderheiten:**
+
+1. **size_mb / size_sectors:**
+   - `size_mb` ist ein **abgeleiteter Wert** von `size_sectors`
+   - **NIEMALS** `discinfo_set_size_mb()` einzeln aufrufen!
+   - Stattdessen: `discinfo_set_size(sectors, block_size)` setzt beide
+
+2. **release_date Fallback:**
+   - Bei DVD/BD/Data: Nutzt ISO-Erstellungsdatum (`created_at`)
+   - Extrahiert nur Datum-Teil (YYYY-MM-DD) aus ISO 8601
+   - Bei Audio-CD: Wird von Provider-Modulen gesetzt
+
+3. **Detect-Funktionen mit intelligenten Fallbacks:**
+   - `discinfo_detect_title()` → Nutzt `label` wenn Provider keinen Titel liefert
+   - `discinfo_detect_provider()` → Wählt basierend auf `type` (audio-cd→musicbrainz, dvd/bd→tmdb)
+   - `discinfo_detect_country()` → Setzt "XX" wenn unbekannt
+
+---
+
 ## 📊 Fortschritt
 
 - ✅ **Phase 1:** Setter/Getter erstellt (100%)
 - ✅ **Phase 2:** Setter-Verwendungen konvertiert (100%)
-- 🔄 **Phase 3:** Lesezugriffe analysiert (100%)
+- ✅ **Phase 3:** Lesezugriffe analysiert (100%)
+- ✅ **Phase 7:** 3-Tier Pattern implementiert (100%)
 - ⏳ **Phase 4:** Lesezugriffe migrieren (0%)
 - ⏳ **Phase 5:** Globale Variablen entfernen (0%)
 - ⏳ **Phase 6:** Rückwärtskompatibilität entfernen (0%)
 
-**Gesamt-Fortschritt:** ~40% ✅
+**Gesamt-Fortschritt:** ~65% ✅
 
 ---
 

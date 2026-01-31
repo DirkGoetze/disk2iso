@@ -211,189 +211,51 @@ if [[ -f "${SCRIPT_DIR}/lib/libmqtt.sh" ]]; then
     fi
 fi
 
-# TODO: Ab hier noch nicht optimiert
-
 # ============================================================================
-# HAUPTLOGIK - VEREINFACHT (nur Daten-Discs)
+# HAUPTLOGIK - DELEGIERT AN KOPIER-MODULE
 # ============================================================================
 
-# Funktion zum Auswählen der besten Kopiermethode
-# Gibt Methodennamen zurück: "audio-cd", "dvdbackup", "ddrescue" oder "dd"
-select_copy_method() {
-    local disc_type="$1"
-    
-    # Für Audio-CDs
-    if [[ "$disc_type" == "audio-cd" ]]; then
-        if is_audio_ready; then
-            echo "audio-cd"
-            return 0
-        else
-            log_info "$MSG_WARNING_AUDIO_CD_NO_SUPPORT"
-            log_info "$MSG_FALLBACK_DATA_DISC"
-            echo "dd"
-            return 0
-        fi
-    fi
-    
-    # Für Video-DVDs
-    if [[ "$disc_type" == "dvd-video" ]]; then
-        if is_dvd_ready; then
-            # Priorität 1: dvdbackup (entschlüsselt, schnell)
-            if command -v dvdbackup >/dev/null 2>&1 && command -v genisoimage >/dev/null 2>&1; then
-                echo "dvdbackup"
-                return 0
-            fi
-        fi
-        
-        # Priorität 2: ddrescue (verschlüsselt, mittelschnell)
-        if command -v ddrescue >/dev/null 2>&1; then
-            echo "ddrescue"
-            return 0
-        fi
-        
-        # Priorität 3: dd (verschlüsselt, langsam)
-        echo "dd"
-        return 0
-    
-    # Für Blu-ray Video: ddrescue (Priorität 1) oder dd (Fallback)
-    elif [[ "$disc_type" == "bd-video" ]]; then
-        if is_bluray_ready; then
-            # Priorität 1: ddrescue (verschlüsselt/unverschlüsselt, robust, schnell)
-            if command -v ddrescue >/dev/null 2>&1; then
-                echo "bluray-ddrescue"
-                return 0
-            fi
-        else
-            # Ohne Blu-ray Support: Nutze Standard-Methoden
-            if command -v ddrescue >/dev/null 2>&1; then
-                echo "ddrescue"
-                return 0
-            fi
-        fi
-        
-        # Priorität 3: dd (verschlüsselt, langsam)
-        echo "dd"
-        return 0
-    
-    # Für Daten-Discs: ddrescue oder dd
-    else
-        if command -v ddrescue >/dev/null 2>&1; then
-            echo "ddrescue"
-            return 0
-        else
-            echo "dd"
-            return 0
-        fi
-    fi
-}
-
-# Funktion zum Kopieren der CD/DVD/BD als ISO
+# ===========================================================================
+# copy_disc_to_iso()
+# ---------------------------------------------------------------------------
+# Funktion.: Kopiert die eingelegte CD/DVD/BD in ein ISO-Image. Dazu wird
+# .........  zunächst versucht basierend auf dem erkannten Disc-Typ an 
+# .........  eines der spezialisierte Module zu delegieren (Audio-CD, 
+# .........  Video-DVD, Blu-ray). Wenn kein spezialisierter Typ erkannt
+# .........  wurde, wird die Disc als Daten-Disc mit dd kopiert.
+# Parameter.: Keine
+# Rückgabe.: 0 bei Erfolg, sonst Fehlercode
+# ===========================================================================
 copy_disc_to_iso() {
-    # Wähle Kopiermethode basierend auf Disc-Typ und verfügbaren Tools
-    local method=$(select_copy_method "$(discinfo_get_type)")
+    #-- Ermittle Disc-Typ ---------------------------------------------------
+    local disc_type="$(discinfo_get_type)"
     
-    # Audio-CDs: Workflow ruft init_filenames() nach Metadata-Abfrage auf
-    if [[ "$method" == "audio-cd" ]]; then
-        if is_audio_ready && declare -f copy_audio_cd >/dev/null 2>&1; then
-            if copy_audio_cd; then
-                return 0
-            else
-                return 1
-            fi
-        else
-            log_info "$MSG_ERROR_AUDIO_CD_NOT_AVAILABLE"
-            return 1
-        fi
+    #-- Audio-CD: Delegiere an libaudio.sh ----------------------------------
+    if [[ "$disc_type" == "audio-cd" ]] && is_audio_ready; then
+        copy_audio_cd
+        return $?
     fi
     
-    # Für alle anderen Medien: Standard-Workflow
-    # Initialisiere alle Dateinamen
-    init_filenames
-    
-    # Stelle sicher dass Ausgabeverzeichnis existiert
-    get_log_folder
-    
-    # Erstelle Log-Datei
-    touch "$log_filename"
-    
-    log_info "$MSG_START_COPY_PROCESS $(discinfo_get_label) -> $iso_filename"
-    
-    # Speichere Methode für MQTT-Attribute (MUSS vor api_update_status gesetzt werden!)
-    COPY_METHOD="$method"
-    
-    # API: Status-Update (IMMER) - triggert automatisch MQTT via Observer Pattern
-    api_update_status "copying" "$(discinfo_get_label)" "$(discinfo_get_type)"
-    
-    # Kopiere mit gewählter Methode (KEIN Fallback bei Fehler)
-    local copy_success=false
-    
-    case "$method" in
-        audio-cd)
-            # Wird oben behandelt
-            ;;
-        dvdbackup)
-            if is_dvd_ready && declare -f copy_video_dvd >/dev/null 2>&1; then
-                if copy_video_dvd; then
-                    copy_success=true
-                fi
-            else
-                log_info "$MSG_ERROR_VIDEO_DVD_NOT_AVAILABLE"
-                return 1
-            fi
-            ;;
-        bluray-ddrescue)
-            if is_bluray_ready && declare -f copy_bluray_ddrescue >/dev/null 2>&1; then
-                if copy_bluray_ddrescue; then
-                    copy_success=true
-                fi
-            else
-                log_info "$MSG_ERROR_BLURAY_NOT_AVAILABLE"
-                return 1
-            fi
-            ;;
-        ddrescue)
-            if [[ "$(discinfo_get_type)" == "dvd-video" ]] || [[ "$(discinfo_get_type)" == "bd-video" ]]; then
-                if copy_video_dvd_ddrescue; then
-                    copy_success=true
-                fi
-            else
-                if copy_data_disc_ddrescue; then
-                    copy_success=true
-                fi
-            fi
-            ;;
-        dd)
-            if copy_data_disc; then
-                copy_success=true
-            fi
-            ;;
-    esac
-    
-    # Verarbeite Ergebnis
-    if $copy_success; then
-        # Berechne MD5-Checksumme
-        if [[ -f "$iso_filename" ]]; then
-            local md5sum=$(md5sum "$iso_filename" | cut -d' ' -f1)
-            echo "$md5sum  $iso_basename" > "$md5_filename"
-        fi
-        
-        log_info "$MSG_COPY_SUCCESS_FINAL $iso_filename"
-        
-        # API: Status auf "completed" setzen (triggert automatisch MQTT)
-        api_update_status "completed" "$(discinfo_get_label)" "$(discinfo_get_type)"
-        
-        cleanup_disc_operation "success"
-        return 0
-    else
-        log_info "$MSG_COPY_FAILED_FINAL $(discinfo_get_label)"
-        
-        # API: Status auf "error" setzen (triggert automatisch MQTT)
-        api_update_status "error" "$(discinfo_get_label)" "$(discinfo_get_type)" "Kopiervorgang fehlgeschlagen"
-        
-        cleanup_disc_operation "failure"
-        return 1
+    #-- Video-DVD: Delegiere an libdvd.sh -----------------------------------
+    if [[ "$disc_type" == "dvd-video" ]] && is_dvd_ready; then
+        copy_video_dvd
+        return $?
     fi
+    
+    #-- Blu-ray: Delegiere an libbluray.sh ----------------------------------
+    if [[ "$disc_type" == "bd-video" ]] && is_bluray_ready; then
+        copy_bluray_disk
+        return $?
+    fi
+    
+    #-- Daten-Disc oder kein passendes Kopiermodul aktiv -------------------
+    #-- libcommon.sh wählt beste Methode (ddrescue oder dd) ----------------
+    copy_data_disc
+    return $?
 }
+
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
+
 
 # Funktion zum Überwachen des CD/DVD-Laufwerks
 # Erkennt Disc-Typ und kopiert entsprechend
@@ -485,14 +347,16 @@ run_state_machine() {
                 ;;
                 
             "$STATE_ANALYZING")
-                # Erkenne Disc-Typ
-                detect_disc_type
-                log_info "$MSG_DISC_TYPE_DETECTED $disc_type"
+                # Initialisiere ALLE Disc-Informationen (Typ, Label, Größe, Dateinamen)
+                if ! init_disc_info; then
+                    transition_to_state "$STATE_ERROR" "Disc-Analyse fehlgeschlagen"
+                    sleep 3
+                    continue
+                fi
                 
-                # Generiere Label (für Audio-CDs wird Label in copy_audio_cd() gesetzt)
-                if [[ "$disc_type" != "audio-cd" ]]; then
-                    get_disc_label
-                    log_info "$MSG_VOLUME_LABEL $disc_label"
+                log_info "$MSG_DISC_TYPE_DETECTED $(discinfo_get_type)"
+                if [[ "$(discinfo_get_type)" != "audio-cd" ]]; then
+                    log_info "$MSG_VOLUME_LABEL $(discinfo_get_label)"
                 fi
                 
                 # Unmounte Disc falls sie auto-gemountet wurde

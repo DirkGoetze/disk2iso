@@ -20,10 +20,15 @@
 # ===========================================================================
 
 # ===========================================================================
-# DEPENDENCY CHECK
+# MODULE NAME
 # ===========================================================================
 readonly MODULE_NAME_METADATA="metadata"     # Globale Variable für Modulname
+
+# ===========================================================================
+# DEPENDENCY CHECK
+# ===========================================================================
 SUPPORT_METADATA=false                                # Globales Support Flag
+INITIALIZED_METADATA=false                  # Initialisierung war erfolgreich
 
 # ===========================================================================
 # check_dependencies_metadata
@@ -42,6 +47,15 @@ check_dependencies_metadata() {
     #-- Alle Modul Abhängikeiten prüfen -------------------------------------
     check_module_dependencies "$MODULE_NAME_METADATA" || return 1
 
+    #-- Lade METADATA Konfiguration -----------------------------------------
+    load_metadata_config || return 1
+    log_debug "$MSG_DEBUG_METADATA_CONFIG_LOADED"
+
+    #-- Lade registrierte Provider ------------------------------------------
+    metadata_load_registered_providers
+    # HINWEIS: Provider laden ist optional (return code wird ignoriert)
+    # Framework ist auch ohne Provider funktionsfähig
+
     #-- Setze Verfügbarkeit -------------------------------------------------
     SUPPORT_METADATA=true
     log_debug "$MSG_DEBUG_METADATA_CHECK_COMPLETE"
@@ -52,7 +66,33 @@ check_dependencies_metadata() {
 }
 
 # ===========================================================================
-# PATH CONSTANTS / GETTER
+# is_metadata_ready
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe ob METADATA Modul supported wird und initialisiert wurde 
+# .........  Wenn true ist alles bereit ist für die Nutzung.
+# Parameter: keine
+# Rückgabe.: 0 = Bereit, 1 = Nicht bereit
+# ===========================================================================
+is_metadata_ready() {
+    #-- Prüfe Support (Abhängikeiten erfüllt) -------------------------------
+    if [[ "$SUPPORT_METADATA" != "true" ]]; then
+        log_debug "$MSG_DEBUG_METADATA_NOT_SUPPORTED"
+        return 1
+    fi
+    
+    #-- Prüfe Initialisierung (Konfiguration geladen) -----------------------
+    if [[ "$INITIALIZED_METADATA" != "true" ]]; then
+        log_debug "$MSG_DEBUG_METADATA_NOT_INITIALIZED"
+        return 1
+    fi
+    
+    #-- Alles bereit --------------------------------------------------------
+    log_debug "$MSG_DEBUG_METADATA_READY"
+    return 0
+}
+
+# ===========================================================================
+# PATH GETTER
 # ===========================================================================
 
 # ===========================================================================
@@ -66,8 +106,341 @@ check_dependencies_metadata() {
 # .........  Provider legen hier ihre Unterordner an (musicbrainz/, tmdb/)
 # ===========================================================================
 get_path_metadata() {
-    echo "${OUTPUT_DIR}/${MODULE_NAME_METADATA}"
+    #-- Bestimme Ausgabeordner des Moduls -----------------------------------
+    local metadata_dir="${OUTPUT_DIR}/${MODULE_NAME_METADATA}"
+
+    #-- Debug Meldung und Rückgabe ------------------------------------------
+    log_debug "$MSG_DEBUG_METADATA_PATH ${metadata_dir}"
+    echo "${metadata_dir}"
+    return 0
 }
+
+# ===========================================================================
+# METADATA CONFIGURATION / INITIALIZATION
+# ===========================================================================
+
+# ===========================================================================
+# _metadata_get_defaults
+# ---------------------------------------------------------------------------
+# Funktion.: Liefert die Standardwerte für Metadata Konfigurationsvariablen
+# Parameter: $1 = Key (z.B. METADATA_SELECTION_TIMEOUT)
+# Rückgabe.: Standardwert für den Key oder leer wenn nicht definiert
+# Hinweis..: Private Funktion (Präfix _)
+# ===========================================================================
+_metadata_get_defaults() {
+    local key="$1"
+
+    case "$key" in
+        METADATA_SELECTION_TIMEOUT) echo "60" ;;
+        METADATA_CACHE_ENABLED) echo "true" ;;
+        METADATA_CHECK_INTERVAL) echo "1" ;;
+        METADATA_DEFAULT_APPLY_FUNC) echo "metadata_default_apply" ;;
+        *) echo "" ;;
+    esac
+}
+
+# ===========================================================================
+# load_metadata_config
+# ---------------------------------------------------------------------------
+# Funktion.: Lädt die Metadata Konfiguration und setzt Standardwerte
+# .........  für nicht definierte Variablen.
+# Parameter: keine
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+load_metadata_config() {
+    #-- Lokale Variablen ----------------------------------------------------
+    local selection_timeout cache_enabled check_interval default_apply_func
+
+    #-- Ermittle Pfad zur Modul INI -----------------------------------------
+    local ini_file=$(get_module_ini_path "$MODULE_NAME_METADATA")
+
+    #-- Lese METADATA-Konfiguration aus INI (falls existiert) ---------------
+    if [[ -f "$ini_file" ]]; then
+        selection_timeout=$(get_ini_value "$ini_file" "framework" "selection_timeout")
+        cache_enabled=$(get_ini_value "$ini_file" "framework" "cache_enabled")
+        check_interval=$(get_ini_value "$ini_file" "framework" "check_interval")
+        default_apply_func=$(get_ini_value "$ini_file" "framework" "default_apply_func")
+    else
+        log_warning "$MSG_METADATA_INI_NOT_FOUND: $ini_file"
+    fi
+
+    #-- Setze Variablen mit Defaults (INI-Werte überschreiben Defaults) -----
+    #-- Prüfe zuerst ob Wert bereits aus disk2iso.conf gesetzt wurde --------
+    #-- Nutzt _metadata_get_defaults() für konsistente Defaults -------------
+    METADATA_SELECTION_TIMEOUT="${METADATA_SELECTION_TIMEOUT:-${selection_timeout:-$(_metadata_get_defaults "METADATA_SELECTION_TIMEOUT")}}"
+    METADATA_CACHE_ENABLED="${METADATA_CACHE_ENABLED:-${cache_enabled:-$(_metadata_get_defaults "METADATA_CACHE_ENABLED")}}"
+    METADATA_CHECK_INTERVAL="${METADATA_CHECK_INTERVAL:-${check_interval:-$(_metadata_get_defaults "METADATA_CHECK_INTERVAL")}}"
+    METADATA_DEFAULT_APPLY_FUNC="${METADATA_DEFAULT_APPLY_FUNC:-${default_apply_func:-$(_metadata_get_defaults "METADATA_DEFAULT_APPLY_FUNC")}}"
+
+    #-- Setze Initialisierungs-Flag -----------------------------------------
+    INITIALIZED_METADATA=true
+
+    #-- Log und Rückgabe ----------------------------------------------------
+    log_info "$MSG_METADATA_CONFIG_LOADED"
+    return 0
+}
+
+# ===========================================================================
+# metadata_load_registered_providers
+# ---------------------------------------------------------------------------
+# Funktion.: Lädt alle in libmetadata.ini registrierten Provider-Module
+# .........  Provider entscheiden selbst ob sie sich aktivieren (eigene INI)
+# Parameter: keine
+# Rückgabe.: 0 = Mindestens ein Provider geladen, 1 = Keine Provider
+# Hinweis..: Wird von check_dependencies_metadata() aufgerufen
+# .........  Return-Code wird ignoriert (Framework funktioniert ohne Provider)
+# ===========================================================================
+metadata_load_registered_providers() {
+    local ini_file=$(get_module_ini_path "$MODULE_NAME_METADATA")
+    local providers_loaded=0
+    
+    #-- Prüfe ob INI existiert ----------------------------------------------
+    if [[ ! -f "$ini_file" ]]; then
+        log_debug "Metadata: Keine Provider-Konfiguration gefunden: $ini_file"
+        return 1
+    fi
+    
+    #-- Lese alle Provider aus [providers] Sektion -------------------------
+    local provider_keys=$(get_ini_section_keys "$ini_file" "providers")
+    
+    if [[ -z "$provider_keys" ]]; then
+        log_info "Metadata: Keine Provider installiert"
+        return 1
+    fi
+    
+    log_debug "Metadata: Gefundene Provider in INI: $provider_keys"
+    
+    #-- Lade jeden installierten Provider ----------------------------------
+    for provider_name in $provider_keys; do
+        local is_installed=$(get_ini_value "$ini_file" "providers" "$provider_name")
+        
+        #-- Prüfe Installation-Status (nur true/false) ----------------------
+        if [[ "$is_installed" != "true" ]]; then
+            log_debug "Metadata: Provider '$provider_name' nicht installiert (Wert: $is_installed) - überspringe"
+            continue
+        fi
+        
+        #-- Lade Provider-Modul ---------------------------------------------
+        local provider_file="${SCRIPT_DIR}/lib/lib${provider_name}.sh"
+        
+        if [[ ! -f "$provider_file" ]]; then
+            log_warning "Metadata: Provider-Datei nicht gefunden: $provider_file"
+            continue
+        fi
+        
+        log_debug "Metadata: Lade Provider-Modul: $provider_name"
+        
+        #-- Source Provider-Modul (Fehler werden nicht abgefangen) ----------
+        if ! source "$provider_file" 2>/dev/null; then
+            log_error "Metadata: Fehler beim Laden von $provider_file"
+            continue
+        fi
+        
+        #-- Rufe standardisierte Init-Funktion auf -------------------------
+        # Provider entscheidet selbst ob er sich registriert (prüft eigene INI)
+        # Naming-Convention: init_<provider>_provider()
+        local init_func="init_${provider_name}_provider"
+        
+        if declare -f "$init_func" >/dev/null 2>&1; then
+            log_debug "Metadata: Rufe Init-Funktion auf: $init_func"
+            
+            #-- Führe Provider-Init aus -------------------------------------
+            if "$init_func"; then
+                ((providers_loaded++))
+                log_info "Metadata: Provider erfolgreich initialisiert: $provider_name"
+            else
+                #-- Provider hat sich nicht registriert (z.B. deaktiviert) --
+                log_debug "Metadata: Provider nicht aktiviert: $provider_name"
+            fi
+        else
+            log_warning "Metadata: Init-Funktion nicht gefunden: $init_func (Provider: $provider_name)"
+        fi
+    done
+    
+    #-- Rückgabe ------------------------------------------------------------
+    if [[ $providers_loaded -gt 0 ]]; then
+        log_info "Metadata: $providers_loaded Provider erfolgreich geladen"
+        return 0
+    else
+        log_info "Metadata: Keine Provider aktiv (Framework läuft ohne Provider-Support)"
+        return 1
+    fi
+}
+
+# ===========================================================================
+# PROVIDER VERWALTUNG
+# ===========================================================================
+
+# Assoziative Arrays für Provider-Registrierung
+declare -A METADATA_PROVIDERS          # Provider-Name → Disc-Types
+declare -A METADATA_QUERY_FUNCS        # Provider-Name → Query-Funktion
+declare -A METADATA_PARSE_FUNCS        # Provider-Name → Parse-Funktion
+declare -A METADATA_APPLY_FUNCS        # Provider-Name → Apply-Funktion
+declare -A METADATA_DISC_PROVIDERS     # Disc-Type → Provider-Name
+
+# ===========================================================================
+# metadata_register_provider
+# ---------------------------------------------------------------------------
+# Funktion.: Registriere Metadata-Provider
+# Parameter: $1 = provider_name (z.B. "musicbrainz", "tmdb")
+# .........  $2 = disc_types (komma-separiert: "audio-cd" oder "dvd-video,bd-video")
+# .........  $3 = query_function (Name der Query-Funktion)
+# .........  $4 = parse_function (Name der Parse-Funktion)
+# .........  $5 = apply_function (Name der Apply-Funktion, optional)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+metadata_register_provider() {
+    #-- Lokale Variablen ----------------------------------------------------
+    local provider="$1"
+    local disc_types="$2"
+    local query_func="$3"
+    local parse_func="$4"
+    local apply_func="${5:-metadata_default_apply}"
+    
+    #-- Debug Start ---------------------------------------------------------
+    log_debug "Metadata: Registriere Provider '$provider' (types='$disc_types', query='$query_func', parse='$parse_func', apply='$apply_func')"
+    
+    #-- Validierung der Parameter -------------------------------------------
+    if [[ -z "$provider" ]] || [[ -z "$disc_types" ]] || [[ -z "$query_func" ]] || [[ -z "$parse_func" ]]; then
+        log_error "Metadata: Provider-Registrierung fehlgeschlagen - unvollständige Parameter"
+        return 1
+    fi
+    
+    #-- Prüfe ob Provider bereits registriert -------------------------------
+    if [[ -v "METADATA_PROVIDERS[$provider]" ]]; then
+        log_warning "Metadata: Provider '$provider' wird überschrieben (vorher: ${METADATA_PROVIDERS[$provider]})"
+    fi
+    
+    #-- Prüfe ob Funktionen existieren --------------------------------------
+    if ! declare -f "$query_func" >/dev/null 2>&1; then
+        log_error "Metadata: Query-Funktion '$query_func' nicht gefunden"
+        return 1
+    fi
+    log_debug "Metadata: Query-Funktion '$query_func' gefunden"
+    
+    if ! declare -f "$parse_func" >/dev/null 2>&1; then
+        log_error "Metadata: Parse-Funktion '$parse_func' nicht gefunden"
+        return 1
+    fi
+    log_debug "Metadata: Parse-Funktion '$parse_func' gefunden"
+    
+    #-- Prüfe Apply-Funktion (falls nicht default) --------------------------
+    if [[ "$apply_func" != "metadata_default_apply" ]] && ! declare -f "$apply_func" >/dev/null 2>&1; then
+        log_warning "Metadata: Apply-Funktion '$apply_func' nicht gefunden - verwende Default"
+        apply_func="metadata_default_apply"
+    fi
+    log_debug "Metadata: Apply-Funktion '$apply_func' registriert"
+    
+    #-- Registriere Provider ------------------------------------------------
+    METADATA_PROVIDERS["$provider"]="$disc_types"
+    METADATA_QUERY_FUNCS["$provider"]="$query_func"
+    METADATA_PARSE_FUNCS["$provider"]="$parse_func"
+    METADATA_APPLY_FUNCS["$provider"]="$apply_func"
+    log_debug "Metadata: Provider-Funktionen registriert"
+    
+    #-- Registriere Provider für jeden Disc-Type ---------------------------- 
+    IFS=',' read -ra types <<< "$disc_types"
+    for disc_type in "${types[@]}"; do
+        disc_type=$(echo "$disc_type" | xargs)  # Trim whitespace
+        
+        # Prüfe ob Provider für diesen Disc-Type bereits existiert
+        if [[ -v "METADATA_DISC_PROVIDERS[$disc_type]" ]]; then
+            local existing_providers="${METADATA_DISC_PROVIDERS[$disc_type]}"
+            
+            # Prüfe ob Provider bereits in Liste
+            if [[ ",$existing_providers," == *",$provider,"* ]]; then
+                log_warning "Metadata: Provider '$provider' bereits für Disc-Type '$disc_type' registriert - überspringe"
+                continue
+            fi
+            
+            # Füge Provider zur Liste hinzu
+            METADATA_DISC_PROVIDERS["$disc_type"]="${existing_providers},${provider}"
+            log_debug "Metadata: Disc-Type '$disc_type' → Provider-Liste erweitert: ${METADATA_DISC_PROVIDERS[$disc_type]}"
+        else
+            # Erster Provider für diesen Disc-Type
+            METADATA_DISC_PROVIDERS["$disc_type"]="$provider"
+            log_debug "Metadata: Disc-Type '$disc_type' → Provider '$provider' (erster)"
+        fi
+    done
+
+    #-- Log und Rückgabe ----------------------------------------------------    
+    log_info "Metadata: Provider '$provider' registriert für: $disc_types"
+    return 0
+}
+
+# ===========================================================================
+# metadata_can_register_provider
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe ob Provider-Registrierung möglich ist
+# Parameter: keine
+# Rückgabe.: 0 = Registrierung möglich, 1 = Framework nicht bereit
+# Hinweis..: Provider-Module sollten dies prüfen bevor sie sich registrieren
+# ===========================================================================
+metadata_can_register_provider() {
+    #-- Prüfe ob Framework bereit ist ---------------------------------------
+    if ! is_metadata_ready; then
+        log_debug "Metadata: Framework nicht bereit - Provider-Registrierung nicht möglich"
+        return 1
+    fi
+    
+    log_debug "Metadata: Framework bereit - Provider-Registrierung möglich"
+    return 0
+}
+
+# ===========================================================================
+# metadata_get_provider
+# ---------------------------------------------------------------------------
+# Funktion.: Hole Provider für Disc-Type
+# Parameter: $1 = disc_type (z.B. "audio-cd", "dvd-video")
+# Rückgabe.: Provider-Name (stdout) + Return-Code (0 = gefunden, 1 = nicht gefunden)
+# Hinweis..: Gibt ersten Provider aus Liste zurück (oder konfigurierten)
+# .........  Priorität: 1) Config-Override, 2) Erster registrierter Provider
+# ===========================================================================
+metadata_get_provider() {
+    local disc_type="$1"
+    
+    #-- Validierung ---------------------------------------------------------
+    if [[ -z "$disc_type" ]]; then
+        log_error "Metadata: metadata_get_provider() benötigt disc_type Parameter"
+        return 1
+    fi
+    
+    #-- Prüfe ob Framework bereit ist ---------------------------------------
+    if ! is_metadata_ready; then
+        log_debug "Metadata: Framework nicht bereit"
+        return 1
+    fi
+    
+    #-- Prüfe Konfiguration (User-Override - höchste Priorität) -------------
+    local config_var="METADATA_${disc_type^^}_PROVIDER"
+    config_var="${config_var//-/_}"  # Ersetze - durch _
+    local configured_provider="${!config_var}"
+    
+    if [[ -n "$configured_provider" ]]; then
+        log_debug "Metadata: Verwende konfigurierten Provider '$configured_provider' für '$disc_type'"
+        echo "$configured_provider"
+        return 0
+    fi
+    
+    #-- Fallback: Registrierte Provider-Liste -------------------------------
+    local provider_list="${METADATA_DISC_PROVIDERS[$disc_type]}"
+    if [[ -n "$provider_list" ]]; then
+        # Nimm ersten Provider aus komma-separierter Liste
+        local first_provider="${provider_list%%,*}"
+        log_debug "Metadata: Verwende ersten Provider '$first_provider' für '$disc_type' (verfügbar: $provider_list)"
+        echo "$first_provider"
+        return 0
+    fi
+    
+    #-- Kein Provider gefunden ----------------------------------------------
+    log_debug "Metadata: Kein Provider für Disc-Type '$disc_type' gefunden"
+    return 1
+}
+
+
+# TODO: Nächste Schritte:
+# metadata_get_provider_for_type()    # disk2iso holt Provider-Namen
+# metadata_list_providers()           # Debug/Info-Funktion
 
 # TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 
@@ -75,14 +448,6 @@ get_path_metadata() {
 # GLOBALE VARIABLEN
 # ============================================================================
 
-# Assoziative Arrays für Provider-Registrierung
-declare -A METADATA_PROVIDERS          # Provider-Name → Disc-Types
-declare -A METADATA_QUERY_FUNCS        # Provider-Name → Query-Funktion
-declare -A METADATA_PARSE_FUNCS        # Provider-Name → Parse-Funktion
-declare -A METADATA_APPLY_FUNCS        # Provider-Name → Apply-Funktion
-
-# Provider-Konfiguration pro Disc-Type
-declare -A METADATA_DISC_PROVIDERS     # Disc-Type → Provider-Name
 
 # Cache-Verzeichnisse
 METADATA_CACHE_BASE=""
@@ -91,79 +456,7 @@ METADATA_CACHE_BASE=""
 # PROVIDER REGISTRATION SYSTEM
 # ============================================================================
 
-# Funktion: Registriere Metadata-Provider
-# Parameter: $1 = provider_name (z.B. "musicbrainz", "tmdb")
-#            $2 = disc_types (komma-separiert: "audio-cd" oder "dvd-video,bd-video")
-#            $3 = query_function (Name der Query-Funktion)
-#            $4 = parse_function (Name der Parse-Funktion)
-#            $5 = apply_function (Name der Apply-Funktion, optional)
-# Rückgabe: 0 = Erfolg, 1 = Fehler
-metadata_register_provider() {
-    local provider="$1"
-    local disc_types="$2"
-    local query_func="$3"
-    local parse_func="$4"
-    local apply_func="${5:-metadata_default_apply}"
-    
-    # Validierung
-    if [[ -z "$provider" ]] || [[ -z "$disc_types" ]] || [[ -z "$query_func" ]] || [[ -z "$parse_func" ]]; then
-        log_error "Metadata: Provider-Registrierung fehlgeschlagen - unvollständige Parameter"
-        return 1
-    fi
-    
-    # Prüfe ob Funktionen existieren
-    if ! declare -f "$query_func" >/dev/null 2>&1; then
-        log_error "Metadata: Query-Funktion '$query_func' nicht gefunden"
-        return 1
-    fi
-    
-    if ! declare -f "$parse_func" >/dev/null 2>&1; then
-        log_error "Metadata: Parse-Funktion '$parse_func' nicht gefunden"
-        return 1
-    fi
-    
-    # Registriere Provider
-    METADATA_PROVIDERS["$provider"]="$disc_types"
-    METADATA_QUERY_FUNCS["$provider"]="$query_func"
-    METADATA_PARSE_FUNCS["$provider"]="$parse_func"
-    METADATA_APPLY_FUNCS["$provider"]="$apply_func"
-    
-    # Registriere Provider für jeden Disc-Type
-    IFS=',' read -ra types <<< "$disc_types"
-    for disc_type in "${types[@]}"; do
-        disc_type=$(echo "$disc_type" | xargs)  # Trim whitespace
-        METADATA_DISC_PROVIDERS["$disc_type"]="$provider"
-    done
-    
-    log_info "Metadata: Provider '$provider' registriert für: $disc_types"
-    return 0
-}
 
-# Funktion: Hole Provider für Disc-Type
-# Parameter: $1 = disc_type (z.B. "audio-cd", "dvd-video")
-# Rückgabe: Provider-Name oder leer bei Fehler
-metadata_get_provider() {
-    local disc_type="$1"
-    
-    # Prüfe Konfiguration (User-Override)
-    local config_var="METADATA_${disc_type^^}_PROVIDER"
-    config_var="${config_var//-/_}"  # Ersetze - durch _
-    local configured_provider="${!config_var}"
-    
-    if [[ -n "$configured_provider" ]]; then
-        echo "$configured_provider"
-        return 0
-    fi
-    
-    # Fallback: Registrierter Provider
-    local provider="${METADATA_DISC_PROVIDERS[$(discinfo_get_type)]}"
-    if [[ -n "$provider" ]]; then
-        echo "$provider"
-        return 0
-    fi
-    
-    return 1
-}
 
 # Funktion: Liste alle registrierten Provider
 # Rückgabe: JSON-Array mit Provider-Info
@@ -402,25 +695,6 @@ metadata_sanitize_filename() {
 # CONFIGURATION
 # ============================================================================
 
-# Funktion: Lade Metadata-Konfiguration aus Config-Datei
-# Liest: METADATA_AUDIO_PROVIDER, METADATA_VIDEO_PROVIDER, etc.
-metadata_load_config() {
-    # Diese Funktion wird von libconfig.sh aufgerufen
-    # Config-Variablen sind bereits geladen
-    
-    log_info "Metadata: Konfiguration geladen"
-    
-    # Debug: Zeige konfigurierte Provider
-    if [[ -n "${METADATA_AUDIO_PROVIDER:-}" ]]; then
-        log_info "Metadata: Audio-Provider = $METADATA_AUDIO_PROVIDER"
-    fi
-    
-    if [[ -n "${METADATA_VIDEO_PROVIDER:-}" ]]; then
-        log_info "Metadata: Video-Provider = $METADATA_VIDEO_PROVIDER"
-    fi
-    
-    return 0
-}
 
 # ============================================================================
 # NFO EXPORT - JELLYFIN FORMAT

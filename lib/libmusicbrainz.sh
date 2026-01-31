@@ -443,13 +443,64 @@ EOF
 # PROVIDER REGISTRATION
 # ============================================================================
 
-# Auto-Register beim Laden (wenn Metadata-Framework verfügbar)
-if declare -f metadata_register_provider >/dev/null 2>&1; then
-    metadata_register_provider "musicbrainz" "audio-cd" \
+# ===========================================================================
+# init_musicbrainz_provider
+# ---------------------------------------------------------------------------
+# Funktion.: Initialisiere MusicBrainz Provider (wird von libmetadata aufgerufen)
+# .........  Prüft eigene INI ob Provider aktiv sein soll
+# Parameter: keine
+# Rückgabe.: 0 = Provider registriert, 1 = Provider nicht aktiv oder Fehler
+# Hinweis..: Standardisierte Init-Funktion (Naming-Convention)
+# .........  Wird von metadata_load_registered_providers() aufgerufen
+# ===========================================================================
+init_musicbrainz_provider() {
+    log_debug "MusicBrainz: Starte Provider-Initialisierung"
+    
+    #-- Prüfe ob Framework bereit ist ---------------------------------------
+    if ! metadata_can_register_provider; then
+        log_warning "MusicBrainz: Metadata-Framework nicht bereit"
+        return 1
+    fi
+    
+    #-- Lade Provider-Konfiguration -----------------------------------------
+    local ini_file=$(get_module_ini_path "musicbrainz")
+    
+    # Prüfe ob Provider aktiviert ist (Provider verwaltet sich selbst!)
+    local is_active="true"  # Default: aktiv
+    if [[ -f "$ini_file" ]]; then
+        is_active=$(get_ini_value "$ini_file" "settings" "active")
+    fi
+    
+    if [[ "$is_active" == "false" ]]; then
+        log_info "MusicBrainz: Provider installiert aber nicht aktiviert (settings.active=false)"
+        return 1  # KEIN Fehler - einfach nicht registrieren
+    fi
+    
+    #-- Prüfe Provider-Abhängigkeiten ---------------------------------------
+    if ! check_dependencies_musicbrainz; then
+        log_warning "MusicBrainz: Abhängigkeiten nicht erfüllt"
+        return 1
+    fi
+    
+    #-- Registriere Provider beim Framework ---------------------------------
+    metadata_register_provider \
+        "musicbrainz" \
+        "audio-cd" \
         "musicbrainz_query" \
         "musicbrainz_parse_selection" \
         "musicbrainz_apply_selection"
-fi
+    
+    local reg_result=$?
+    
+    if [[ $reg_result -eq 0 ]]; then
+        log_info "MusicBrainz: Provider erfolgreich registriert"
+        ACTIVATED_MUSICBRAINZ=true
+    else
+        log_error "MusicBrainz: Registrierung fehlgeschlagen"
+    fi
+    
+    return $reg_result
+}
 
 ################################################################################
 # ENDE lib-musicbrainz.sh

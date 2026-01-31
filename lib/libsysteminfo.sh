@@ -135,26 +135,21 @@ detect_container_environment() {
 # ===========================================================================
 # check_disk_space
 # ---------------------------------------------------------------------------
-# Funktion.: Prüfe verfügbaren Speicherplatz mit automatischem Overhead
-# Parameter: $1 = required_mb (benötigte MB für ISO/Hauptdatei)
-#            $2 = overhead_percent (optional, default: 10 für Metadaten)
+# Funktion.: Prüfe verfügbaren Speicherplatz
+# Parameter: $1 = required_mb (benötigte MB - INKL. Overhead!)
+#            HINWEIS: init_disc_info() berechnet bereits estimated_size_mb
+#                     mit 10% Overhead. Diese Funktion prüft nur noch ob
+#                     genug Platz vorhanden ist.
 # Rückgabe.: 0 = Ausreichend Platz, 1 = Nicht genug Platz
-# Hinweis..: Overhead berücksichtigt: Cover-Bilder, NFO-Dateien, 
-#            temporäre MP3s/WAVs, ddrescue Mapfiles, Puffer
 # ===========================================================================
 check_disk_space() {
     local required_mb=$1
-    local overhead_percent="${2:-10}"  # Default: 10% für Metadaten
     
     # Validierung
     if [[ -z "$required_mb" ]] || [[ ! "$required_mb" =~ ^[0-9]+$ ]]; then
         log_warning "check_disk_space: Ungültige required_mb '$required_mb' - überspringe Prüfung"
         return 0
     fi
-    
-    # Berechne tatsächlich benötigten Speicherplatz mit Overhead
-    local overhead_mb=$((required_mb * overhead_percent / 100))
-    local total_required=$((required_mb + overhead_mb))
     
     # Ermittle verfügbaren Speicherplatz am Ausgabepfad
     local available_mb=$(df -BM "$OUTPUT_DIR" 2>/dev/null | tail -1 | awk '{print $4}' | sed 's/M//')
@@ -165,72 +160,19 @@ check_disk_space() {
     fi
     
     # Detailliertes Logging
-    log_info "Speicherplatz: ${available_mb} MB verfügbar, ${total_required} MB benötigt (${required_mb} MB + ${overhead_mb} MB Overhead)"
+    log_info "Speicherplatz: ${available_mb} MB verfügbar, ${required_mb} MB benötigt"
     
-    if [[ $available_mb -lt $total_required ]]; then
-        log_error "$MSG_ERROR_INSUFFICIENT_DISK_SPACE ${total_required} MB benötigt, nur ${available_mb} MB verfügbar"
+    if [[ $available_mb -lt $required_mb ]]; then
+        log_error "$MSG_ERROR_INSUFFICIENT_DISK_SPACE ${required_mb} MB benötigt, nur ${available_mb} MB verfügbar"
         
         # API: Fehler melden
         if declare -f api_update_status >/dev/null 2>&1; then
-            api_update_status "error" "" "" "Nicht genug Speicherplatz: ${available_mb}/${total_required} MB"
+            api_update_status "error" "" "" "Nicht genug Speicherplatz: ${available_mb}/${required_mb} MB"
         fi
         
         return 1
     fi
     
-    return 0
-}
-
-# ============================================================================
-# MEDIUM IDENTIFICATION
-# ============================================================================
-
-# Funktion: Ermittle eindeutige Medium-Kennung
-# Parameter: $1 = Device-Pfad (z.B. /dev/sr0)
-# Rückgabe: String mit "UUID:LABEL:SIZE" oder leer bei Fehler
-get_medium_identifier() {
-    local device="$1"
-    local uuid=""
-    local label=""
-    local size=""
-    
-    # Prüfe ob Device existiert und ein Block-Device ist
-    if [[ ! -b "$device" ]]; then
-        return 1
-    fi
-    
-    # Versuche UUID und Label mit blkid zu ermitteln
-    if command -v blkid >/dev/null 2>&1; then
-        local blkid_output=$(blkid -p "$device" 2>/dev/null)
-        
-        if [[ -n "$blkid_output" ]]; then
-            # Extrahiere UUID (falls vorhanden)
-            uuid=$(echo "$blkid_output" | grep -oP 'UUID="?\K[^"]+' 2>/dev/null || echo "")
-            
-            # Extrahiere Label (falls vorhanden)
-            label=$(echo "$blkid_output" | grep -oP 'LABEL="?\K[^"]+' 2>/dev/null || echo "")
-        fi
-    fi
-    
-    # Ermittle Disc-Größe mit blockdev (falls verfügbar)
-    if command -v blockdev >/dev/null 2>&1; then
-        size=$(blockdev --getsize64 "$device" 2>/dev/null || echo "")
-    fi
-    
-    # Fallback: isoinfo für ISO-Volumen (oft zuverlässiger für optische Medien)
-    if [[ -z "$label" ]] && command -v isoinfo >/dev/null 2>&1; then
-        label=$(isoinfo -d -i "$device" 2>/dev/null | grep "Volume id:" | sed 's/Volume id: //' | tr -d ' ' || echo "")
-    fi
-    
-    # Baue Identifier-String
-    local identifier="${uuid}:${label}:${size}"
-    
-    # Prüfe ob mindestens ein Wert vorhanden ist
-    if [[ "$identifier" == "::" ]]; then
-        return 1
-    fi
-    
-    echo "$identifier"
     return 0
 }
 
@@ -255,14 +197,9 @@ wait_for_medium_change() {
     log_info "$MSG_CONTAINER_MANUAL_EJECT"
     log_info "$MSG_WAITING_FOR_MEDIUM_CHANGE"
     
-    # Ermittle aktuelles Medium
-    local old_identifier=$(get_medium_identifier "$device")
-    
-    if [[ -z "$old_identifier" ]]; then
-        log_warning "$MSG_WARNING_NO_MEDIUM_IDENTIFIER"
-        # Fallback: Warte auf beliebiges Medium
-        old_identifier="::"
-    fi
+    # Ermittle aktuellen Disc-Identifier (nutzt DISC_INFO)
+    local old_identifier
+    old_identifier=$(discinfo_get_identifier 2>/dev/null || echo "::")
     
     local elapsed=0
     local new_identifier=""
@@ -271,13 +208,16 @@ wait_for_medium_change() {
         sleep "$poll_interval"
         elapsed=$((elapsed + poll_interval))
         
-        # Prüfe auf neues Medium
-        new_identifier=$(get_medium_identifier "$device")
-        
-        # Vergleiche Identifier
-        if [[ -n "$new_identifier" ]] && [[ "$new_identifier" != "$old_identifier" ]]; then
-            log_info "$MSG_NEW_MEDIUM_DETECTED"
-            return 0
+        # Prüfe auf neues Medium: Analysiere Disc neu
+        if is_disc_inserted; then
+            init_disc_info 2>/dev/null  # Setzt disc_identifier
+            new_identifier=$(discinfo_get_identifier 2>/dev/null || echo "::")
+            
+            # Vergleiche Identifier
+            if [[ "$new_identifier" != "$old_identifier" ]]; then
+                log_info "$MSG_NEW_MEDIUM_DETECTED"
+                return 0
+            fi
         fi
         
         # Log alle 30 Sekunden

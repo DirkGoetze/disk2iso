@@ -386,6 +386,13 @@ get_cdtext_metadata() {
 #            cd_discid, mb_response, best_release_index, toc, track_count
 # Provider.: musicbrainz
 # ===========================================================================
+# DEPRECATED: Diese Funktion wird durch das neue Metadata-Framework ersetzt.
+# Verwende stattdessen:
+#   - metadata_query_before_copy() aus libmetadata.sh
+#   - metadata_wait_for_selection() aus libmetadata.sh
+#   - Provider-Module: libmusicbrainz.sh
+# Wird in v1.3.0 entfernt.
+# ===========================================================================
 get_musicbrainz_metadata() {
     local artist=""
     local album=""
@@ -809,6 +816,12 @@ EOF
 # Parameter: $1 = disc_id, $2 = mb_response (JSON)
 # Rückgabe: 0 = Auswahl getroffen, 1 = Timeout/Skip
 # Setzt: cd_artist, cd_album, cd_year aus User-Auswahl
+# ============================================================================
+# DEPRECATED: Diese Funktion wird durch das neue Metadata-Framework ersetzt.
+# Verwende stattdessen:
+#   - metadata_wait_for_selection() aus libmetadata.sh
+# Wird in v1.3.0 entfernt.
+# ============================================================================
 wait_for_metadata_selection() {
     local disc_id="$1"
     local mb_json="$2"
@@ -975,62 +988,79 @@ copy_audio_cd() {
     cd_year=""
     cd_discid=""
     mb_response=""
-    local skip_metadata=false
-    local releases_count=0
+    local skip_metadata="${SKIP_METADATA:-false}"
     
-    # Hole MusicBrainz Metadaten
-    if ! get_musicbrainz_metadata; then
-        # Fallback 1: MusicBrainz fehlgeschlagen → Versuche CD-TEXT
-        log_info "MusicBrainz nicht verfügbar - versuche CD-TEXT Fallback"
-        if ! get_cdtext_metadata; then
-            log_info "$MSG_CONTINUE_WITHOUT_METADATA"
-            skip_metadata=true
-        else
-            # CD-TEXT erfolgreich - verwende diese Metadaten
-            skip_metadata=false
-        fi
-    else
-        # Zähle Releases
-        releases_count=$(echo "$mb_response" | jq '.releases | length' 2>/dev/null || echo "0")
+    # ==================== METADATA-ABFRAGE (NEUES FRAMEWORK) ====================
+    # Nutzt libmetadata.sh + Provider-Module (libmusicbrainz.sh)
+    # - Provider registrieren sich automatisch via metadata_load_registered_providers()
+    # - DISC_DATA[] dient als zentraler State-Container
+    # - Metadaten werden via API bereitgestellt BEVOR der Kopiervorgang startet
+    
+    # Variablen aus DISC_DATA extrahieren (falls bereits gesetzt)
+    local cd_artist="${DISC_DATA[artist]}"
+    local cd_album="${DISC_DATA[album]}"
+    cd_year="${DISC_DATA[year]}"
+    local cd_genre="${DISC_DATA[genre]}"
+    
+    # MusicBrainz-Variablen (für NFO/Cover-Download)
+    local mb_release_id="${DISC_DATA[musicbrainz_release_id]}"
+    local mb_artist_id="${DISC_DATA[musicbrainz_artist_id]}"
+    mb_response="${DISC_DATA[musicbrainz_response]}"
+    
+    # Cover-Art Variablen
+    local cover_url="${DISC_DATA[coverart_url]}"
+    local cover_file=""
+    
+    # Metadata-Abfrage nur wenn nicht übersprungen UND Framework bereit
+    if [[ "$skip_metadata" == "false" ]] && is_metadata_ready && metadata_has_provider_for_type "audio-cd"; then
+        log_info "$MSG_QUERY_MUSICBRAINZ"
         
-        if [[ $releases_count -eq 0 ]]; then
-            # Fallback 2: Keine MusicBrainz Releases → Versuche CD-TEXT
-            log_info "Keine MusicBrainz Releases gefunden - versuche CD-TEXT Fallback"
-            if ! get_cdtext_metadata; then
+        # Provider-Name holen (z.B. "musicbrainz")
+        local provider
+        provider=$(metadata_get_provider "audio-cd")
+        
+        # Framework-Call: Query auslösen (lädt Ergebnisse in API)
+        if metadata_query_before_copy "audio-cd" "$cd_discid" "$cd_discid"; then
+            # Warte auf Browser-Auswahl über API
+            if metadata_wait_for_selection "audio-cd" "$cd_discid" "$provider"; then
+                # Variablen aus DISC_DATA neu laden (wurden von Browser via API gesetzt)
+                cd_artist="${DISC_DATA[artist]}"
+                cd_album="${DISC_DATA[album]}"
+                cd_year="${DISC_DATA[year]}"
+                cd_genre="${DISC_DATA[genre]}"
+                mb_release_id="${DISC_DATA[musicbrainz_release_id]}"
+                mb_artist_id="${DISC_DATA[musicbrainz_artist_id]}"
+                mb_response="${DISC_DATA[musicbrainz_response]}"
+                cover_url="${DISC_DATA[coverart_url]}"
+            else
+                log_warning "$MSG_WARNING_METADATA_TIMEOUT"
+                skip_metadata=true
+            fi
+        else
+            # Fallback: MusicBrainz fehlgeschlagen → Versuche CD-TEXT
+            log_info "MusicBrainz nicht verfügbar - versuche CD-TEXT Fallback"
+            if get_cdtext_metadata; then
+                # CD-TEXT erfolgreich - verwende diese Metadaten
+                cd_artist="${DISC_DATA[artist]}"
+                cd_album="${DISC_DATA[album]}"
+                cd_year="${DISC_DATA[year]}"
+                skip_metadata=false
+            else
                 log_info "$MSG_CONTINUE_WITHOUT_METADATA"
                 skip_metadata=true
-            else
-                # CD-TEXT erfolgreich - verwende diese Metadaten
-                skip_metadata=false
             fi
-        elif [[ $releases_count -eq 1 ]]; then
-            # Genau 1 Release - direkt verwenden (kein User-Input nötig)
-            log_info "1 Release gefunden - verwende Metadaten direkt"
-            cd_artist=$(echo "$mb_response" | jq -r '.releases[0]["artist-credit"][0].name' 2>/dev/null)
-            cd_album=$(echo "$mb_response" | jq -r '.releases[0].title' 2>/dev/null)
-            cd_year=$(echo "$mb_response" | jq -r '.releases[0].date' 2>/dev/null | cut -d- -f1)
+        fi
+    elif [[ "$skip_metadata" == "false" ]]; then
+        # Framework nicht bereit → Fallback zu CD-TEXT
+        log_info "Metadata-Framework nicht bereit - versuche CD-TEXT Fallback"
+        if get_cdtext_metadata; then
+            cd_artist="${DISC_DATA[artist]}"
+            cd_album="${DISC_DATA[album]}"
+            cd_year="${DISC_DATA[year]}"
             skip_metadata=false
         else
-            # Mehrere Releases - warte auf User-Auswahl
-            log_info "$releases_count Releases gefunden - warte auf User-Auswahl..."
-            
-            # Temporäres disc_label für .mbquery Datei
-            local temp_disc_id="${cd_discid:-audio_cd_$(date +%s)}"
-            
-            # Warte auf Auswahl (mit Timeout)
-            if wait_for_metadata_selection "$temp_disc_id" "$mb_response"; then
-                # User hat gewählt - cd_artist, cd_album, cd_year sind gesetzt
-                skip_metadata=false
-            else
-                # Timeout/Skip - verwende generische Namen
-                log_info "Verwende generische Namen - Metadaten können später hinzugefügt werden"
-                skip_metadata=true
-                
-                # Speichere Query-Daten für späteres Remastering
-                SAVED_DISCID="$cd_discid"
-                SAVED_TOC="$toc"
-                SAVED_TRACK_COUNT="$track_count"
-            fi
+            log_info "$MSG_CONTINUE_WITHOUT_METADATA"
+            skip_metadata=true
         fi
     fi
     
