@@ -1,0 +1,49 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Fichier de langue française pour libsettings.sh
+# Filepath: lang/libsettings.fr
+#
+# Description:
+#   Textes de messages pour les fonctions de gestion des paramètres (.conf/.ini/.json)
+#
+################################################################################
+
+# ============================================================================
+# VALIDATION DES PARAMÈTRES
+# ============================================================================
+readonly MSG_SETTINGS_MODULE_MISSING="Nom du module manquant"
+readonly MSG_SETTINGS_KEY_MISSING="Clé manquante"
+readonly MSG_SETTINGS_SECTION_MISSING="Section manquante"
+readonly MSG_SETTINGS_JSON_FILENAME_MISSING="Nom du fichier JSON manquant"
+readonly MSG_SETTINGS_JSON_PATH_MISSING="Chemin JSON manquant"
+readonly MSG_SETTINGS_NO_VALUES_PROVIDED="Aucune valeur fournie"
+readonly MSG_SETTINGS_NO_KEYVALUE_PAIRS="Aucune paire clé=valeur fournie"
+
+# ============================================================================
+# ERREURS DE DÉPENDANCE
+# ============================================================================
+readonly MSG_SETTINGS_CONFIG_FILE_NOT_FOUND="Fichier de configuration introuvable"
+readonly MSG_SETTINGS_MODULE_LIBFOLDERS_UNAVAILABLE="folders_get_conf_dir() non disponible. Chargez libfolders.sh d'abord!"
+readonly MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE="get_module_ini_path() non disponible. Chargez d'abord libfiles.sh!"
+
+# ============================================================================
+# ERREURS DE FICHIER
+# ============================================================================
+readonly MSG_SETTINGS_PATH_RESOLUTION_FAILED="Échec de la résolution du chemin pour le module"
+readonly MSG_SETTINGS_MODULE_INI_NOT_FOUND="INI du module introuvable"
+readonly MSG_SETTINGS_JSON_FILE_NOT_FOUND="Fichier JSON introuvable"
+
+# ============================================================================
+# ERREURS D'OUTILS
+# ============================================================================
+readonly MSG_SETTINGS_JQ_NOT_AVAILABLE="jq non disponible"
+
+# ============================================================================
+# AVERTISSEMENTS
+# ============================================================================
+readonly MSG_SETTINGS_DEFAULT_SAVE_FAILED="Impossible d'enregistrer la valeur par défaut"
+readonly MSG_SETTINGS_INVALID_KEYVALUE_PAIR="Paire clé=valeur non valide ignorée"
+
+# ============================================================================
+# END OF LIBSETTINGS.FR
+# ============================================================================

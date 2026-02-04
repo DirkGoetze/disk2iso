@@ -64,6 +64,11 @@ if [[ "${STRICT:-0}" == "1" ]]; then
     set -euo pipefail  # Beende bei Fehlern, undefined vars, pipe failures
 fi
 
+# Logging: Caller-Info (Datei:Funktion:Zeile) in Log-Meldungen
+# Standard: 0 (Standard-Format wie Apache/nginx/PostgreSQL)
+# Debug:    1 (Zeigt [datei.sh:funktion:zeile] für Fehlersuche)
+LOG_CALLER_INFO="${LOG_CALLER_INFO:-0}"
+
 # ============================================================================
 # MODUL-LOADING (Service-sicher)
 # ============================================================================
@@ -75,7 +80,6 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 # Lade Basis-Module
 source "${SCRIPT_DIR}/conf/disk2iso.conf"
-source "${SCRIPT_DIR}/lib/libsettings.sh"
 
 # Lade Sprachdateien für Hauptskript
 load_module_language "disk2iso"
@@ -87,8 +91,8 @@ load_module_language "disk2iso"
 # erfüllen, sonst kann disk2iso nicht funktionieren. 
 # 
 # Lade-Reihenfolge (dependency-optimiert):
-# 1. libsettings.sh   - Settings-Management (keine Dependencies)
-# 2. liblogging.sh    - Logging (nur Bash-Built-ins)
+# 1. liblogging.sh    - Logging (nur Bash-Built-ins) - MUSS ZUERST!
+# 2. libsettings.sh   - Settings-Management (nutzt liblogging)
 # 3. libfolders.sh    - Ordner-Management (nutzt liblogging)
 # 4. libfiles.sh      - Datei-Management (nutzt libfolders + liblogging)
 # 5. libintegrity.sh  - Integrity-Checks (nutzt libsettings, liblogging, libfolders)
@@ -99,15 +103,15 @@ load_module_language "disk2iso"
 # 9. libdiskinfos.sh  - Disk-Informationen (nutzt liblogging, libfolders)
 # 10. libcommon.sh    - Gemeinsame Funktionen (nutzt liblogging, libfolders)
 
-source "${SCRIPT_DIR}/lib/libsettings.sh"
-if ! config_check_dependencies; then
-    echo "FEHLER: Config-Modul Abhängigkeiten nicht erfüllt" >&2
-    exit 1
-fi
-
 source "${SCRIPT_DIR}/lib/liblogging.sh"
 if ! logging_check_dependencies; then
     echo "FEHLER: Logging-Modul Abhängigkeiten nicht erfüllt" >&2
+    exit 1
+fi
+
+source "${SCRIPT_DIR}/lib/libsettings.sh"
+if ! settings_check_dependencies; then
+    log_error "Config-Modul Abhängigkeiten nicht erfüllt"
     exit 1
 fi
 

@@ -1,0 +1,49 @@
+#!/bin/bash
+################################################################################
+# disk2iso - English Language File for libsettings.sh
+# Filepath: lang/libsettings.en
+#
+# Description:
+#   Message texts for settings management functions (.conf/.ini/.json)
+#
+################################################################################
+
+# ============================================================================
+# PARAMETER VALIDATION
+# ============================================================================
+readonly MSG_SETTINGS_MODULE_MISSING="Module name missing"
+readonly MSG_SETTINGS_KEY_MISSING="Key missing"
+readonly MSG_SETTINGS_SECTION_MISSING="Section missing"
+readonly MSG_SETTINGS_JSON_FILENAME_MISSING="JSON filename missing"
+readonly MSG_SETTINGS_JSON_PATH_MISSING="JSON path missing"
+readonly MSG_SETTINGS_NO_VALUES_PROVIDED="No values provided"
+readonly MSG_SETTINGS_NO_KEYVALUE_PAIRS="No key=value pairs provided"
+
+# ============================================================================
+# DEPENDENCY ERRORS
+# ============================================================================
+readonly MSG_SETTINGS_CONFIG_FILE_NOT_FOUND="Config file not found"
+readonly MSG_SETTINGS_MODULE_LIBFOLDERS_UNAVAILABLE="folders_get_conf_dir() not available. Load libfolders.sh first!"
+readonly MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE="get_module_ini_path() not available. Load libfiles.sh first!"
+
+# ============================================================================
+# FILE ERRORS
+# ============================================================================
+readonly MSG_SETTINGS_PATH_RESOLUTION_FAILED="Path resolution failed for module"
+readonly MSG_SETTINGS_MODULE_INI_NOT_FOUND="Module INI not found"
+readonly MSG_SETTINGS_JSON_FILE_NOT_FOUND="JSON file not found"
+
+# ============================================================================
+# TOOL ERRORS
+# ============================================================================
+readonly MSG_SETTINGS_JQ_NOT_AVAILABLE="jq not available"
+
+# ============================================================================
+# WARNINGS
+# ============================================================================
+readonly MSG_SETTINGS_DEFAULT_SAVE_FAILED="Default could not be saved"
+readonly MSG_SETTINGS_INVALID_KEYVALUE_PAIR="Invalid key=value pair skipped"
+
+# ============================================================================
+# END OF LIBSETTINGS.EN
+# ============================================================================

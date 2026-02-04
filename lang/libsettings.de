@@ -1,0 +1,49 @@
+#!/bin/bash
+################################################################################
+# disk2iso - Deutsche Sprachdatei für libsettings.sh
+# Filepath: lang/libsettings.de
+#
+# Beschreibung:
+#   Meldungstexte für Settings-Management Funktionen (.conf/.ini/.json)
+#
+################################################################################
+
+# ============================================================================
+# PARAMETER-VALIDIERUNG
+# ============================================================================
+readonly MSG_SETTINGS_MODULE_MISSING="Modul-Name fehlt"
+readonly MSG_SETTINGS_KEY_MISSING="Key fehlt"
+readonly MSG_SETTINGS_SECTION_MISSING="Section fehlt"
+readonly MSG_SETTINGS_JSON_FILENAME_MISSING="JSON-Dateiname fehlt"
+readonly MSG_SETTINGS_JSON_PATH_MISSING="JSON-Pfad fehlt"
+readonly MSG_SETTINGS_NO_VALUES_PROVIDED="Keine Werte angegeben"
+readonly MSG_SETTINGS_NO_KEYVALUE_PAIRS="Keine Key=Value Paare angegeben"
+
+# ============================================================================
+# DEPENDENCY-FEHLER
+# ============================================================================
+readonly MSG_SETTINGS_CONFIG_FILE_NOT_FOUND="Konfigurationsdatei nicht gefunden"
+readonly MSG_SETTINGS_MODULE_LIBFOLDERS_UNAVAILABLE="folders_get_conf_dir() nicht verfügbar. Laden Sie libfolders.sh zuerst!"
+readonly MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE="get_module_ini_path() nicht verfügbar. Laden Sie libfiles.sh zuerst!"
+
+# ============================================================================
+# DATEI-FEHLER
+# ============================================================================
+readonly MSG_SETTINGS_PATH_RESOLUTION_FAILED="Pfad-Auflösung fehlgeschlagen für Modul"
+readonly MSG_SETTINGS_MODULE_INI_NOT_FOUND="Modul-INI nicht gefunden"
+readonly MSG_SETTINGS_JSON_FILE_NOT_FOUND="JSON-Datei nicht gefunden"
+
+# ============================================================================
+# TOOL-FEHLER
+# ============================================================================
+readonly MSG_SETTINGS_JQ_NOT_AVAILABLE="jq nicht verfügbar"
+
+# ============================================================================
+# WARNUNGEN
+# ============================================================================
+readonly MSG_SETTINGS_DEFAULT_SAVE_FAILED="Default konnte nicht gespeichert werden"
+readonly MSG_SETTINGS_INVALID_KEYVALUE_PAIR="Ungültiges Key=Value Paar übersprungen"
+
+# ============================================================================
+# END OF LIBSETTINGS.DE
+# ============================================================================

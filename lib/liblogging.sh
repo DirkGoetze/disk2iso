@@ -129,30 +129,71 @@ fi
 # Parameter: $1 = Nachricht zum Loggen
 # Ausgabe: Konsole (kein File-Logging für Service-Messages)
 log_message() {
-    local message="$(date '+%Y-%m-%d %H:%M:%S') - $1"
-    echo "$message"
+    local message="$1"
+    local timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+    
+    # Optional: Caller-Info (Datei:Funktion:Zeile)
+    if [[ "${LOG_CALLER_INFO:-0}" == "1" ]]; then
+        local caller_file="${BASH_SOURCE[2]##*/}"
+        local caller_func="${FUNCNAME[2]}"
+        local caller_line="${BASH_LINENO[1]}"
+        echo "$timestamp [$caller_file:$caller_func:$caller_line] - $message"
+    else
+        echo "$timestamp - $message"
+    fi
 }
 
 # Funktion für Info-Logging (alias für log_message)
 # Parameter: $1 = Info-Nachricht
 log_info() {
-    log_message "ℹ️  $1"
+    local message="- INFO: $1"
+    local timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+    
+    # Optional: Caller-Info
+    if [[ "${LOG_CALLER_INFO:-0}" == "1" ]]; then
+        local caller_file="${BASH_SOURCE[2]##*/}"
+        local caller_func="${FUNCNAME[2]}"
+        local caller_line="${BASH_LINENO[1]}"
+        echo "$timestamp [$caller_file:$caller_func:$caller_line] $message"
+    else
+        echo "$timestamp $message"
+    fi
 }
 
 # Funktion für Warning-Logging
 # Parameter: $1 = Warning-Nachricht
 # Ausgabe: Konsole + stderr
 log_warning() {
-    local message="$(date '+%Y-%m-%d %H:%M:%S') - ⚠️  WARNING: $1"
-    echo "$message" >&2
+    local message="- WARNING: $1"
+    local timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+    
+    # Optional: Caller-Info
+    if [[ "${LOG_CALLER_INFO:-0}" == "1" ]]; then
+        local caller_file="${BASH_SOURCE[2]##*/}"
+        local caller_func="${FUNCNAME[2]}"
+        local caller_line="${BASH_LINENO[1]}"
+        echo "$timestamp [$caller_file:$caller_func:$caller_line] $message" >&2
+    else
+        echo "$timestamp $message" >&2
+    fi
 }
 
 # Funktion für Error-Logging
 # Parameter: $1 = Error-Nachricht
 # Ausgabe: Konsole + stderr
 log_error() {
-    local message="$(date '+%Y-%m-%d %H:%M:%S') - ❌ ERROR: $1"
-    echo "$message" >&2
+    local message="- ERROR: $1"
+    local timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+    
+    # Optional: Caller-Info
+    if [[ "${LOG_CALLER_INFO:-0}" == "1" ]]; then
+        local caller_file="${BASH_SOURCE[2]##*/}"
+        local caller_func="${FUNCNAME[2]}"
+        local caller_line="${BASH_LINENO[1]}"
+        echo "$timestamp [$caller_file:$caller_func:$caller_line] $message" >&2
+    else
+        echo "$timestamp $message" >&2
+    fi
 }
 
 # Funktion für Debug-Logging
@@ -160,8 +201,14 @@ log_error() {
 # Ausgabe: Nur wenn DEBUG=1 gesetzt ist
 log_debug() {
     if [[ "${DEBUG:-0}" == "1" ]]; then
-        local message="$(date '+%Y-%m-%d %H:%M:%S') - 🐛 DEBUG: $1"
-        echo "$message" >&2
+        local message="- DEBUG: $1"
+        local timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+        
+        # Debug-Modus zeigt IMMER Caller-Info (überschreibt LOG_CALLER_INFO)
+        local caller_file="${BASH_SOURCE[2]##*/}"
+        local caller_func="${FUNCNAME[2]}"
+        local caller_line="${BASH_LINENO[1]}"
+        echo "$timestamp [$caller_file:$caller_func:$caller_line] $message" >&2
     fi
 }
 

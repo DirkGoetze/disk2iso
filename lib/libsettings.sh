@@ -25,7 +25,7 @@
 # =============================================================================
 
 # ===========================================================================
-# config_check_dependencies
+# settings_check_dependencies
 # ---------------------------------------------------------------------------
 # Funktion.: Prüfe alle Framework Abhängigkeiten (Modul-Dateien, die Modul
 # .........  Ausgabe Ordner, kritische und optionale Software für die
@@ -39,54 +39,57 @@
 # .........  besten direkt im Hauptskript (disk2iso) nach dem
 # .........  Laden der libcommon.sh.
 # ===========================================================================
-config_check_dependencies() {
-    # Prüfe kritische Abhängigkeit: Existenz der Config-Datei
-    config_validate_file || return 1
+settings_check_dependencies() {
+    # Lade Sprachdatei für dieses Modul (libsettings)
+    load_module_language "settings"
     
-    # Config-Modul nutzt POSIX-Standard-Tools (awk, sed, grep)
+    # Prüfe kritische Abhängigkeit: Existenz der Settings-Datei
+    settings_validate_file || return 1
+    
+    # Settings-Modul nutzt POSIX-Standard-Tools (awk, sed, grep)
     # Diese sind auf jedem Linux-System verfügbar
     return 0
 }
 
 # ===========================================================================
-# CONFIG GETTER/SETTER FUNCTIONS 'disk2iso.conf'
+# SETTINGS GETTER/SETTER FUNCTIONS 'disk2iso.conf'
 # ===========================================================================
 # Diese Funktionen lesen und schreiben Konfigurationswerte in der
 # Datei disk2iso.conf im conf/ Verzeichnis.
 # ---------------------------------------------------------------------------
 # Globale Flags für Lazy Initialization -------------------------------------
-_CONFIG_FILE_VALIDATED=false                 # Config-Datei wurde geprüft
-_CONFIG_DEPENDENCIES_VALIDATED=false         # Dependencies geprüft (get_module_ini_path verfügbar)
-_CONFIG_SAVE_DEFAULT_CONF=false              # Flag für rekursiven Default-Write (verhindert Endlosschleife)
-_CONFIG_SAVE_DEFAULT_INI=false               # Flag für rekursiven Default-Write (verhindert Endlosschleife)
+_SETTINGS_FILE_VALIDATED=false                 # Settings-Datei wurde geprüft
+_SETTINGS_DEPENDENCIES_VALIDATED=false         # Dependencies geprüft (get_module_ini_path verfügbar)
+_SETTINGS_SAVE_DEFAULT_CONF=false              # Flag für rekursiven Default-Write (verhindert Endlosschleife)
+_SETTINGS_SAVE_DEFAULT_INI=false               # Flag für rekursiven Default-Write (verhindert Endlosschleife)
 
 # ===========================================================================
-# config_validate_file
+# settings_validate_file
 # ---------------------------------------------------------------------------
 # Funktion.: Prüft einmalig ob die disk2iso Konfigurationsdatei existiert
 # Parameter: keine
 # Rückgabe.: 0 = Datei existiert
 # .........  1 = Datei fehlt (kritischer Fehler)
 # Hinweis..: Nutzt Lazy Initialization - wird nur einmal pro Session geprüft
-# .........  Wird automatisch von config_check_dependencies() aufgerufen
+# .........  Wird automatisch von settings_check_dependencies() aufgerufen
 # ===========================================================================
-config_validate_file() {
-    #-- Setze Pfad zur Config-Datei --------------------------------------
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+settings_validate_file() {
+    #-- Setze Pfad zur Settings-Datei --------------------------------------
+    local settings_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
 
     #-- Lazy Initialization: Nur einmal pro Session prüfen ------------------
-    if [[ "$_CONFIG_FILE_VALIDATED" == false ]]; then
-        if [[ ! -f "$config_file" ]]; then
-            echo "FEHLER: Konfigurationsdatei nicht gefunden: $config_file" >&2
+    if [[ "$_SETTINGS_FILE_VALIDATED" == false ]]; then
+        if [[ ! -f "$settings_file" ]]; then
+            log_error "$MSG_SETTINGS_CONFIG_FILE_NOT_FOUND: $settings_file"
             return 1
         fi
-        _CONFIG_FILE_VALIDATED=true
+        _SETTINGS_FILE_VALIDATED=true
     fi
     return 0
 }
 
 # ===========================================================================
-# config_validate_dependencies
+# settings_validate_dependencies
 # ---------------------------------------------------------------------------
 # Funktion.: Prüft einmalig ob alle Module für die Pfad und Dateinamen 
 # .........  Ermittlung verfügbar sind
@@ -97,48 +100,48 @@ config_validate_file() {
 # .........  Prüft: folders_get_conf_dir() aus libfolders.sh
 # .........         get_module_ini_path() aus libfiles.sh
 # ===========================================================================
-config_validate_dependencies() {
+settings_validate_dependencies() {
     #-- Bereits validiert? --------------------------------------------------
-    [[ "$_CONFIG_DEPENDENCIES_VALIDATED" == "true" ]] && return 0
+    [[ "$_SETTINGS_DEPENDENCIES_VALIDATED" == "true" ]] && return 0
     
     #-- Prüfe ob folders_get_conf_dir() verfügbar ist (aus libfolders.sh) ---
     if ! type -t folders_get_conf_dir &>/dev/null; then
-        echo "ERROR: folders_get_conf_dir() not available. Load libfolders.sh first!" >&2
+        log_error "$MSG_SETTINGS_MODULE_LIBFOLDERS_UNAVAILABLE"
         return 1
     fi
 
     #-- Prüfe ob get_module_ini_path() verfügbar ist (aus libfiles.sh) ------
     if ! type -t get_module_ini_path &>/dev/null; then
-        echo "ERROR: get_module_ini_path() not available. Load libfiles.sh first!" >&2
+        log_error "$MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE"
         return 1
     fi
     
     #-- Dependencies OK -----------------------------------------------------
-    _CONFIG_DEPENDENCIES_VALIDATED=true
+    _SETTINGS_DEPENDENCIES_VALIDATED=true
     return 0
 }
 
 # ===========================================================================
-# config_get_output_dir
+# settings_get_output_dir
 # ---------------------------------------------------------------------------
 # Funktion.: Lese OUTPUT_DIR aus disk2iso.conf oder verwende Fallback
 # Parameter: keine
 # Rückgabe.: OUTPUT_DIR Pfad (stdout, ohne trailing slash)
 # .........  Return-Code: 0 = Erfolg, 1 = Fehler
-# Beispiel.: output_dir=$(config_get_output_dir)
+# Beispiel.: output_dir=$(settings_get_output_dir)
 # Hinweis..: - Besondere Bedeutung dieser Funktion, da OUTPUT_DIR essentiell
 # .........  - für die Funktionsweise von disk2iso ist. Daher hier separat
 # .........  - implementiert, um Abhängigkeiten zu minimieren.
 # .........  - Liest DEFAULT_OUTPUT_DIR oder OUTPUT_DIR aus Konfiguration
 # .........  - Entfernt trailing slash für konsistente Rückgabe
 # ===========================================================================
-config_get_output_dir() {
+settings_get_output_dir() {
     local output_dir=""
     
-    #-- Stelle sicher dass Config-Datei validiert wurde --------------------
-    config_validate_file || return 1
+    #-- Stelle sicher dass Settings-Datei validiert wurde --------------------
+    settings_validate_file || return 1
     
-    #-- Lese OUTPUT_DIR aus Config -----------------------------------------
+    #-- Lese OUTPUT_DIR aus Settings -----------------------------------------
     # Lese DEFAULT_OUTPUT_DIR falls vorhanden
     output_dir=$(/usr/bin/grep -E '^DEFAULT_OUTPUT_DIR=' "$CONFIG_FILE" 2>/dev/null | /usr/bin/sed 's/^DEFAULT_OUTPUT_DIR=//;s/^"\(.*\)"$/\1/')
     
@@ -159,7 +162,7 @@ config_get_output_dir() {
 }
 
 # ============================================================================
-# UNIFIED CONFIG API - SINGLE VALUE OPERATIONS (.conf FORMAT)
+# UNIFIED SETTINGS API - SINGLE VALUE OPERATIONS (.conf FORMAT)
 # ============================================================================
 # Format: .conf = Simple Key=Value (kein Section-Header)
 # Beispiel: disk2iso.conf
@@ -168,7 +171,7 @@ config_get_output_dir() {
 #   MQTT_ENABLED=true
 
 # ===========================================================================
-# config_get_value_conf
+# settings_get_value_conf
 # ---------------------------------------------------------------------------
 # Funktion.: Lese einzelnen Wert aus .conf Datei
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "disk2iso")
@@ -176,9 +179,9 @@ config_get_output_dir() {
 #            $3 = default (optional, Fallback wenn Key nicht gefunden)
 # Rückgabe.: 0 = Erfolg (Wert oder Default), 1 = Fehler (Key fehlt, kein Default)
 # Ausgabe..: Value (stdout), Quotes werden automatisch entfernt
-# Beispiel.: output_dir=$(config_get_value_conf "disk2iso" "OUTPUT_DIR" "/opt/disk2iso/output")
+# Beispiel.: output_dir=$(settings_get_value_conf "disk2iso" "OUTPUT_DIR" "/opt/disk2iso/output")
 # ===========================================================================
-config_get_value_conf() {
+settings_get_value_conf() {
     #-- Parameter einlesen --------------------------------------------------
     local module="$1"
     local key="$2"
@@ -186,19 +189,19 @@ config_get_value_conf() {
     
     #-- Parameter-Validierung -----------------------------------------------
     if [[ -z "$module" ]]; then
-        log_error "config_get_value_conf: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        log_error "$MSG_SETTINGS_MODULE_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$key" ]]; then
-        log_error "config_get_value_conf: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        log_error "$MSG_SETTINGS_KEY_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_KEY_MISSING" >&2
         return 1
     fi
     
     #-- Pfad-Resolution über zentrale Funktion ------------------------------
     local filepath
     filepath=$(get_module_conf_path "$module") || {
-        log_error "config_get_value_conf: Path resolution failed for module: $module" 2>/dev/null || echo "ERROR: Path resolution failed" >&2
+        log_error "$MSG_SETTINGS_PATH_RESOLUTION_FAILED: $module" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_PATH_RESOLUTION_FAILED" >&2
         return 1
     }
     
@@ -214,20 +217,20 @@ config_get_value_conf() {
         echo "$value"
         return 0
     elif [[ -n "$default" ]]; then
-        # Self-Healing: Default-Wert in Config schreiben (falls nicht in Schleife)
-        if [[ "$_CONFIG_SAVE_DEFAULT_CONF" == false ]]; then
-            _CONFIG_SAVE_DEFAULT_CONF=true
+        # Self-Healing: Default-Wert in Settings schreiben (falls nicht in Schleife)
+        if [[ "$_SETTINGS_SAVE_DEFAULT_CONF" == false ]]; then
+            _SETTINGS_SAVE_DEFAULT_CONF=true
             
-            # Schreibe Default in Config-Datei
-            if config_set_value_conf "$module" "$key" "$default" 2>/dev/null; then
+            # Schreibe Default in Settings-Datei
+            if settings_set_value_conf "$module" "$key" "$default" 2>/dev/null; then
                 # Lese Wert erneut zur Bestätigung (rekursiver Aufruf)
-                _CONFIG_SAVE_DEFAULT_CONF=false
-                config_get_value_conf "$module" "$key" "$default"
+                _SETTINGS_SAVE_DEFAULT_CONF=false
+                settings_get_value_conf "$module" "$key" "$default"
                 return $?
             else
                 # Schreibfehler - gebe Default trotzdem zurück
-                _CONFIG_SAVE_DEFAULT_CONF=false
-                log_warning "config_get_value_conf: Default konnte nicht gespeichert werden: ${module}.${key}=${default}" 2>/dev/null
+                _SETTINGS_SAVE_DEFAULT_CONF=false
+                log_warning "$MSG_SETTINGS_DEFAULT_SAVE_FAILED: ${module}.${key}=${default}" 2>/dev/null
                 echo "$default"
                 return 0
             fi
@@ -242,7 +245,7 @@ config_get_value_conf() {
 }
 
 # ===========================================================================
-# config_set_value_conf
+# settings_set_value_conf
 # ---------------------------------------------------------------------------
 # Funktion.: Schreibe einzelnen Wert in .conf Datei (atomic write)
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "disk2iso")
@@ -253,31 +256,31 @@ config_get_value_conf() {
 #   - Pure Integer (^-?[0-9]+$) → Ohne Quotes
 #   - Boolean (true|false|0|1|yes|no) → Normalisiert zu true/false, ohne Quotes
 #   - String → Mit Quotes, escaped
-# Beispiel.: config_set_value_conf "disk2iso" "MQTT_PORT" "1883"
+# Beispiel.: settings_set_value_conf "disk2iso" "MQTT_PORT" "1883"
 #            → MQTT_PORT=1883
-#            config_set_value_conf "disk2iso" "MQTT_BROKER" "192.168.1.1"
+#            settings_set_value_conf "disk2iso" "MQTT_BROKER" "192.168.1.1"
 #            → MQTT_BROKER="192.168.1.1"
 # ===========================================================================
-config_set_value_conf() {
+settings_set_value_conf() {
     local module="$1"
     local key="$2"
     local value="$3"
     
     # Validierung
     if [[ -z "$module" ]]; then
-        log_error "config_set_value_conf: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        log_error "$MSG_SETTINGS_MODULE_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$key" ]]; then
-        log_error "config_set_value_conf: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        log_error "$MSG_SETTINGS_KEY_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_KEY_MISSING" >&2
         return 1
     fi
     
     # Pfad-Resolution über zentrale Funktion
     local filepath
     filepath=$(get_module_conf_path "$module") || {
-        log_error "config_set_value_conf: Path resolution failed for module: $module" 2>/dev/null || echo "ERROR: Path resolution failed" >&2
+        log_error "$MSG_SETTINGS_PATH_RESOLUTION_FAILED: $module" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_PATH_RESOLUTION_FAILED" >&2
         return 1
     }
     
@@ -308,33 +311,33 @@ config_set_value_conf() {
 }
 
 # ===========================================================================
-# config_del_value_conf
+# settings_del_value_conf
 # ---------------------------------------------------------------------------
 # Funktion.: Lösche einzelnen Wert aus .conf Datei
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "disk2iso")
 #            $2 = key
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: config_del_value_conf "disk2iso" "OLD_KEY"
+# Beispiel.: settings_del_value_conf "disk2iso" "OLD_KEY"
 # ===========================================================================
-config_del_value_conf() {
+settings_del_value_conf() {
     local module="$1"
     local key="$2"
     
     # Validierung
     if [[ -z "$module" ]]; then
-        log_error "config_del_value_conf: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        log_error "$MSG_SETTINGS_MODULE_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$key" ]]; then
-        log_error "config_del_value_conf: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        log_error "$MSG_SETTINGS_KEY_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_KEY_MISSING" >&2
         return 1
     fi
     
     # Pfad-Resolution über zentrale Funktion
     local filepath
     filepath=$(get_module_conf_path "$module") || {
-        log_error "config_del_value_conf: Path resolution failed for module: $module" 2>/dev/null || echo "ERROR: Path resolution failed" >&2
+        log_error "$MSG_SETTINGS_PATH_RESOLUTION_FAILED: $module" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_PATH_RESOLUTION_FAILED" >&2
         return 1
     }
     
@@ -344,7 +347,7 @@ config_del_value_conf() {
 }
 
 # ============================================================================
-# UNIFIED CONFIG API - SINGLE VALUE OPERATIONS (.ini FORMAT)
+# UNIFIED SETTINGS API - SINGLE VALUE OPERATIONS (.ini FORMAT)
 # ============================================================================
 # Format: .ini = Sectioned Key=Value
 # Beispiel: libaudio.ini
@@ -354,7 +357,7 @@ config_del_value_conf() {
 #   version=1.2.0
 
 # ===========================================================================
-# config_get_value_ini
+# settings_get_value_ini
 # ---------------------------------------------------------------------------
 # Funktion.: Lese einzelnen Wert aus .ini Datei (KERN-IMPLEMENTIERUNG)
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
@@ -363,9 +366,9 @@ config_del_value_conf() {
 #            $4 = default (optional, Fallback wenn Key nicht gefunden)
 # Rückgabe.: 0 = Erfolg (Wert oder Default), 1 = Fehler (Key fehlt, kein Default)
 # Ausgabe..: Value (stdout)
-# Beispiel.: tools=$(config_get_value_ini "audio" "dependencies" "optional" "")
+# Beispiel.: tools=$(settings_get_value_ini "audio" "dependencies" "optional" "")
 # ===========================================================================
-config_get_value_ini() {
+settings_get_value_ini() {
     #-- Parameter einlesen --------------------------------------------------
     local module="$1"
     local section="$2"
@@ -374,7 +377,7 @@ config_get_value_ini() {
     
     #-- Validiere Dependencies ----------------------------------------------
     if ! type -t get_module_ini_path &>/dev/null; then
-        log_error "config_get_value_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        log_error "$MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" >&2
         return 1
     fi
     
@@ -384,23 +387,23 @@ config_get_value_ini() {
             echo "$default"
             return 0
         fi
-        log_error "config_get_value_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        log_error "$MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" >&2
         return 1
     }
     
     #-- Validierung der Parameter -------------------------------------------
     if [[ -z "$module" ]]; then
-        log_error "config_get_value_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        log_error "$MSG_SETTINGS_MODULE_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$section" ]]; then
-        log_error "config_get_value_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        log_error "$MSG_SETTINGS_SECTION_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_SECTION_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$key" ]]; then
-        log_error "config_get_value_ini: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        log_error "$MSG_SETTINGS_KEY_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_KEY_MISSING" >&2
         return 1
     fi
     
@@ -428,19 +431,19 @@ config_get_value_ini() {
         return 0
     elif [[ -n "$default" ]]; then
         # Self-Healing: Default-Wert in INI-Datei schreiben (falls nicht in Schleife)
-        if [[ "$_CONFIG_SAVE_DEFAULT_INI" == false ]]; then
-            _CONFIG_SAVE_DEFAULT_INI=true
+        if [[ "$_SETTINGS_SAVE_DEFAULT_INI" == false ]]; then
+            _SETTINGS_SAVE_DEFAULT_INI=true
             
             # Schreibe Default in INI-Datei
-            if config_set_value_ini "$module" "$section" "$key" "$default" 2>/dev/null; then
+            if settings_set_value_ini "$module" "$section" "$key" "$default" 2>/dev/null; then
                 # Lese Wert erneut zur Bestätigung (rekursiver Aufruf)
-                _CONFIG_SAVE_DEFAULT_INI=false
-                config_get_value_ini "$module" "$section" "$key" "$default"
+                _SETTINGS_SAVE_DEFAULT_INI=false
+                settings_get_value_ini "$module" "$section" "$key" "$default"
                 return $?
             else
                 # Schreibfehler - gebe Default trotzdem zurück
-                _CONFIG_SAVE_DEFAULT_INI=false
-                log_warning "config_get_value_ini: Default konnte nicht gespeichert werden: ${module}.[${section}].${key}=${default}" 2>/dev/null
+                _SETTINGS_SAVE_DEFAULT_INI=false
+                log_warning "$MSG_SETTINGS_DEFAULT_SAVE_FAILED: ${module}.[${section}].${key}=${default}" 2>/dev/null
                 echo "$default"
                 return 0
             fi
@@ -455,7 +458,7 @@ config_get_value_ini() {
 }
 
 # ===========================================================================
-# config_set_value_ini
+# settings_set_value_ini
 # ---------------------------------------------------------------------------
 # Funktion.: Schreibe/Aktualisiere einzelnen Wert in .ini Datei (KERN-IMPLEMENTIERUNG)
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
@@ -464,9 +467,9 @@ config_get_value_ini() {
 #            $4 = value
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
 # Hinweis..: INI-Format speichert immer als String, keine Type-Detection
-# Beispiel.: config_set_value_ini "audio" "dependencies" "optional" "cdparanoia,lame"
+# Beispiel.: settings_set_value_ini "audio" "dependencies" "optional" "cdparanoia,lame"
 # ===========================================================================
-config_set_value_ini() {
+settings_set_value_ini() {
     local module="$1"
     local section="$2"
     local key="$3"
@@ -474,30 +477,30 @@ config_set_value_ini() {
     
     # Validiere Dependencies (Lazy Initialization)
     if ! type -t get_module_ini_path &>/dev/null; then
-        log_error "config_set_value_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        log_error "$MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" >&2
         return 1
     fi
     
     # Hole Pfad zur INI-Datei via get_module_ini_path()
     local filepath
     filepath=$(get_module_ini_path "$module") || {
-        log_error "config_set_value_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        log_error "$MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" >&2
         return 1
     }
     
     # Validierung
     if [[ -z "$module" ]]; then
-        log_error "config_set_value_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        log_error "$MSG_SETTINGS_MODULE_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$section" ]]; then
-        log_error "config_set_value_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        log_error "$MSG_SETTINGS_SECTION_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_SECTION_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$key" ]]; then
-        log_error "config_set_value_ini: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        log_error "$MSG_SETTINGS_KEY_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_KEY_MISSING" >&2
         return 1
     fi
     
@@ -546,46 +549,46 @@ config_set_value_ini() {
 }
 
 # ===========================================================================
-# config_del_value_ini
+# settings_del_value_ini
 # ---------------------------------------------------------------------------
 # Funktion.: Lösche einzelnen Key aus .ini Datei (KERN-IMPLEMENTIERUNG)
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
 #            $2 = section
 #            $3 = key
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: config_del_value_ini "audio" "dependencies" "old_key"
+# Beispiel.: settings_del_value_ini "audio" "dependencies" "old_key"
 # ===========================================================================
-config_del_value_ini() {
+settings_del_value_ini() {
     local module="$1"
     local section="$2"
     local key="$3"
     
     # Validiere Dependencies (Lazy Initialization)
     if ! type -t get_module_ini_path &>/dev/null; then
-        log_error "config_del_value_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        log_error "$MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" >&2
         return 1
     fi
     
     # Hole Pfad zur INI-Datei via get_module_ini_path()
     local filepath
     filepath=$(get_module_ini_path "$module") || {
-        log_error "config_del_value_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        log_error "$MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" >&2
         return 1
     }
     
     # Validierung
     if [[ -z "$module" ]]; then
-        log_error "config_del_value_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        log_error "$MSG_SETTINGS_MODULE_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$section" ]]; then
-        log_error "config_del_value_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        log_error "$MSG_SETTINGS_SECTION_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_SECTION_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$key" ]]; then
-        log_error "config_del_value_ini: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        log_error "$MSG_SETTINGS_KEY_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_KEY_MISSING" >&2
         return 1
     fi
     
@@ -602,13 +605,13 @@ config_del_value_ini() {
 }
 
 # ============================================================================
-# UNIFIED CONFIG API - ARRAY OPERATIONS (.ini FORMAT)
+# UNIFIED SETTINGS API - ARRAY OPERATIONS (.ini FORMAT)
 # ============================================================================
 # Arrays werden als komma-separierte Werte gespeichert
 # Beispiel: tools=cdparanoia,lame,genisoimage
 
 # ===========================================================================
-# config_get_array_ini
+# settings_get_array_ini
 # ---------------------------------------------------------------------------
 # Funktion.: Lese komma-separierte Liste aus .ini Datei als Bash-Array
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
@@ -617,11 +620,11 @@ config_del_value_ini() {
 #            $4 = default (optional, komma-separiert wenn Key nicht gefunden)
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
 # Ausgabe..: Array-Elemente (eine Zeile pro Element)
-# Beispiel.: mapfile -t tools < <(config_get_array_ini "audio" "dependencies" "optional")
+# Beispiel.: mapfile -t tools < <(settings_get_array_ini "audio" "dependencies" "optional")
 #            → tools=("cdparanoia" "lame" "genisoimage")
-# Hinweis..: Nutzt config_get_value_ini() intern
+# Hinweis..: Nutzt settings_get_value_ini() intern
 # ===========================================================================
-config_get_array_ini() {
+settings_get_array_ini() {
     local module="$1"
     local section="$2"
     local key="$3"
@@ -629,7 +632,7 @@ config_get_array_ini() {
     
     # Lese komma-separierte Liste
     local value
-    value=$(config_get_value_ini "$module" "$section" "$key" "$default") || return 1
+    value=$(settings_get_value_ini "$module" "$section" "$key" "$default") || return 1
     
     if [[ -z "$value" ]]; then
         return 1
@@ -641,7 +644,7 @@ config_get_array_ini() {
 }
 
 # ===========================================================================
-# config_set_array_ini
+# settings_set_array_ini
 # ---------------------------------------------------------------------------
 # Funktion.: Schreibe Bash-Array als komma-separierte Liste in .ini Datei
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
@@ -649,15 +652,15 @@ config_get_array_ini() {
 #            $3 = key
 #            $4+ = values (alle weiteren Parameter werden als Array-Elemente behandelt)
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: config_set_array_ini "audio" "dependencies" "optional" "cdparanoia" "lame" "genisoimage"
+# Beispiel.: settings_set_array_ini "audio" "dependencies" "optional" "cdparanoia" "lame" "genisoimage"
 #            → optional=cdparanoia,lame,genisoimage
 #            
 #            # Mit Array-Expansion:
 #            tools=("cdparanoia" "lame" "genisoimage")
-#            config_set_array_ini "audio" "dependencies" "optional" "${tools[@]}"
-# Hinweis..: Nutzt config_set_value_ini() intern
+#            settings_set_array_ini "audio" "dependencies" "optional" "${tools[@]}"
+# Hinweis..: Nutzt settings_set_value_ini() intern
 # ===========================================================================
-config_set_array_ini() {
+settings_set_array_ini() {
     local module="$1"
     local section="$2"
     local key="$3"
@@ -665,7 +668,7 @@ config_set_array_ini() {
     
     # Validierung
     if [[ $# -eq 0 ]]; then
-        log_error "config_set_array_ini: No values provided" 2>/dev/null || echo "ERROR: No values provided" >&2
+        log_error "$MSG_SETTINGS_NO_VALUES_PROVIDED" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_NO_VALUES_PROVIDED" >&2
         return 1
     fi
     
@@ -682,71 +685,71 @@ config_set_array_ini() {
     done
     
     # Schreibe als einfachen Wert
-    config_set_value_ini "$module" "$section" "$key" "$value"
+    settings_set_value_ini "$module" "$section" "$key" "$value"
 }
 
 # ===========================================================================
-# config_del_array_ini
+# settings_del_array_ini
 # ---------------------------------------------------------------------------
 # Funktion.: Lösche Array-Key aus .ini Datei (Wrapper)
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
 #            $2 = section
 #            $3 = key
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: config_del_array_ini "audio" "dependencies" "optional"
-# Hinweis..: Wrapper um config_del_value_ini() - Arrays werden wie Werte gelöscht
+# Beispiel.: settings_del_array_ini "audio" "dependencies" "optional"
+# Hinweis..: Wrapper um settings_del_value_ini() - Arrays werden wie Werte gelöscht
 # ===========================================================================
-config_del_array_ini() {
+settings_del_array_ini() {
     local module="$1"
     local section="$2"
     local key="$3"
     
-    config_del_value_ini "$module" "$section" "$key"
+    settings_del_value_ini "$module" "$section" "$key"
 }
 
 # ============================================================================
-# UNIFIED CONFIG API - SECTION OPERATIONS (.ini FORMAT)
+# UNIFIED SETTINGS API - SECTION OPERATIONS (.ini FORMAT)
 # ============================================================================
 # Operationen auf ganzen INI-Sektionen
 
 # ===========================================================================
-# config_get_section_ini
+# settings_get_section_ini
 # ---------------------------------------------------------------------------
 # Funktion.: Lese alle Key=Value Paare einer INI-Sektion
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
 #            $2 = section (z.B. "metadata")
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
 # Ausgabe..: Key=Value Paare (eine Zeile pro Entry)
-# Beispiel.: config_get_section_ini "audio" "metadata"
+# Beispiel.: settings_get_section_ini "audio" "metadata"
 #            → "name=Audio Ripper"
 #            → "version=1.2.0"
 # Hinweis..: Ignoriert Kommentare und Leerzeilen
 # ===========================================================================
-config_get_section_ini() {
+settings_get_section_ini() {
     local module="$1"
     local section="$2"
     
     # Validierung
     if [[ -z "$module" ]]; then
-        log_error "config_get_section_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        log_error "$MSG_SETTINGS_MODULE_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$section" ]]; then
-        log_error "config_get_section_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        log_error "$MSG_SETTINGS_SECTION_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_SECTION_MISSING" >&2
         return 1
     fi
     
     # Validiere Dependencies
     if ! type -t get_module_ini_path &>/dev/null; then
-        log_error "config_get_section_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        log_error "$MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" >&2
         return 1
     fi
     
     # Hole Pfad zur INI-Datei
     local filepath
     filepath=$(get_module_ini_path "$module") || {
-        log_error "config_get_section_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        log_error "$MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" >&2
         return 1
     }
     
@@ -764,52 +767,52 @@ config_get_section_ini() {
 }
 
 # ===========================================================================
-# config_set_section_ini
+# settings_set_section_ini
 # ---------------------------------------------------------------------------
 # Funktion.: Erstelle/Überschreibe komplette INI-Sektion mit Key=Value Paaren
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
 #            $2 = section
 #            $3+ = key=value Paare (alle weiteren Parameter)
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: config_set_section_ini "audio" "metadata" "name=Audio Ripper" "version=1.2.0"
+# Beispiel.: settings_set_section_ini "audio" "metadata" "name=Audio Ripper" "version=1.2.0"
 # Hinweis..: Löscht existierende Sektion komplett und erstellt sie neu
 # ===========================================================================
-config_set_section_ini() {
+settings_set_section_ini() {
     local module="$1"
     local section="$2"
     shift 2
     
     # Validierung
     if [[ -z "$module" ]]; then
-        log_error "config_set_section_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        log_error "$MSG_SETTINGS_MODULE_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$section" ]]; then
-        log_error "config_set_section_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        log_error "$MSG_SETTINGS_SECTION_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_SECTION_MISSING" >&2
         return 1
     fi
     
     if [[ $# -eq 0 ]]; then
-        log_error "config_set_section_ini: No key=value pairs provided" 2>/dev/null || echo "ERROR: No key=value pairs provided" >&2
+        log_error "$MSG_SETTINGS_NO_KEYVALUE_PAIRS" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_NO_KEYVALUE_PAIRS" >&2
         return 1
     fi
     
     # Validiere Dependencies
     if ! type -t get_module_ini_path &>/dev/null; then
-        log_error "config_set_section_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        log_error "$MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" >&2
         return 1
     fi
     
     # Hole Pfad zur INI-Datei
     local filepath
     filepath=$(get_module_ini_path "$module") || {
-        log_error "config_set_section_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        log_error "$MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" >&2
         return 1
     }
     
     # Lösche existierende Sektion falls vorhanden
-    config_del_section_ini "$module" "$section" 2>/dev/null
+    settings_del_section_ini "$module" "$section" 2>/dev/null
     
     # Erstelle neue Sektion
     echo "" >> "$filepath"
@@ -821,7 +824,7 @@ config_set_section_ini() {
         if [[ "$pair" =~ ^[^=]+=.* ]]; then
             echo "$pair" >> "$filepath"
         else
-            log_warning "config_set_section_ini: Invalid key=value pair skipped: $pair" 2>/dev/null
+            log_warning "$MSG_SETTINGS_INVALID_KEYVALUE_PAIR: $pair" 2>/dev/null
         fi
     done
     
@@ -829,40 +832,40 @@ config_set_section_ini() {
 }
 
 # ===========================================================================
-# config_del_section_ini
+# settings_del_section_ini
 # ---------------------------------------------------------------------------
 # Funktion.: Lösche komplette INI-Sektion inklusive aller Einträge
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
 #            $2 = section
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: config_del_section_ini "audio" "metadata"
+# Beispiel.: settings_del_section_ini "audio" "metadata"
 # Hinweis..: Entfernt Section-Header und alle zugehörigen Key=Value Zeilen
 # ===========================================================================
-config_del_section_ini() {
+settings_del_section_ini() {
     local module="$1"
     local section="$2"
     
     # Validierung
     if [[ -z "$module" ]]; then
-        log_error "config_del_section_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        log_error "$MSG_SETTINGS_MODULE_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$section" ]]; then
-        log_error "config_del_section_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        log_error "$MSG_SETTINGS_SECTION_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_SECTION_MISSING" >&2
         return 1
     fi
     
     # Validiere Dependencies
     if ! type -t get_module_ini_path &>/dev/null; then
-        log_error "config_del_section_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        log_error "$MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_GET_MODULE_INI_PATH_UNAVAILABLE" >&2
         return 1
     fi
     
     # Hole Pfad zur INI-Datei
     local filepath
     filepath=$(get_module_ini_path "$module") || {
-        log_error "config_del_section_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        log_error "$MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_MODULE_INI_NOT_FOUND: $module" >&2
         return 1
     }
     
@@ -885,17 +888,17 @@ config_del_section_ini() {
 }
 
 # ===========================================================================
-# config_count_section_entries_ini
+# settings_count_section_entries_ini
 # ---------------------------------------------------------------------------
 # Funktion.: Zähle Anzahl der Einträge in einer INI-Sektion
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
 #            $2 = section (z.B. "metadata")
 # Rückgabe.: Anzahl der Einträge (0-N) via stdout
-# Beispiel.: count=$(config_count_section_entries_ini "audio" "dependencies")
+# Beispiel.: count=$(settings_count_section_entries_ini "audio" "dependencies")
 #            → "3"
 # Hinweis..: Zählt nur Key=Value Zeilen, keine Kommentare/Leerzeilen
 # ===========================================================================
-config_count_section_entries_ini() {
+settings_count_section_entries_ini() {
     local module="$1"
     local section="$2"
     
@@ -930,13 +933,13 @@ config_count_section_entries_ini() {
 }
 
 # ============================================================================
-# UNIFIED CONFIG API - JSON OPERATIONS
+# UNIFIED SETTINGS API - JSON OPERATIONS
 # ============================================================================
 # JSON-Dateien für API-Status und Metadaten (api/ Verzeichnis)
 # Beispiel: api/status.json, api/progress.json
 
 # ===========================================================================
-# config_get_value_json
+# settings_get_value_json
 # ---------------------------------------------------------------------------
 # Funktion.: Lese einzelnen Wert aus JSON-Datei
 # Parameter: $1 = json_file (Dateiname ohne Pfad, z.B. "status")
@@ -944,22 +947,22 @@ config_count_section_entries_ini() {
 #            $3 = default (optional, Fallback wenn Key nicht gefunden)
 # Rückgabe.: 0 = Erfolg (Wert oder Default), 1 = Fehler (Key fehlt, kein Default)
 # Ausgabe..: Value (stdout, als JSON-String)
-# Beispiel.: disc_type=$(config_get_value_json "status" ".disc_type" "unknown")
+# Beispiel.: disc_type=$(settings_get_value_json "status" ".disc_type" "unknown")
 # Hinweis..: Benötigt jq (wird bei Dependency-Check validiert)
 # ===========================================================================
-config_get_value_json() {
+settings_get_value_json() {
     local json_file="$1"
     local json_path="$2"
     local default="${3:-}"
     
     # Validierung
     if [[ -z "$json_file" ]]; then
-        log_error "config_get_value_json: JSON filename missing" 2>/dev/null || echo "ERROR: JSON filename missing" >&2
+        log_error "$MSG_SETTINGS_JSON_FILENAME_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_FILENAME_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$json_path" ]]; then
-        log_error "config_get_value_json: JSON path missing" 2>/dev/null || echo "ERROR: JSON path missing" >&2
+        log_error "$MSG_SETTINGS_JSON_PATH_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_PATH_MISSING" >&2
         return 1
     fi
     
@@ -972,13 +975,13 @@ config_get_value_json() {
             echo "$default"
             return 0
         fi
-        log_error "config_get_value_json: JSON file not found: $filepath" 2>/dev/null || echo "ERROR: JSON file not found" >&2
+        log_error "$MSG_SETTINGS_JSON_FILE_NOT_FOUND: $filepath" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_FILE_NOT_FOUND" >&2
         return 1
     fi
     
     # Prüfe ob jq verfügbar ist
     if ! command -v jq &>/dev/null; then
-        log_error "config_get_value_json: jq not available" 2>/dev/null || echo "ERROR: jq not available" >&2
+        log_error "$MSG_SETTINGS_JQ_NOT_AVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JQ_NOT_AVAILABLE" >&2
         return 1
     fi
     
@@ -999,30 +1002,30 @@ config_get_value_json() {
 }
 
 # ===========================================================================
-# config_set_value_json
+# settings_set_value_json
 # ---------------------------------------------------------------------------
 # Funktion.: Schreibe einzelnen Wert in JSON-Datei
 # Parameter: $1 = json_file (Dateiname ohne Pfad, z.B. "status")
 #            $2 = json_path (jq-kompatibel, z.B. ".disc_type" oder ".metadata.title")
 #            $3 = value (String, Number oder Boolean)
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: config_set_value_json "status" ".disc_type" "audio-cd"
-#            config_set_value_json "progress" ".percentage" "75"
+# Beispiel.: settings_set_value_json "status" ".disc_type" "audio-cd"
+#            settings_set_value_json "progress" ".percentage" "75"
 # Hinweis..: Erstellt Datei falls nicht vorhanden, erstellt verschachtelte Pfade
 # ===========================================================================
-config_set_value_json() {
+settings_set_value_json() {
     local json_file="$1"
     local json_path="$2"
     local value="$3"
     
     # Validierung
     if [[ -z "$json_file" ]]; then
-        log_error "config_set_value_json: JSON filename missing" 2>/dev/null || echo "ERROR: JSON filename missing" >&2
+        log_error "$MSG_SETTINGS_JSON_FILENAME_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_FILENAME_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$json_path" ]]; then
-        log_error "config_set_value_json: JSON path missing" 2>/dev/null || echo "ERROR: JSON path missing" >&2
+        log_error "$MSG_SETTINGS_JSON_PATH_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_PATH_MISSING" >&2
         return 1
     fi
     
@@ -1031,7 +1034,7 @@ config_set_value_json() {
     
     # Prüfe ob jq verfügbar ist
     if ! command -v jq &>/dev/null; then
-        log_error "config_set_value_json: jq not available" 2>/dev/null || echo "ERROR: jq not available" >&2
+        log_error "$MSG_SETTINGS_JQ_NOT_AVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JQ_NOT_AVAILABLE" >&2
         return 1
     fi
     
@@ -1059,26 +1062,26 @@ config_set_value_json() {
 }
 
 # ===========================================================================
-# config_del_value_json
+# settings_del_value_json
 # ---------------------------------------------------------------------------
 # Funktion.: Lösche einzelnen Key aus JSON-Datei
 # Parameter: $1 = json_file (Dateiname ohne Pfad, z.B. "status")
 #            $2 = json_path (jq-kompatibel, z.B. ".disc_type" oder ".metadata.title")
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: config_del_value_json "status" ".disc_type"
+# Beispiel.: settings_del_value_json "status" ".disc_type"
 # ===========================================================================
-config_del_value_json() {
+settings_del_value_json() {
     local json_file="$1"
     local json_path="$2"
     
     # Validierung
     if [[ -z "$json_file" ]]; then
-        log_error "config_del_value_json: JSON filename missing" 2>/dev/null || echo "ERROR: JSON filename missing" >&2
+        log_error "$MSG_SETTINGS_JSON_FILENAME_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_FILENAME_MISSING" >&2
         return 1
     fi
     
     if [[ -z "$json_path" ]]; then
-        log_error "config_del_value_json: JSON path missing" 2>/dev/null || echo "ERROR: JSON path missing" >&2
+        log_error "$MSG_SETTINGS_JSON_PATH_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_PATH_MISSING" >&2
         return 1
     fi
     
@@ -1092,7 +1095,7 @@ config_del_value_json() {
     
     # Prüfe ob jq verfügbar ist
     if ! command -v jq &>/dev/null; then
-        log_error "config_del_value_json: jq not available" 2>/dev/null || echo "ERROR: jq not available" >&2
+        log_error "$MSG_SETTINGS_JQ_NOT_AVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JQ_NOT_AVAILABLE" >&2
         return 1
     fi
     
