@@ -75,7 +75,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 # Lade Basis-Module
 source "${SCRIPT_DIR}/conf/disk2iso.conf"
-source "${SCRIPT_DIR}/lib/libconfig.sh"
+source "${SCRIPT_DIR}/lib/libsettings.sh"
 
 # Lade Sprachdateien für Hauptskript
 load_module_language "disk2iso"
@@ -87,11 +87,11 @@ load_module_language "disk2iso"
 # erfüllen, sonst kann disk2iso nicht funktionieren. 
 # 
 # Lade-Reihenfolge (dependency-optimiert):
-# 1. libconfig.sh     - Konfiguration (keine Dependencies)
+# 1. libsettings.sh   - Settings-Management (keine Dependencies)
 # 2. liblogging.sh    - Logging (nur Bash-Built-ins)
 # 3. libfolders.sh    - Ordner-Management (nutzt liblogging)
 # 4. libfiles.sh      - Datei-Management (nutzt libfolders + liblogging)
-# 5. libintegrity.sh  - Integrity-Checks (nutzt libconfig, liblogging, libfolders)
+# 5. libintegrity.sh  - Integrity-Checks (nutzt libsettings, liblogging, libfolders)
 #                       WICHTIG: Früh laden! Wird von optionalen Modulen benötigt
 # 6. libapi.sh        - API-Interface (nutzt liblogging, libfolders)
 # 7. libsysteminfo.sh - System-Infos (nutzt liblogging, libfolders)
@@ -99,7 +99,7 @@ load_module_language "disk2iso"
 # 9. libdiskinfos.sh  - Disk-Informationen (nutzt liblogging, libfolders)
 # 10. libcommon.sh    - Gemeinsame Funktionen (nutzt liblogging, libfolders)
 
-source "${SCRIPT_DIR}/lib/libconfig.sh"
+source "${SCRIPT_DIR}/lib/libsettings.sh"
 if ! config_check_dependencies; then
     echo "FEHLER: Config-Modul Abhängigkeiten nicht erfüllt" >&2
     exit 1

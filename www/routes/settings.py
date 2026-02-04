@@ -2,6 +2,7 @@
 """
 Configuration Management Routes
 Provides field-by-field config operations for core settings
+Uses config_get_value_conf() and config_set_value_conf() directly
 """
 
 from flask import Blueprint, jsonify, request, g
@@ -12,11 +13,18 @@ from pathlib import Path
 config_bp = Blueprint('config', __name__, url_prefix='/api/config')
 
 INSTALL_DIR = Path("/opt/disk2iso")
-CONFIG_HANDLERS = {
-    "DEFAULT_OUTPUT_DIR": "disk2iso",
-    "DDRESCUE_RETRIES": "none",
-    "USB_DRIVE_DETECTION_ATTEMPTS": "none", 
-    "USB_DRIVE_DETECTION_DELAY": "none"
+
+# Config Keys die über diese API verwaltet werden (Core Settings aus disk2iso.conf)
+ALLOWED_KEYS = [
+    "DEFAULT_OUTPUT_DIR",
+    "DDRESCUE_RETRIES",
+    "USB_DRIVE_DETECTION_ATTEMPTS",
+    "USB_DRIVE_DETECTION_DELAY"
+]
+
+# Keys die einen Service-Neustart erfordern
+RESTART_REQUIRED_KEYS = {
+    "DEFAULT_OUTPUT_DIR": "disk2iso"
 }
 
 @config_bp.route('/<key>', methods=['GET'])
@@ -28,16 +36,17 @@ def get_config_value(key):
     Response: {"success": true, "value": "/media/iso"}
     """
     # Validierung: Nur bekannte Keys erlauben
-    if key not in CONFIG_HANDLERS:
+    if key not in ALLOWED_KEYS:
         return jsonify({
             'success': False, 
             'message': f'Unknown config key: {key}'
         }), 400
     
     try:
+        # Nutze config_get_value_conf() direkt (kein Legacy-Wrapper)
         script = f"""
-        source {INSTALL_DIR}/lib/libconfig.sh
-        get_config_value "{key}"
+        source {INSTALL_DIR}/lib/libsettings.sh
+        config_get_value_conf "disk2iso" "{key}"
         """
         
         result = subprocess.run(
@@ -53,15 +62,9 @@ def get_config_value(key):
                 'message': f'Error reading config key: {key}'
             }), 500
         
-        # Parse JSON response from shell
-        try:
-            data = json.loads(result.stdout.strip())
-            return jsonify(data), 200
-        except json.JSONDecodeError:
-            return jsonify({
-                'success': False,
-                'message': 'Invalid JSON response from shell'
-            }), 500
+        # config_get_value_conf() gibt nur den Wert zurück (kein JSON)
+        value = result.stdout.strip()
+        return jsonify({'success': True, 'value': value}), 200
             
     except subprocess.TimeoutExpired:
         return jsonify({'success': False, 'message': 'Timeout'}), 500
@@ -80,7 +83,7 @@ def set_config_value(key):
     Response: {"success": true, "restart_required": false}
     """
     # Validierung: Nur bekannte Keys erlauben
-    if key not in CONFIG_HANDLERS:
+    if key not in ALLOWED_KEYS:
         return jsonify({
             'success': False,
             'message': f'Unknown config key: {key}'
@@ -100,9 +103,10 @@ def set_config_value(key):
         # Escape value for shell
         value_escaped = value.replace("'", "'\\''")
         
+        # Nutze config_set_value_conf() direkt
         script = f"""
-        source {INSTALL_DIR}/lib/libconfig.sh
-        update_config_value "{key}" '{value_escaped}'
+        source {INSTALL_DIR}/lib/libsettings.sh
+        config_set_value_conf "disk2iso" "{key}" '{value_escaped}'
         """
         
         result = subprocess.run(
@@ -118,37 +122,30 @@ def set_config_value(key):
                 'message': f'Error writing config key: {key}'
             }), 500
         
-        # Parse JSON response
-        try:
-            response_data = json.loads(result.stdout.strip())
+        response_data = {'success': True}
+        
+        # Check ob Service-Restart erforderlich ist
+        if key in RESTART_REQUIRED_KEYS:
+            restart_service = RESTART_REQUIRED_KEYS[key]
             
-            # Check ob Service-Restart erforderlich ist
-            restart_service = CONFIG_HANDLERS[key]
-            if restart_service != "none":
-                # Trigger restart
-                restart_result = subprocess.run(
-                    ['/bin/bash', '-c', f'source {INSTALL_DIR}/lib/libconfig.sh; restart_service "{restart_service}"'],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
-                
-                if restart_result.returncode == 0:
-                    response_data['restart_required'] = True
-                    response_data['restart_service'] = restart_service
-                else:
-                    response_data['restart_required'] = True
-                    response_data['restart_failed'] = True
+            # Trigger restart via systemctl
+            restart_result = subprocess.run(
+                ['/usr/bin/systemctl', 'restart', restart_service],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
+            if restart_result.returncode == 0:
+                response_data['restart_required'] = True
+                response_data['restart_service'] = restart_service
             else:
-                response_data['restart_required'] = False
-            
-            return jsonify(response_data), 200
-            
-        except json.JSONDecodeError:
-            return jsonify({
-                'success': False,
-                'message': 'Invalid JSON response from shell'
-            }), 500
+                response_data['restart_required'] = True
+                response_data['restart_failed'] = True
+        else:
+            response_data['restart_required'] = False
+        
+        return jsonify(response_data), 200
             
     except subprocess.TimeoutExpired:
         return jsonify({'success': False, 'message': 'Timeout'}), 500
@@ -159,39 +156,35 @@ def set_config_value(key):
 @config_bp.route('/all', methods=['GET'])
 def get_all_config_values():
     """
-    Legacy: Liest alle Config-Werte auf einmal (Batch)
+    Legacy: Liest alle Core-Config-Werte auf einmal (Batch)
     DEPRECATED: Für neue Implementierungen field-by-field nutzen
     
     GET /api/config/all
-    Response: {"success": true, "output_dir": "...", "ddrescue_retries": 3, ...}
+    Response: {"success": true, "DEFAULT_OUTPUT_DIR": "...", "DDRESCUE_RETRIES": 3, ...}
     """
     try:
-        script = f"""
-        source {INSTALL_DIR}/lib/libconfig.sh
-        get_all_config_values
-        """
+        response_data = {'success': True}
         
-        result = subprocess.run(
-            ['/bin/bash', '-c', script],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        # Lese alle Core-Settings einzeln (field-by-field)
+        for key in ALLOWED_KEYS:
+            script = f"""
+            source {INSTALL_DIR}/lib/libsettings.sh
+            config_get_value_conf "disk2iso" "{key}"
+            """
+            
+            result = subprocess.run(
+                ['/bin/bash', '-c', script],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            if result.returncode == 0:
+                response_data[key] = result.stdout.strip()
+            else:
+                response_data[key] = None
         
-        if result.returncode != 0:
-            return jsonify({
-                'success': False,
-                'message': 'Error reading all config values'
-            }), 500
-        
-        try:
-            data = json.loads(result.stdout.strip())
-            return jsonify(data), 200
-        except json.JSONDecodeError:
-            return jsonify({
-                'success': False,
-                'message': 'Invalid JSON response from shell'
-            }), 500
+        return jsonify(response_data), 200
             
     except subprocess.TimeoutExpired:
         return jsonify({'success': False, 'message': 'Timeout'}), 500

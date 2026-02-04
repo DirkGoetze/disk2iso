@@ -21,7 +21,6 @@ def get_common_settings():
         config_sh = '/opt/disk2iso/conf/config.sh'
         
         config = {
-            "mp3_quality": 2,  # Default: Hohe Qualität
             "ddrescue_retries": 1,  # Default: 1 Wiederholung
         }
         
@@ -29,14 +28,6 @@ def get_common_settings():
             with open(config_sh, 'r') as f:
                 for line in f:
                     line = line.strip()
-                    
-                    # MP3_QUALITY
-                    if line.startswith('MP3_QUALITY='):
-                        value = line.split('=', 1)[1].strip('"').strip("'")
-                        try:
-                            config['mp3_quality'] = int(value)
-                        except ValueError:
-                            pass
                     
                     # DDRESCUE_RETRIES
                     elif line.startswith('DDRESCUE_RETRIES='):
@@ -51,7 +42,6 @@ def get_common_settings():
     except Exception as e:
         print(f"Fehler beim Lesen der Common-Einstellungen: {e}", file=sys.stderr)
         return {
-            "mp3_quality": 2,
             "ddrescue_retries": 1,
         }
 

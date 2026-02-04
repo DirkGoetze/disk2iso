@@ -139,6 +139,14 @@
         <!-- Widget wird dynamisch geladen via common_widget_settings.js -->
         <div id="common-settings-container"></div>
         
+        <!-- Metadata Framework (libmetadata) -->
+        <!-- Widget wird dynamisch geladen via metadata_widget_settings.js -->
+        <div id="metadata-settings-container"></div>
+        
+        <!-- Audio-CD Modul (libaudio) -->
+        <!-- Widget wird dynamisch geladen via audio_widget_settings.js -->
+        <div id="audio-settings-container"></div>
+        
         <!-- Hardware-Erkennung (libdrivestat) -->
         <!-- Widget wird dynamisch geladen via drivestat_widget_settings.js -->
         <div id="drivestat-settings-container"></div>
@@ -153,7 +161,12 @@
         
         <div class="form-actions">
             <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">{{ t.COMMON_CANCEL }}</button>
-            <button type="button" id="save-config-button" class="btn btn-primary">{{ t.COMMON_SAVE }}</button>
+            <div class="auto-save-info" style="display: inline-block; margin-left: 16px; color: #48bb78; font-size: 14px;">
+                <svg style="width:16px;height:16px;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+                Änderungen werden automatisch gespeichert
+            </div>
         </div>
     </form>
     
@@ -164,6 +177,8 @@
     <!-- Core Widget Settings (automatisch geladen) -->
     <script src="{{ url_for('static', filename='js/widgets/config_widget_settings.js') }}"></script>
     <script src="{{ url_for('static', filename='js/widgets/common_widget_settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/metadata_widget_settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/audio_widget_settings.js') }}"></script>
     <script src="{{ url_for('static', filename='js/widgets/drivestat_widget_settings.js') }}"></script>
     
     <!-- Module Widget Settings (TODO: Auto-Loading implementieren) -->

@@ -42,17 +42,6 @@
      * Registriert alle Event Listener für das Common Settings Widget
      */
     function setupEventListeners() {
-        // MP3 Quality - Auto-Save bei Change
-        const mp3QualityField = document.getElementById('mp3_quality');
-        if (mp3QualityField) {
-            mp3QualityField.addEventListener('change', function() {
-                // Nutzt die zentrale handleFieldChange Funktion aus settings.js
-                if (window.handleFieldChange) {
-                    window.handleFieldChange({ target: mp3QualityField });
-                }
-            });
-        }
-        
         // ddrescue Retries - Auto-Save bei Blur
         const ddrescueRetriesField = document.getElementById('ddrescue_retries');
         if (ddrescueRetriesField) {

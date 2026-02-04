@@ -600,7 +600,7 @@ files_get_router_path() {
 #            2. [folders] output aus INI + /<folder_type> (konstruiert)
 #            3. folders_get_output_dir() + /<folder_type> (global)
 # Nutzt....: get_module_ini_path() für INI-Datei
-#            config_get_value_ini() aus libconfig.sh für Werte
+#            config_get_value_ini() aus libsettings.sh für Werte
 #            folders_get_output_dir() aus libfolders.sh als Fallback
 # ===========================================================================
 files_get_module_folder_path() {

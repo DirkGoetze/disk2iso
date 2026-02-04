@@ -43,7 +43,7 @@ integrity_check_dependencies() {
     load_module_language "integrity"
     
     # Integrity-Modul benötigt:
-    # - libconfig.sh (get_ini_value, get_ini_array)
+    # - libsettings.sh (get_ini_value, get_ini_array)
     # - liblogging.sh (log_*, load_module_language)
     # - libfolders.sh (folders_ensure_subfolder)
     # - libfiles.sh (files_get_*_path)

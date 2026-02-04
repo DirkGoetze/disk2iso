@@ -25,6 +25,20 @@ try:
 except ImportError as e:
     print(f"ERROR: Core Config API failed to load: {e}", file=sys.stderr)
 
+# Widget Settings Blueprints (Core Widgets)
+try:
+    from routes.widgets.config_widget_settings import config_settings_bp
+    from routes.widgets.common_widget_settings import common_settings_bp
+    from routes.widgets.drivestat_widget_settings import drivestat_settings_bp
+    from routes.widgets.metadata_widget_settings import metadata_widget_settings_bp
+    app.register_blueprint(config_settings_bp)
+    app.register_blueprint(common_settings_bp)
+    app.register_blueprint(drivestat_settings_bp)
+    app.register_blueprint(metadata_widget_settings_bp)
+    print("INFO: Core widget settings loaded", file=sys.stderr)
+except ImportError as e:
+    print(f"WARNING: Some widget settings failed to load: {e}", file=sys.stderr)
+
 # MQTT-Modul Detection (externes Plugin)
 MQTT_MODULE_AVAILABLE = False
 try:
@@ -508,7 +522,7 @@ def api_modules():
     def get_module_enabled(module_name, default=True):
         try:
             result = subprocess.run(
-                ['bash', '-c', f'source {INSTALL_DIR}/lib/libconfig.sh && config_get_value_ini "{module_name}" "module" "enabled" "{str(default).lower()}"'],
+                ['bash', '-c', f'source {INSTALL_DIR}/lib/libsettings.sh && config_get_value_ini "{module_name}" "module" "enabled" "{str(default).lower()}"'],
                 capture_output=True, text=True, timeout=2
             )
             if result.returncode == 0:
