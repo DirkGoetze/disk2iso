@@ -147,20 +147,9 @@
         <!-- Widget wird dynamisch geladen via mqtt_widget_settings.js -->
         <div id="mqtt-settings-container"></div>
         
-        <!-- TMDB API Integration -->
-        <!-- Widget wird dynamisch geladen - TODO: Modul-Widget erstellen -->
-        <div class="form-section">
-            <h2><img src="{{ url_for('static', filename='img/control.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">TMDB API (DVD/Blu-ray Metadaten)</h2>
-            
-            <div class="form-group">
-                <label for="tmdb_api_key">TMDB API-Key</label>
-                <input type="text" id="tmdb_api_key" name="tmdb_api_key" value="{{ config.tmdb_api_key }}" placeholder="1234567890abcdef1234567890abcdef" maxlength="32">
-                <div class="help-text">
-                    API-Key von themoviedb.org für automatische Film-Metadaten und Cover. 
-                    <a href="/help#tmdb-api" target="_blank" style="color: #667eea;">Anleitung zur Beschaffung →</a>
-                </div>
-            </div>
-        </div>
+        <!-- TMDB API Integration (libtmdb) -->
+        <!-- Widget wird dynamisch geladen via tmdb_widget_settings.js -->
+        <div id="tmdb-settings-container"></div>
         
         <div class="form-actions">
             <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">{{ t.COMMON_CANCEL }}</button>
@@ -179,6 +168,7 @@
     
     <!-- Module Widget Settings (TODO: Auto-Loading implementieren) -->
     <script src="{{ url_for('static', filename='js/widgets/mqtt_widget_settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/tmdb_widget_settings.js') }}"></script>
     
     <!-- Haupt-Settings-JS -->
     <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
