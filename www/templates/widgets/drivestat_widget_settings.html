@@ -1,0 +1,21 @@
+<!-- Drivestat Widget Settings -->
+<!-- Hardware-Erkennungs-Einstellungen: USB-Laufwerkserkennung -->
+<!-- Dynamisch geladen via drivestat_widget_settings.js -->
+<div class="form-section" id="drivestat-widget-settings">
+    <h2>
+        <img src="{{ url_for('static', filename='img/plugin.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
+        {{ t.SYSTEM_DRIVE_INFO }}
+    </h2>
+    
+    <div class="form-group">
+        <label for="usb_detection_attempts">USB-Laufwerk Erkennungsversuche</label>
+        <input type="number" id="usb_detection_attempts" name="usb_detection_attempts" value="{{ config.usb_detection_attempts }}" min="1" max="20">
+        <div class="help-text">Anzahl Versuche zum Erkennen eines USB-Laufwerks</div>
+    </div>
+    
+    <div class="form-group">
+        <label for="usb_detection_delay">Verzögerung zwischen Versuchen (Sekunden)</label>
+        <input type="number" id="usb_detection_delay" name="usb_detection_delay" value="{{ config.usb_detection_delay }}" min="1" max="60">
+        <div class="help-text">Sekunden zwischen Erkennungsversuchen</div>
+    </div>
+</div>

@@ -434,15 +434,17 @@ def favicon():
     """Unterdrücke Favicon-404-Fehler"""
     return '', 204
 
-@app.route('/config')
-def config_page():
-    """Konfigurations-Seite"""
+@app.route('/settings')
+def settings_page():
+    """Einstellungs-Seite"""
     config = get_config()
     version = get_version()
     
-    return render_template('config.html',
+    return render_template('settings.html',
         version=version,
-        config=config
+        config=config,
+        active_page='settings',
+        page_title='SETTINGS_TITLE'
     )
 
 @app.route('/archive')

@@ -1,0 +1,33 @@
+<!-- Common Widget Settings -->
+<!-- Kopier-Einstellungen: Audio-CD Encoding und ddrescue Parameter -->
+<!-- Dynamisch geladen via common_widget_settings.js -->
+<div class="form-section" id="common-widget-settings">
+    <!-- Audio-CD Encoding -->
+    <h2>
+        <img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
+        {{ t.ARCHIVE_FILTER_CD }}
+    </h2>
+    
+    <div class="form-group">
+        <label for="mp3_quality">MP3 {{ t.INDEX_SIZE }}</label>
+        <select id="mp3_quality" name="mp3_quality">
+            <option value="0" {{ 'selected' if config.mp3_quality == 0 else '' }}>0 - Beste Qualität (~245 kbps)</option>
+            <option value="2" {{ 'selected' if config.mp3_quality == 2 else '' }}>2 - Hohe Qualität (~190 kbps)</option>
+            <option value="4" {{ 'selected' if config.mp3_quality == 4 else '' }}>4 - Mittlere Qualität (~165 kbps)</option>
+            <option value="6" {{ 'selected' if config.mp3_quality == 6 else '' }}>6 - Normale Qualität (~130 kbps)</option>
+        </select>
+        <div class="help-text">lame VBR -V Parameter für MP3 Encoding</div>
+    </div>
+    
+    <!-- Kopier-Parameter -->
+    <h2 style="margin-top: 30px;">
+        <img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
+        {{ t.ARCHIVE_FILTER_DATA }}
+    </h2>
+    
+    <div class="form-group">
+        <label for="ddrescue_retries">ddrescue Wiederholungen</label>
+        <input type="number" id="ddrescue_retries" name="ddrescue_retries" value="{{ config.ddrescue_retries }}" min="0" max="10">
+        <div class="help-text">Anzahl Wiederholungen bei Lesefehlern (0-10, empfohlen: 1)</div>
+    </div>
+</div>

@@ -1,0 +1,46 @@
+<!-- Config Widget Settings -->
+<!-- System-Einstellungen: Ausgabeordner und Sprache -->
+<!-- Dynamisch geladen via config_widget_settings.js -->
+<div class="form-section" id="config-widget-settings">
+    <h2>
+        <img src="{{ url_for('static', filename='img/folder.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
+        {{ t.SYSTEM_CONFIG }}
+    </h2>
+    
+    <div class="form-group">
+        <label for="output_dir">{{ t.SYSTEM_OUTPUT_DIR }}</label>
+        <div class="directory-input-wrapper">
+            <input type="text" id="output_dir" name="output_dir" class="directory-input" value="{{ config.output_dir }}" required>
+            <button type="button" class="directory-browse-btn" onclick="openDirectoryBrowser()" title="Verzeichnis durchsuchen">
+                <span class="browse-icon">📁</span>
+            </button>
+        </div>
+        <div class="help-text">{{ t.INDEX_TARGET }} (z.B. /media/iso oder /mnt/nas/Public/images)</div>
+        <div class="help-text" style="color: #e67e22; margin-top: 5px;">
+            ⚠️ Verzeichnis muss existieren und beschreibbar sein. Service wird nach Speichern neu gestartet.
+        </div>
+    </div>
+</div>
+
+<!-- Directory Browser Modal -->
+<div id="directoryBrowserModal" class="modal">
+    <div class="modal-content directory-browser">
+        <div class="modal-header">
+            <h3>📁 Verzeichnis auswählen</h3>
+            <span class="close" onclick="closeDirectoryBrowser()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="current-path">
+                <strong>Aktueller Pfad:</strong>
+                <span id="currentPath">/</span>
+            </div>
+            <div class="directory-list" id="directoryList">
+                <div class="loading">Lade Verzeichnisse...</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeDirectoryBrowser()">Abbrechen</button>
+            <button type="button" class="btn btn-primary" onclick="selectCurrentDirectory()">Diesen Ordner wählen</button>
+        </div>
+    </div>
+</div>
