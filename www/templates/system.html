@@ -12,32 +12,16 @@
         </ul>
     </nav>
 
-    <!-- System Information Grid -->
+    <!-- System Information Grid (2x1 Widgets) -->
     <div class="system-grid">
-        <!-- OS Information -->
-        <div class="card">
-            <div class="category-header"><img src="{{ url_for('static', filename='img/linux.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">{{ t.SYSTEM_HEADER }}</div>
-            <div class="system-info-grid" id="os-info">
-                <div class="info-item">
-                    <span class="info-label">{{ t.COMMON_LOADING }}</span>
-                    <span class="info-value"></span>
-                </div>
-            </div>
-        </div>
+        <!-- System Info Widget (2x1) -->
+        {% include 'widgets/systeminfo_widget_2x1_sysinfo.html' %}
 
-        <!-- disk2iso Information -->
-        <div class="card">
-            <div class="category-header"><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">disk2iso</div>
-            <div class="service-info-grid" id="disk2iso-info">
-                <div class="info-item">
-                    <span class="info-label">{{ t.COMMON_LOADING }}</span>
-                    <span class="info-value"></span>
-                </div>
-            </div>
-        </div>
+        <!-- disk2iso Service Widget (2x1) -->
+        {% include 'widgets/disk2iso_widget_2x1_status.html' %}
     </div>
 
-    <!-- Software Versions -->
+    <!-- Software Dependencies (Modulare Widgets) -->
     <div class="card">
         <h2>
             <img src="{{ url_for('static', filename='img/package.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">{{ t.SYSTEM_CONFIG }}
@@ -48,13 +32,40 @@
         </h2>
         
         <div id="software-container">
-            <p style="text-align: center; padding: 40px; color: #666;">
-                {{ t.COMMON_LOADING }}
-            </p>
+            <!-- Core Dependencies (immer geladen) -->
+            {% include 'widgets/systeminfo_widget_4x1_dependencies.html' %}
+            
+            <!-- Audio Module Dependencies (nur wenn Modul verfügbar) -->
+            <!-- Widget wird dynamisch geladen via audio_widget_4x1_dependencies.js -->
+            <div id="audio-dependencies-container"></div>
+            
+            <!-- DVD Module Dependencies (nur wenn Modul verfügbar) -->
+            <!-- Widget wird dynamisch geladen via dvd_widget_4x1_dependencies.js -->
+            <div id="dvd-dependencies-container"></div>
+            
+            <!-- Bluray Module Dependencies (nur wenn Modul verfügbar) -->
+            <!-- Widget wird dynamisch geladen via bluray_widget_4x1_dependencies.js -->
+            <div id="bluray-dependencies-container"></div>
+            
+            <!-- Metadata Provider Dependencies (nur wenn Modul verfügbar) -->
+            <!-- Widget wird dynamisch geladen via musicbrainz/tmdb_widget_4x1_dependencies.js -->
+            <div id="metadata-dependencies-container"></div>
+            
+            <!-- MQTT Module Dependencies (nur wenn Modul verfügbar) -->
+            <!-- Widget wird dynamisch geladen via mqtt_widget_4x1_dependencies.js -->
+            <div id="mqtt-dependencies-container"></div>
         </div>
     </div>
 {% endblock %}
 
 {% block scripts %}
     <script src="{{ url_for('static', filename='js/system.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_2x1_sysinfo.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/disk2iso_widget_2x1_status.js') }}"></script>
+    
+    <!-- Core Dependencies Widget (immer geladen) -->
+    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_4x1_dependencies.js') }}"></script>
+    
+    <!-- Module Dependency Widgets (TODO: Auto-Loading implementieren) -->
+    <!-- Werden später über module-loader.js dynamisch geladen wenn Modul verfügbar -->
 {% endblock %}

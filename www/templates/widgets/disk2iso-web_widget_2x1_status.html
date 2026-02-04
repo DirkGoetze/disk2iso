@@ -1,0 +1,30 @@
+<!-- disk2iso-web Service Status Widget (2x1) -->
+<!-- Dynamisch geladen via disk2iso-web_widget_2x1_status.js -->
+<div class="card" id="disk2iso-web-service-widget">
+    <h2>
+        WEB-UI Service
+        <button class="btn-restart-service-small" onclick="restartServiceWidget('disk2iso-web')" title="Service neu starten">
+            <img src="{{ url_for('static', filename='img/refresh.svg') }}" style="width:14px;height:14px;">
+        </button>
+    </h2>
+    <div class="info-row">
+        <span class="info-label">{{ t.INDEX_STATE }}</span>
+        <span class="info-value">
+            <span class="status-indicator {{ 'running' if webui_status.running else 'stopped' }}" id="webui-widget-indicator"></span>
+            <span id="webui-widget-status">{{ 'Running' if webui_status.running else 'Stopped' }}</span>
+        </span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">{{ t.SYSTEM_SERVICE_STATUS }}</span>
+        <span class="badge {{ 'success' if webui_status.status == 'active' else ('error' if webui_status.status == 'error' else 'warning') }}" id="webui-widget-badge">
+            {% if webui_status.status == 'active' %}{{ t.SERVICE_STATUS_ACTIVE }}
+            {% elif webui_status.status == 'inactive' %}{{ t.SERVICE_STATUS_INACTIVE }}
+            {% elif webui_status.status == 'error' %}{{ t.SERVICE_STATUS_ERROR }}
+            {% else %}{{ t.SERVICE_STATUS_NOT_INSTALLED }}{% endif %}
+        </span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">{{ t.LOGS_TIMESTAMP }}</span>
+        <span class="info-value" id="webui-widget-updated">{{ current_time }}</span>
+    </div>
+</div>

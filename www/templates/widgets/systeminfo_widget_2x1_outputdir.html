@@ -1,0 +1,19 @@
+<!-- System Info - Output Directory Widget (2x1) -->
+<!-- Dynamisch geladen via systeminfo_widget_2x1_outputdir.js -->
+<div class="card" id="systeminfo-outputdir-widget">
+    <h2>{{ t.INDEX_TARGET }}</h2>
+    <div class="info-row">
+        <span class="info-label">{{ t.SYSTEM_OUTPUT_DIR }}</span>
+        <span class="info-value" id="outputdir-widget-path">{{ config.output_dir if config else '/media/iso' }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">{{ t.INDEX_SIZE }}</span>
+        <span class="info-value" id="outputdir-widget-size">
+            <span id="outputdir-widget-free">0</span> GB frei / <span id="outputdir-widget-total">0</span> GB
+        </span>
+    </div>
+    <div class="progress-bar" id="outputdir-widget-progress" data-label="0% belegt">
+        <div class="progress-background"></div>
+        <div class="progress-overlay" id="outputdir-widget-progress-bar" style="width: 100%"></div>
+    </div>
+</div>

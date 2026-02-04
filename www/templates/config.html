@@ -132,19 +132,19 @@
     
     <form id="config-form" class="config-form">
         <!-- System-Einstellungen (libconfig) -->
-        <!-- Widget wird dynamisch geladen via config_widget_settings.js -->
+        <!-- Widget wird dynamisch geladen via config_widget_4x1_settings.js -->
         <div id="config-settings-container"></div>
         
         <!-- Kopier-Einstellungen (libcommon) -->
-        <!-- Widget wird dynamisch geladen via common_widget_settings.js -->
+        <!-- Widget wird dynamisch geladen via common_widget_4x1_settings.js -->
         <div id="common-settings-container"></div>
         
         <!-- Hardware-Erkennung (libdrivestat) -->
-        <!-- Widget wird dynamisch geladen via drivestat_widget_settings.js -->
+        <!-- Widget wird dynamisch geladen via drivestat_widget_4x1_settings.js -->
         <div id="drivestat-settings-container"></div>
         
         <!-- MQTT Integration (libmqtt) -->
-        <!-- Widget wird dynamisch geladen via mqtt_widget_settings.js -->
+        <!-- Widget wird dynamisch geladen via mqtt_widget_4x1_settings.js -->
         <div id="mqtt-settings-container"></div>
         
         <!-- TMDB API Integration -->
@@ -173,12 +173,12 @@
 
 {% block scripts %}
     <!-- Core Widget Settings (automatisch geladen) -->
-    <script src="{{ url_for('static', filename='js/widgets/config_widget_settings.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/common_widget_settings.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/drivestat_widget_settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/config_widget_4x1_settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/common_widget_4x1_settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/drivestat_widget_4x1_settings.js') }}"></script>
     
     <!-- Module Widget Settings (TODO: Auto-Loading implementieren) -->
-    <script src="{{ url_for('static', filename='js/widgets/mqtt_widget_settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/mqtt_widget_4x1_settings.js') }}"></script>
     
     <!-- Haupt-Config-JS -->
     <script src="{{ url_for('static', filename='js/config.js') }}"></script>

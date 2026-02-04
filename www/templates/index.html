@@ -50,109 +50,26 @@
     
     <!-- Speicherplatz und ISO Archive (zweispaltig) -->
     <div class="two-column-grid">
-        <!-- Speicherplatz -->
-        <div class="card">
-            <h2>{{ t.INDEX_TARGET }}</h2>
-            <div class="info-row">
-                <span class="info-label">{{ t.SYSTEM_OUTPUT_DIR }}</span>
-                <span class="info-value">{{ config.output_dir }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ t.INDEX_SIZE }}</span>
-                <span class="info-value">{{ disk_space.free_gb }} GB frei / {{ disk_space.total_gb }} GB</span>
-            </div>
-            <div class="progress-bar" data-label="{{ disk_space.used_percent }}% belegt">
-                <div class="progress-background"></div>
-                <div class="progress-overlay" style="width: {{ disk_space.free_percent }}%"></div>
-            </div>
-        </div>
+        <!-- Output Directory Widget (2x1) -->
+        {% include 'widgets/systeminfo_widget_2x1_outputdir.html' %}
         
-        <!-- Archive -->
-        <div class="card">
-            <h2>{{ t.ARCHIVE_TITLE }}</h2>
-            <div class="info-row">
-                <span class="info-label">{{ t.ARCHIVE_FILTER_DATA }}</span>
-                <span class="info-value">{{ archive_counts.data }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ t.ARCHIVE_FILTER_CD }}</span>
-                <span class="info-value">{{ archive_counts.audio }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ t.ARCHIVE_FILTER_DVD }}</span>
-                <span class="info-value">{{ archive_counts.dvd }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ t.ARCHIVE_FILTER_BLURAY }}</span>
-                <span class="info-value">{{ archive_counts.bluray }}</span>
-            </div>
-        </div>
+        <!-- Archivierte Medien Widget (2x1) -->
+        {% include 'widgets/systeminfo_widget_2x1_archiv.html' %}
     </div>
     
-    <!-- Services (dreispaltig) -->
+    <!-- Services (zweispaltig) -->
+    <div class="two-column-grid">
+        <!-- disk2iso Service Widget (2x1) -->
+        {% include 'widgets/disk2iso_widget_2x1_status.html' %}
+        
+        <!-- disk2iso-web Service Widget (2x1) -->
+        {% include 'widgets/disk2iso-web_widget_2x1_status.html' %}
+    </div>
+    
+    <!-- MQTT Service (einspaltig falls aktiviert) -->
     <div class="three-column-grid">
-        <!-- disk2iso Service -->
-        <div class="card">
-            <h2>
-                disk2iso Service
-                <button class="btn-restart-service-small" onclick="restartServiceHome('disk2iso')" title="Service neu starten">
-                    <img src="{{ url_for('static', filename='img/refresh.svg') }}" style="width:14px;height:14px;">
-                </button>
-            </h2>
-            <div class="info-row">
-                <span class="info-label">{{ t.INDEX_STATE }}</span>
-                <span class="info-value">
-                    <span class="status-indicator {{ 'running' if disk2iso_status.running else 'stopped' }}" id="disk2iso-indicator"></span>
-                    <span id="disk2iso-status">{{ 'Running' if disk2iso_status.running else 'Stopped' }}</span>
-                </span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ t.SYSTEM_SERVICE_STATUS }}</span>
-                <span class="badge {{ 'success' if disk2iso_status.status == 'active' else ('error' if disk2iso_status.status == 'error' else 'warning') }}" id="disk2iso-badge">
-                    {% if disk2iso_status.status == 'active' %}{{ t.SERVICE_STATUS_ACTIVE }}
-                    {% elif disk2iso_status.status == 'inactive' %}{{ t.SERVICE_STATUS_INACTIVE }}
-                    {% elif disk2iso_status.status == 'error' %}{{ t.SERVICE_STATUS_ERROR }}
-                    {% else %}{{ t.SERVICE_STATUS_NOT_INSTALLED }}{% endif %}
-                </span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ t.LOGS_TIMESTAMP }}</span>
-                <span class="info-value" id="disk2iso-updated">{{ current_time }}</span>
-            </div>
-        </div>
-        
-        <!-- WEB-UI Service -->
-        <div class="card">
-            <h2>
-                WEB-UI Service
-                <button class="btn-restart-service-small" onclick="restartServiceHome('disk2iso-web')" title="Service neu starten">
-                    <img src="{{ url_for('static', filename='img/refresh.svg') }}" style="width:14px;height:14px;">
-                </button>
-            </h2>
-            <div class="info-row">
-                <span class="info-label">{{ t.INDEX_STATE }}</span>
-                <span class="info-value">
-                    <span class="status-indicator {{ 'running' if webui_status.running else 'stopped' }}" id="webui-indicator"></span>
-                    <span id="webui-status">{{ 'Running' if webui_status.running else 'Stopped' }}</span>
-                </span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ t.SYSTEM_SERVICE_STATUS }}</span>
-                <span class="badge {{ 'success' if webui_status.status == 'active' else ('error' if webui_status.status == 'error' else 'warning') }}" id="webui-badge">
-                    {% if webui_status.status == 'active' %}{{ t.SERVICE_STATUS_ACTIVE }}
-                    {% elif webui_status.status == 'inactive' %}{{ t.SERVICE_STATUS_INACTIVE }}
-                    {% elif webui_status.status == 'error' %}{{ t.SERVICE_STATUS_ERROR }}
-                    {% else %}{{ t.SERVICE_STATUS_NOT_INSTALLED }}{% endif %}
-                </span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">{{ t.LOGS_TIMESTAMP }}</span>
-                <span class="info-value" id="webui-updated">{{ current_time }}</span>
-            </div>
-        </div>
-        
-        <!-- MQTT Service Widget wird dynamisch geladen via mqtt.js -->
-        <!-- Widget-Container wird von mqtt.js hier eingefügt falls MQTT_ENABLED=true -->
+        <!-- MQTT Service Widget wird dynamisch geladen via mqtt_widget_2x1_status.js -->
+        <!-- Widget-Container wird von mqtt_widget_2x1_status.js hier eingefügt falls MQTT_ENABLED=true -->
     </div>
     
     <!-- MusicBrainz Album-Auswahl Modal -->
@@ -193,5 +110,9 @@
 
 {% block scripts %}
     <script src="{{ url_for('static', filename='js/index.js') }}?v=1768148211"></script>
+    <script src="{{ url_for('static', filename='js/widgets/disk2iso_widget_2x1_status.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/disk2iso-web_widget_2x1_status.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_2x1_outputdir.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_2x1_archiv.js') }}"></script>
 {% endblock %}
 
