@@ -20,27 +20,41 @@
 - 🌍 **Mehrsprachig** - 4 vollständige Sprachen (de, en, es, fr)
 - 📊 **JSON REST API** - Vollständige Programmierschnittstelle für externe Tools
 
-## � Verfügbare Module
+## 🧩 Verfügbare Module
 
 disk2iso unterstützt optionale Module für erweiterte Funktionen:
 
 | Modul | Status | Beschreibung | Installation |
 |-------|--------|--------------|--------------|
+| [DVD](https://github.com/DirkGoetze/disk2iso-dvd) | ✅ Stabil | Video-DVD Ripping mit dvdbackup/ddrescue/dd und intelligentem Fallback-System | [Download](https://github.com/DirkGoetze/disk2iso-dvd/releases/latest) |
+| [Blu-ray](https://github.com/DirkGoetze/disk2iso-bluray) | ✅ Stabil | Blu-ray Ripping mit ddrescue/dd für verschlüsselte BD-Discs | [Download](https://github.com/DirkGoetze/disk2iso-bluray/releases/latest) |
+| [Audio](https://github.com/DirkGoetze/disk2iso-audio) | ✅ Stabil | Audio-CD Ripping mit MusicBrainz-Metadaten, MP3-Encoding (LAME) und Cover-Art | [Download](https://github.com/DirkGoetze/disk2iso-audio/releases/latest) |
 | [MQTT](https://github.com/DirkGoetze/disk2iso-mqtt) | ✅ Stabil | Home Assistant Integration mit Auto-Discovery, Echtzeit-Status und Push-Benachrichtigungen | [Download](https://github.com/DirkGoetze/disk2iso-mqtt/releases/latest) |
-| TMDB | 🚧 Geplant | Film-/TV-Metadaten für DVDs & Blu-rays | - |
-| MusicBrainz | 🚧 Geplant | Erweiterte Audio-CD Metadaten | - |
+| [Metadata](https://github.com/DirkGoetze/disk2iso-metadata) | ✅ Stabil | Metadata Framework mit Provider-System für Query/Wait/Apply Workflow | [Download](https://github.com/DirkGoetze/disk2iso-metadata/releases/latest) |
+| [TMDB](https://github.com/DirkGoetze/disk2iso-tmdb) | ✅ Stabil | TMDB Metadata Provider für Film-/TV-Metadaten mit Cover-Art | [Download](https://github.com/DirkGoetze/disk2iso-tmdb/releases/latest) |
+| [MusicBrainz](https://github.com/DirkGoetze/disk2iso-musicbrainz) | ✅ Stabil | MusicBrainz Metadata Provider für Audio-CD Metadaten mit Disc-ID und CoverArt | [Download](https://github.com/DirkGoetze/disk2iso-musicbrainz/releases/latest) |
 
-### MQTT-Modul installieren
+### Module installieren
 
+**DVD-Modul:**
 ```bash
-# Automatisch
-curl -L https://github.com/DirkGoetze/disk2iso-mqtt/releases/latest/download/mqtt-module.zip -o /tmp/mqtt.zip
-cd /opt/disk2iso
-sudo unzip /tmp/mqtt.zip
-sudo systemctl restart disk2iso-web
+curl -L https://github.com/DirkGoetze/disk2iso-dvd/releases/latest/download/dvd-module.zip -o /tmp/dvd.zip
+cd /opt/disk2iso && sudo unzip /tmp/dvd.zip && sudo systemctl restart disk2iso
 ```
 
-**Mehr Info:** [MQTT-Modul Dokumentation](https://github.com/DirkGoetze/disk2iso-mqtt)
+**Blu-ray-Modul:**
+```bash
+curl -L https://github.com/DirkGoetze/disk2iso-bluray/releases/latest/download/bluray-module.zip -o /tmp/bluray.zip
+cd /opt/disk2iso && sudo unzip /tmp/bluray.zip && sudo systemctl restart disk2iso
+```
+
+**MQTT-Modul:**
+```bash
+curl -L https://github.com/DirkGoetze/disk2iso-mqtt/releases/latest/download/mqtt-module.zip -o /tmp/mqtt.zip
+cd /opt/disk2iso && sudo unzip /tmp/mqtt.zip && sudo systemctl restart disk2iso-web
+```
+
+**Mehr Info:** [DVD-Modul](https://github.com/DirkGoetze/disk2iso-dvd) | [Blu-ray-Modul](https://github.com/DirkGoetze/disk2iso-bluray) | [MQTT-Modul](https://github.com/DirkGoetze/disk2iso-mqtt)
 
 ## �🚀 Quick Start
 
@@ -83,12 +97,12 @@ sudo systemctl start disk2iso-web
 
 ## 💿 Unterstützte Medientypen
 
-| Typ | Beschreibung | Methode | 
-|-----|-------------|---------|
-| 🎵 Audio-CD | MP3-Ripping mit MusicBrainz/CD-TEXT | cdparanoia + lame |
-| 📀 DVD-Video | Entschlüsselte Backups | dvdbackup/ddrescue |
-| 🎬 Blu-ray Video | Robustes Kopieren | ddrescue/dd |
-| 💾 Data-CD/DVD/BD | 1:1 ISO-Images | dd/ddrescue |
+| Typ | Beschreibung | Methode | Verfügbar |
+|-----|-------------|---------|-----------|
+| 🎵 Audio-CD | MP3-Ripping mit MusicBrainz/CD-TEXT | cdparanoia + lame | ✅ Core |
+| 📀 DVD-Video | Entschlüsselte/verschlüsselte Backups | dvdbackup/ddrescue/dd | 🔌 [Modul](https://github.com/DirkGoetze/disk2iso-dvd) |
+| 🎬 Blu-ray Video | Robustes Kopieren | ddrescue/dd | 🔌 [Modul](https://github.com/DirkGoetze/disk2iso-bluray) |
+| 💾 Data-CD/DVD/BD | 1:1 ISO-Images | dd/ddrescue | ✅ Core |
 
 ## 📖 Dokumentation
 

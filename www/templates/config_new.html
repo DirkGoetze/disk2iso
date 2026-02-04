@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <style>
+        .config-form {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .form-section {
+            background: white;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .form-section h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 1.3em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #34495e;
+        }
+        
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .form-group .help-text {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .form-group .saving-indicator {
+            display: none;
+            font-size: 0.85em;
+            color: #3498db;
+            margin-top: 5px;
+        }
+        
+        .form-group .saving-indicator.show {
+            display: block;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <h1>{{ t.get('CONFIG_TITLE', 'Einstellungen') }}</h1>
+        
+        <div class="config-form">
+            <!-- Core Settings -->
+            <div class="form-section">
+                <h2>{{ t.get('CONFIG_SECTION_CORE', 'Basis-Einstellungen') }}</h2>
+                
+                <div class="form-group">
+                    <label for="output-dir">{{ t.get('CONFIG_OUTPUT_DIR', 'Ausgabeverzeichnis') }}</label>
+                    <input type="text" id="output-dir" placeholder="/media/iso">
+                    <div class="help-text">{{ t.get('CONFIG_OUTPUT_DIR_HELP', 'Zielverzeichnis für ISO-Images') }}</div>
+                    <div class="saving-indicator" id="output-dir-saving">Wird gespeichert...</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ddrescue-retries">{{ t.get('CONFIG_DDRESCUE_RETRIES', 'ddrescue Wiederholungen') }}</label>
+                    <input type="number" id="ddrescue-retries" min="0" max="10" placeholder="3">
+                    <div class="help-text">{{ t.get('CONFIG_DDRESCUE_RETRIES_HELP', 'Anzahl der Wiederholungsversuche bei Lesefehlern') }}</div>
+                    <div class="saving-indicator" id="ddrescue-retries-saving">Wird gespeichert...</div>
+                </div>
+            </div>
+            
+            <!-- USB Detection Settings -->
+            <div class="form-section">
+                <h2>{{ t.get('CONFIG_SECTION_USB', 'USB-Erkennung') }}</h2>
+                
+                <div class="form-group">
+                    <label for="usb-attempts">{{ t.get('CONFIG_USB_ATTEMPTS', 'Erkennungsversuche') }}</label>
+                    <select id="usb-attempts">
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="15">15</option>
+                    </select>
+                    <div class="help-text">{{ t.get('CONFIG_USB_ATTEMPTS_HELP', 'Anzahl der Versuche zur USB-Laufwerkerkennung') }}</div>
+                    <div class="saving-indicator" id="usb-attempts-saving">Wird gespeichert...</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="usb-delay">{{ t.get('CONFIG_USB_DELAY', 'Verzögerung (Sekunden)') }}</label>
+                    <input type="number" id="usb-delay" min="1" max="30" placeholder="2">
+                    <div class="help-text">{{ t.get('CONFIG_USB_DELAY_HELP', 'Wartezeit zwischen Erkennungsversuchen') }}</div>
+                    <div class="saving-indicator" id="usb-delay-saving">Wird gespeichert...</div>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <strong>Info:</strong> Änderungen werden automatisch beim Verlassen des Feldes gespeichert.
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/config-api.js') }}"></script>
+    <script>
+        // Field-by-Field Config Loading & Saving
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Core Settings
+            await initConfigField('output-dir', 'DEFAULT_OUTPUT_DIR', '/media/iso');
+            await initConfigField('ddrescue-retries', 'DDRESCUE_RETRIES', '3');
+            
+            // USB Detection Settings
+            await initConfigField('usb-attempts', 'USB_DRIVE_DETECTION_ATTEMPTS', '5');
+            await initConfigField('usb-delay', 'USB_DRIVE_DETECTION_DELAY', '2');
+            
+            // Optional: Zeige Saving-Indicator während Speichern
+            document.querySelectorAll('input, select').forEach(element => {
+                const indicator = document.getElementById(`${element.id}-saving`);
+                if (indicator) {
+                    element.addEventListener('focus', () => {
+                        indicator.classList.remove('show');
+                    });
+                    
+                    element.addEventListener('blur', () => {
+                        indicator.classList.add('show');
+                        setTimeout(() => indicator.classList.remove('show'), 1500);
+                    });
+                    
+                    element.addEventListener('change', () => {
+                        if (element.tagName === 'SELECT') {
+                            indicator.classList.add('show');
+                            setTimeout(() => indicator.classList.remove('show'), 1500);
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+{% endblock %}

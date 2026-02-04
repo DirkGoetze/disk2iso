@@ -246,21 +246,107 @@ init_filenames() {
 # ===========================================================================
 # get_module_ini_path
 # ---------------------------------------------------------------------------
-# Funktion.: Ermittelt vollständigen Pfad zur Modul-INI-Datei
+# Funktion.: Ermittelt vollständigen Pfad zur Modul-INI-Datei (Self-Healing)
 # Parameter: $1 = module_name (z.B. "tmdb", "audio", "metadata")
-# Rückgabe.: Vollständiger Pfad zur INI-Datei
-# Beispiel.: get_module_ini_path "tmdb"
+# Rückgabe.: 0 = Datei existiert/wurde erstellt (Pfad in stdout)
+#            1 = Fehler (Parameter fehlt oder Erstellung fehlgeschlagen)
+# Beispiel.: local ini_file
+#            ini_file=$(get_module_ini_path "tmdb") || return 1
 #            → "/opt/disk2iso/conf/libtmdb.ini"
+# Extras...: Erstellt Datei automatisch falls nicht vorhanden (Heile dich selbst)
 # Nutzt....: folders_get_conf_dir() aus libfolders.sh
 # ===========================================================================
 get_module_ini_path() {
     local module_name="$1"
     
     if [[ -z "$module_name" ]]; then
+        log_error "get_module_ini_path: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
         return 1
     fi
     
-    echo "$(folders_get_conf_dir)/lib${module_name}.ini"
+    local conf_dir
+    conf_dir=$(folders_get_conf_dir) || {
+        log_error "get_module_ini_path: folders_get_conf_dir failed" 2>/dev/null || echo "ERROR: folders_get_conf_dir failed" >&2
+        return 1
+    }
+    
+    local ini_file="${conf_dir}/lib${module_name}.ini"
+    
+    # Prüfe ob Datei bereits existiert
+    if [[ -f "$ini_file" ]]; then
+        echo "$ini_file"
+        return 0
+    fi
+    
+    # Erstelle Datei mit INI-Header (Self-Healing)
+    log_debug "get_module_ini_path: Creating missing INI file: $ini_file" 2>/dev/null
+    {
+        echo "# Module Configuration: lib${module_name}.ini"
+        echo "# Auto-generated on $(date '+%Y-%m-%d %H:%M:%S')"
+        echo ""
+    } > "$ini_file"
+    
+    if [[ $? -eq 0 ]] && [[ -f "$ini_file" ]]; then
+        log_debug "get_module_ini_path: File created successfully: $ini_file" 2>/dev/null
+        echo "$ini_file"
+        return 0
+    else
+        log_error "get_module_ini_path: File creation failed: $ini_file" 2>/dev/null || echo "ERROR: File creation failed" >&2
+        return 1
+    fi
+}
+
+# ===========================================================================
+# get_module_conf_path
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt vollständigen Pfad zur Modul-CONF-Datei (Self-Healing)
+# Parameter: $1 = module_name (z.B. "disk2iso")
+# Rückgabe.: 0 = Datei existiert/wurde erstellt (Pfad in stdout)
+#            1 = Fehler (Parameter fehlt oder Erstellung fehlgeschlagen)
+# Beispiel.: local conf_file
+#            conf_file=$(get_module_conf_path "disk2iso") || return 1
+#            → "/opt/disk2iso/conf/disk2iso.conf"
+# Extras...: Erstellt Datei automatisch falls nicht vorhanden (Heile dich selbst)
+# Nutzt....: folders_get_conf_dir() aus libfolders.sh
+# ===========================================================================
+get_module_conf_path() {
+    local module_name="$1"
+    
+    if [[ -z "$module_name" ]]; then
+        log_error "get_module_conf_path: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        return 1
+    fi
+    
+    local conf_dir
+    conf_dir=$(folders_get_conf_dir) || {
+        log_error "get_module_conf_path: folders_get_conf_dir failed" 2>/dev/null || echo "ERROR: folders_get_conf_dir failed" >&2
+        return 1
+    }
+    
+    local conf_file="${conf_dir}/${module_name}.conf"
+    
+    # Prüfe ob Datei bereits existiert
+    if [[ -f "$conf_file" ]]; then
+        echo "$conf_file"
+        return 0
+    fi
+    
+    # Erstelle Datei mit CONF-Header (Self-Healing)
+    log_debug "get_module_conf_path: Creating missing CONF file: $conf_file" 2>/dev/null
+    {
+        echo "# Module Configuration: ${module_name}.conf"
+        echo "# Auto-generated on $(date '+%Y-%m-%d %H:%M:%S')"
+        echo ""
+    } > "$conf_file"
+    
+    if [[ $? -eq 0 ]] && [[ -f "$conf_file" ]]; then
+        log_debug "get_module_conf_path: File created successfully: $conf_file" 2>/dev/null
+        echo "$conf_file"
+        return 0
+    else
+        log_error "get_module_conf_path: File creation failed: $conf_file" 2>/dev/null || echo "ERROR: File creation failed" >&2
+        return 1
+    fi
 }
 
 # ============================================================================
@@ -514,7 +600,7 @@ files_get_router_path() {
 #            2. [folders] output aus INI + /<folder_type> (konstruiert)
 #            3. folders_get_output_dir() + /<folder_type> (global)
 # Nutzt....: get_module_ini_path() für INI-Datei
-#            get_ini_value() aus libconfig.sh für Werte
+#            config_get_value_ini() aus libconfig.sh für Werte
 #            folders_get_output_dir() aus libfolders.sh als Fallback
 # ===========================================================================
 files_get_module_folder_path() {
@@ -525,12 +611,11 @@ files_get_module_folder_path() {
         return 1
     fi
     
-    local ini_file=$(get_module_ini_path "$module_name")
     local folder_path
     local output_path
     
     # 1. Primär: Spezifischer Ordner aus INI
-    folder_path=$(get_ini_value "$ini_file" "folders" "$folder_type")
+    folder_path=$(config_get_value_ini "$module_name" "folders" "$folder_type")
     
     if [[ -n "$folder_path" ]]; then
         echo "${OUTPUT_DIR}/${folder_path}"
@@ -538,7 +623,7 @@ files_get_module_folder_path() {
     fi
     
     # 2. Fallback: output-Basis + Unterordner
-    output_path=$(get_ini_value "$ini_file" "folders" "output")
+    output_path=$(config_get_value_ini "$module_name" "folders" "output")
     
     if [[ -n "$output_path" ]]; then
         echo "${OUTPUT_DIR}/${output_path}/${folder_type}"

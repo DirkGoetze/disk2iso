@@ -17,6 +17,14 @@ from i18n import get_translations
 app = Flask(__name__)
 
 # Register Blueprints für modulare Routen
+# Core Config API (field-by-field)
+try:
+    from routes import config_bp
+    app.register_blueprint(config_bp)
+    print("INFO: Core Config API loaded", file=sys.stderr)
+except ImportError as e:
+    print(f"ERROR: Core Config API failed to load: {e}", file=sys.stderr)
+
 # MQTT-Modul Detection (externes Plugin)
 MQTT_MODULE_AVAILABLE = False
 try:
@@ -485,22 +493,38 @@ def help_page():
 def api_modules():
     """API-Endpoint für Modul-Status (für dynamisches JS-Loading)
     
-    Liest Konfiguration und gibt zurück welche Module aktiviert sind.
+    VARIANTE A: Radikale Trennung
+    - Liest enabled-Status direkt aus INI-Dateien der Module
+    - Keine Modul-Konfiguration mehr in disk2iso.conf
+    - Jedes Modul verwaltet seinen Status selbst in [module].enabled
+    
     Frontend nutzt dies um nur benötigte JS-Dateien zu laden.
     """
-    config = get_config()
+    enabled_modules = {}
     
-    # Parse module-specific settings from config
-    enabled_modules = {
-        'metadata': config.get('metadata_enabled', True),  # METADATA_ENABLED
-        'cd': config.get('cd_enabled', True),              # CD_ENABLED
-        'dvd': config.get('dvd_enabled', True),            # DVD_ENABLED
-        'bluray': config.get('bluray_enabled', True),      # BLURAY_ENABLED
-    }
+    # Funktion um enabled-Status aus INI zu lesen
+    def get_module_enabled(module_name, default=True):
+        try:
+            result = subprocess.run(
+                ['bash', '-c', f'source {INSTALL_DIR}/lib/libconfig.sh && config_get_value_ini "{module_name}" "module" "enabled" "{str(default).lower()}"'],
+                capture_output=True, text=True, timeout=2
+            )
+            if result.returncode == 0:
+                value = result.stdout.strip().lower()
+                return value in ['true', '1', 'yes', 'on']
+            return default
+        except:
+            return default
+    
+    # Lese Status aus INI-Dateien
+    enabled_modules['metadata'] = get_module_enabled('metadata', True)
+    enabled_modules['audio'] = get_module_enabled('audio', True)
+    enabled_modules['dvd'] = get_module_enabled('dvd', True)
+    enabled_modules['bluray'] = get_module_enabled('bluray', True)
     
     # MQTT nur hinzufügen wenn Modul installiert UND aktiviert
     if MQTT_MODULE_AVAILABLE:
-        enabled_modules['mqtt'] = config.get('mqtt_enabled', False)
+        enabled_modules['mqtt'] = get_module_enabled('mqtt', False)
     
     return jsonify({
         'enabled_modules': enabled_modules,

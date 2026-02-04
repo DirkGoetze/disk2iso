@@ -77,11 +77,6 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 source "${SCRIPT_DIR}/conf/disk2iso.conf"
 source "${SCRIPT_DIR}/lib/libconfig.sh"
 
-# Setze OUTPUT_DIR bereits hier (wichtig für folders_get_unique_mountpoint() in libdiskinfos.sh)
-# Verhindert dass Mount-Points im Root / landen wenn OUTPUT_DIR noch nicht gesetzt ist
-OUTPUT_DIR="${DEFAULT_OUTPUT_DIR}"
-
-
 # Lade Sprachdateien für Hauptskript
 load_module_language "disk2iso"
 
@@ -554,8 +549,13 @@ main() {
     #   - Externe Plugins: libmqtt (https://github.com/DirkGoetze/disk2iso-mqtt)
     # ========================================================================
     
-    # OUTPUT_DIR wurde bereits am Anfang des Scripts gesetzt (siehe Zeile 83)
-    # Dies verhindert dass Mount-Points im Root / landen
+    # Lese OUTPUT_DIR aus Konfiguration
+    OUTPUT_DIR=$(config_get_output_dir)
+    if [[ $? -ne 0 ]]; then
+        log_info "$MSG_ERROR_OUTPUT_DIR_NOT_EXIST_MAIN"
+        log_info "$MSG_CONFIG_OUTPUT_DIR"
+        exit 1
+    fi
     
     # Prüfe ob OUTPUT_DIR existiert
     if [[ ! -d "$OUTPUT_DIR" ]]; then

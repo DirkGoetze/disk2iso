@@ -104,7 +104,7 @@ check_module_dependencies() {
     # Lade DB-Datei falls definiert 
     # ------------------------------------------------------------------------
     local db_file
-    db_file=$(get_ini_value "$manifest_file" "modulefiles" "db")
+    db_file=$(config_get_value_ini "${module_name}" "modulefiles" "db")
 
     if [[ -n "$db_file" ]]; then
         local db_path="${INSTALL_DIR}/${db_file}"
@@ -132,7 +132,7 @@ check_module_dependencies() {
     for file_type in "${file_types[@]}"; do
         # Lese Dateiname aus Manifest
         local filename
-        filename=$(get_ini_value "$manifest_file" "modulefiles" "$file_type")
+        filename=$(config_get_value_ini "${module_name}" "modulefiles" "$file_type")
         
         # Nur prüfen wenn Eintrag existiert
         if [[ -n "$filename" ]]; then
@@ -212,7 +212,7 @@ check_module_dependencies() {
         for folder_type in "${folder_types[@]}"; do
             # Lese Ordner-Namen aus Manifest
             local folder_name
-            folder_name=$(get_ini_value "$manifest_file" "folders" "$folder_type")
+            folder_name=$(config_get_value_ini "${module_name}" "folders" "$folder_type")
             
             # Nur prüfen wenn Eintrag existiert
             if [[ -n "$folder_name" ]]; then
@@ -249,8 +249,8 @@ check_module_dependencies() {
     local missing=()                      # Array der fehlende kritische Tools
     local external_deps                 # Kritische externe Tools aus Manifest
     
-    # Lese externe Tools aus Manifest
-    external_deps=$(get_ini_array "$manifest_file" "dependencies" "external")
+    # Lese externe Tools aus Manifest (via config_get_array_ini)
+    external_deps=$(config_get_array_ini "${module_name}" "dependencies" "external")
 
     # Prüfung der kritischen Tools, falls definiert
     if [[ -n "$external_deps" ]]; then
@@ -279,8 +279,8 @@ check_module_dependencies() {
     local optional_missing=()             # Array der fehlende optionale Tools
     local optional_deps                         # Optionale Tools aus Manifest
 
-    # Lese optionale Tools aus Manifest
-    optional_deps=$(get_ini_array "$manifest_file" "dependencies" "optional")
+    # Lese optionale Tools aus Manifest (via config_get_array_ini)
+    optional_deps=$(config_get_array_ini "${module_name}" "dependencies" "optional")
     
     # Prüfung der optionalen Tools, falls definiert
     if [[ -n "$optional_deps" ]]; then

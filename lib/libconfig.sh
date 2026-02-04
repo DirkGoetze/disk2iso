@@ -39,9 +39,81 @@
 # .........  Laden der libcommon.sh.
 # ===========================================================================
 config_check_dependencies() {
-    # Config-Modul nutzt POSIX-Standard-Tools
+    # Prüfe kritische Abhängigkeit: Existenz der Config-Datei
+    config_validate_file || return 1
+    
+    # Config-Modul nutzt POSIX-Standard-Tools (awk, sed, grep)
     # Diese sind auf jedem Linux-System verfügbar
-    # Keine explizite Prüfung erforderlich
+    return 0
+}
+
+# ===========================================================================
+# CONFIG GETTER/SETTER FUNCTIONS 'disk2iso.conf'
+# ===========================================================================
+# Diese Funktionen lesen und schreiben Konfigurationswerte in der
+# Datei disk2iso.conf im conf/ Verzeichnis.
+# ---------------------------------------------------------------------------
+# Globale Flags für Lazy Initialization -------------------------------------
+_CONFIG_FILE_VALIDATED=false                 # Config-Datei wurde geprüft
+_CONFIG_DEPENDENCIES_VALIDATED=false         # Dependencies geprüft (get_module_ini_path verfügbar)
+_CONFIG_SAVE_DEFAULT_CONF=false              # Flag für rekursiven Default-Write (verhindert Endlosschleife)
+_CONFIG_SAVE_DEFAULT_INI=false               # Flag für rekursiven Default-Write (verhindert Endlosschleife)
+
+# ===========================================================================
+# config_validate_file
+# ---------------------------------------------------------------------------
+# Funktion.: Prüft einmalig ob die disk2iso Konfigurationsdatei existiert
+# Parameter: keine
+# Rückgabe.: 0 = Datei existiert
+# .........  1 = Datei fehlt (kritischer Fehler)
+# Hinweis..: Nutzt Lazy Initialization - wird nur einmal pro Session geprüft
+# .........  Wird automatisch von config_check_dependencies() aufgerufen
+# ===========================================================================
+config_validate_file() {
+    #-- Setze Pfad zur Config-Datei --------------------------------------
+    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+
+    #-- Lazy Initialization: Nur einmal pro Session prüfen ------------------
+    if [[ "$_CONFIG_FILE_VALIDATED" == false ]]; then
+        if [[ ! -f "$config_file" ]]; then
+            echo "FEHLER: Konfigurationsdatei nicht gefunden: $config_file" >&2
+            return 1
+        fi
+        _CONFIG_FILE_VALIDATED=true
+    fi
+    return 0
+}
+
+# ===========================================================================
+# config_validate_dependencies
+# ---------------------------------------------------------------------------
+# Funktion.: Prüft einmalig ob alle Module für die Pfad und Dateinamen 
+# .........  Ermittlung verfügbar sind
+# Parameter: keine
+# Rückgabe.: 0 = Dependencies OK
+# .........  1 = Dependencies fehlen (kritischer Fehler)
+# Hinweis..: Nutzt Lazy Initialization - wird nur einmal pro Session geprüft
+# .........  Prüft: folders_get_conf_dir() aus libfolders.sh
+# .........         get_module_ini_path() aus libfiles.sh
+# ===========================================================================
+config_validate_dependencies() {
+    #-- Bereits validiert? --------------------------------------------------
+    [[ "$_CONFIG_DEPENDENCIES_VALIDATED" == "true" ]] && return 0
+    
+    #-- Prüfe ob folders_get_conf_dir() verfügbar ist (aus libfolders.sh) ---
+    if ! type -t folders_get_conf_dir &>/dev/null; then
+        echo "ERROR: folders_get_conf_dir() not available. Load libfolders.sh first!" >&2
+        return 1
+    fi
+
+    #-- Prüfe ob get_module_ini_path() verfügbar ist (aus libfiles.sh) ------
+    if ! type -t get_module_ini_path &>/dev/null; then
+        echo "ERROR: get_module_ini_path() not available. Load libfiles.sh first!" >&2
+        return 1
+    fi
+    
+    #-- Dependencies OK -----------------------------------------------------
+    _CONFIG_DEPENDENCIES_VALIDATED=true
     return 0
 }
 
@@ -51,30 +123,27 @@ config_check_dependencies() {
 # Funktion.: Lese OUTPUT_DIR aus disk2iso.conf oder verwende Fallback
 # Parameter: keine
 # Rückgabe.: OUTPUT_DIR Pfad (stdout, ohne trailing slash)
-#            Return-Code: 0 = Erfolg, 1 = Fehler
+# .........  Return-Code: 0 = Erfolg, 1 = Fehler
 # Beispiel.: output_dir=$(config_get_output_dir)
-# Hinweis..: - Liest DEFAULT_OUTPUT_DIR oder OUTPUT_DIR aus Konfiguration
-#            - Fallback auf globale Variable falls Config nicht lesbar
-#            - Entfernt trailing slash für konsistente Rückgabe
+# Hinweis..: - Besondere Bedeutung dieser Funktion, da OUTPUT_DIR essentiell
+# .........  - für die Funktionsweise von disk2iso ist. Daher hier separat
+# .........  - implementiert, um Abhängigkeiten zu minimieren.
+# .........  - Liest DEFAULT_OUTPUT_DIR oder OUTPUT_DIR aus Konfiguration
+# .........  - Entfernt trailing slash für konsistente Rückgabe
 # ===========================================================================
 config_get_output_dir() {
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
     local output_dir=""
     
-    #-- Versuche OUTPUT_DIR aus Config zu lesen ----------------------------
-    if [[ -f "$config_file" ]]; then
-        # Lese DEFAULT_OUTPUT_DIR falls vorhanden
-        output_dir=$(/usr/bin/grep -E '^DEFAULT_OUTPUT_DIR=' "$config_file" 2>/dev/null | /usr/bin/sed 's/^DEFAULT_OUTPUT_DIR=//;s/^"\(.*\)"$/\1/')
-        
-        # Fallback: Lese OUTPUT_DIR falls DEFAULT_OUTPUT_DIR nicht gesetzt
-        if [[ -z "$output_dir" ]]; then
-            output_dir=$(/usr/bin/grep -E '^OUTPUT_DIR=' "$config_file" 2>/dev/null | /usr/bin/sed 's/^OUTPUT_DIR=//;s/^"\(.*\)"$/\1/')
-        fi
-    fi
+    #-- Stelle sicher dass Config-Datei validiert wurde --------------------
+    config_validate_file || return 1
     
-    #-- Fallback auf globale Variable falls Config-Lesen fehlschlägt -------
-    if [[ -z "$output_dir" ]] && [[ -n "${OUTPUT_DIR:-}" ]]; then
-        output_dir="$OUTPUT_DIR"
+    #-- Lese OUTPUT_DIR aus Config -----------------------------------------
+    # Lese DEFAULT_OUTPUT_DIR falls vorhanden
+    output_dir=$(/usr/bin/grep -E '^DEFAULT_OUTPUT_DIR=' "$CONFIG_FILE" 2>/dev/null | /usr/bin/sed 's/^DEFAULT_OUTPUT_DIR=//;s/^"\(.*\)"$/\1/')
+    
+    # Fallback: Lese OUTPUT_DIR falls DEFAULT_OUTPUT_DIR nicht gesetzt
+    if [[ -z "$output_dir" ]]; then
+        output_dir=$(/usr/bin/grep -E '^OUTPUT_DIR=' "$CONFIG_FILE" 2>/dev/null | /usr/bin/sed 's/^OUTPUT_DIR=//;s/^"\(.*\)"$/\1/')
     fi
     
     #-- Fehlerfall: Kein OUTPUT_DIR gefunden -------------------------------
@@ -88,56 +157,10 @@ config_get_output_dir() {
     return 0
 }
 
-# ===========================================================================
-# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
-# ===========================================================================
-
-# ============================================================================
-# GLOBALE LAUFZEIT-VARIABLEN
-# ============================================================================
-# Diese Variablen werden zur Laufzeit gesetzt und sollten NICHT manuell
-# in disk2iso.conf geändert werden.
-# 
-# HINWEIS: disc_label, disc_type, disc_block_size und disc_volume_size
-# wurden durch DISC_INFO/DISC_DATA Arrays ersetzt (siehe libdiskinfos.sh)
-# Zugriff über Getter-Funktionen: discinfo_get_label(), discinfo_get_type(), etc.
-
-OUTPUT_DIR=""      # Ausgabeordner für ISO-Dateien (wird per Parameter oder DEFAULT gesetzt)
-iso_filename=""    # Vollständiger Pfad zur ISO-Datei
-md5_filename=""    # Vollständiger Pfad zur MD5-Datei
-log_filename=""    # Vollständiger Pfad zur Log-Datei
-iso_basename=""    # Basis-Dateiname ohne Pfad (z.B. "dvd_video.iso")
-
-# ============================================================================
-# CONFIG MANAGEMENT - NEUE ARCHITEKTUR
-# ============================================================================
-
-# Globale Service-Restart-Flags
-disk2iso_restart_required=false
-disk2iso_web_restart_required=false
-
-# Config-Metadaten: Key → Handler:RestartService
-declare -A CONFIG_HANDLERS=(
-    ["DEFAULT_OUTPUT_DIR"]="set_default_output_dir:disk2iso"
-    ["MP3_QUALITY"]="set_mp3_quality:none"
-    ["DDRESCUE_RETRIES"]="set_ddrescue_retries:none"
-    ["USB_DRIVE_DETECTION_ATTEMPTS"]="set_usb_detection_attempts:none"
-    ["USB_DRIVE_DETECTION_DELAY"]="set_usb_detection_delay:none"
-    ["MQTT_ENABLED"]="set_mqtt_enabled:disk2iso"
-    ["MQTT_BROKER"]="set_mqtt_broker:disk2iso"
-    ["MQTT_PORT"]="set_mqtt_port:disk2iso"
-    ["MQTT_USER"]="set_mqtt_user:disk2iso"
-    ["MQTT_PASSWORD"]="set_mqtt_password:disk2iso"
-    ["TMDB_API_KEY"]="set_tmdb_api_key:disk2iso-web"
-)
-
-# ============================================================================
-# CONFIG SETTER FUNCTIONS
-# ============================================================================
-
 set_default_output_dir() {
     local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    config_validate_file || return 1
     
     if [[ ! -d "$value" ]]; then
         echo '{"success": false, "message": "Verzeichnis existiert nicht"}' >&2
@@ -148,117 +171,1015 @@ set_default_output_dir() {
         return 1
     fi
     
-    /usr/bin/sed -i "s|^DEFAULT_OUTPUT_DIR=.*|DEFAULT_OUTPUT_DIR=\"${value}\"|" "$config_file" 2>/dev/null
+    /usr/bin/sed -i "s|^DEFAULT_OUTPUT_DIR=.*|DEFAULT_OUTPUT_DIR=\"${value}\"|" "$CONFIG_FILE" 2>/dev/null
     return $?
 }
 
-set_mp3_quality() {
-    local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+# ============================================================================
+# UNIFIED CONFIG API - SINGLE VALUE OPERATIONS (.conf FORMAT)
+# ============================================================================
+# Format: .conf = Simple Key=Value (kein Section-Header)
+# Beispiel: disk2iso.conf
+#   OUTPUT_DIR="/media/iso"
+#   MQTT_PORT=1883
+#   MQTT_ENABLED=true
+
+# ===========================================================================
+# config_get_value_conf
+# ---------------------------------------------------------------------------
+# Funktion.: Lese einzelnen Wert aus .conf Datei
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "disk2iso")
+#            $2 = key (z.B. "OUTPUT_DIR")
+#            $3 = default (optional, Fallback wenn Key nicht gefunden)
+# Rückgabe.: 0 = Erfolg (Wert oder Default), 1 = Fehler (Key fehlt, kein Default)
+# Ausgabe..: Value (stdout), Quotes werden automatisch entfernt
+# Beispiel.: output_dir=$(config_get_value_conf "disk2iso" "OUTPUT_DIR" "/opt/disk2iso/output")
+# ===========================================================================
+config_get_value_conf() {
+    #-- Parameter einlesen --------------------------------------------------
+    local module="$1"
+    local key="$2"
+    local default="${3:-}"
     
-    if ! [[ "$value" =~ ^[0-9]$ ]]; then
-        echo '{"success": false, "message": "Ungültiger Wert (0-9 erlaubt)"}' >&2
+    #-- Parameter-Validierung -----------------------------------------------
+    if [[ -z "$module" ]]; then
+        log_error "config_get_value_conf: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
         return 1
     fi
     
-    /usr/bin/sed -i "s|^MP3_QUALITY=.*|MP3_QUALITY=${value}|" "$config_file" 2>/dev/null
+    if [[ -z "$key" ]]; then
+        log_error "config_get_value_conf: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        return 1
+    fi
+    
+    #-- Pfad-Resolution über zentrale Funktion ------------------------------
+    local filepath
+    filepath=$(get_module_conf_path "$module") || {
+        log_error "config_get_value_conf: Path resolution failed for module: $module" 2>/dev/null || echo "ERROR: Path resolution failed" >&2
+        return 1
+    }
+    
+    #-- Lese Wert (nutze erste Zeile die passt) -----------------------------
+    local value
+    value=$(/usr/bin/sed -n "s/^${key}=\(.*\)/\1/p" "$filepath" | /usr/bin/head -1)
+    
+    #-- Entferne umschließende Quotes falls vorhanden -----------------------
+    value=$(echo "$value" | /usr/bin/sed 's/^"\(.*\)"$/\1/')
+    
+    #-- Wert gefunden oder Default nutzen (Self-Healing) -------------------
+    if [[ -n "$value" ]]; then
+        echo "$value"
+        return 0
+    elif [[ -n "$default" ]]; then
+        # Self-Healing: Default-Wert in Config schreiben (falls nicht in Schleife)
+        if [[ "$_CONFIG_SAVE_DEFAULT_CONF" == false ]]; then
+            _CONFIG_SAVE_DEFAULT_CONF=true
+            
+            # Schreibe Default in Config-Datei
+            if config_set_value_conf "$module" "$key" "$default" 2>/dev/null; then
+                # Lese Wert erneut zur Bestätigung (rekursiver Aufruf)
+                _CONFIG_SAVE_DEFAULT_CONF=false
+                config_get_value_conf "$module" "$key" "$default"
+                return $?
+            else
+                # Schreibfehler - gebe Default trotzdem zurück
+                _CONFIG_SAVE_DEFAULT_CONF=false
+                log_warning "config_get_value_conf: Default konnte nicht gespeichert werden: ${module}.${key}=${default}" 2>/dev/null
+                echo "$default"
+                return 0
+            fi
+        else
+            # In rekursivem Aufruf - verhindere Endlosschleife
+            echo "$default"
+            return 0
+        fi
+    else
+        return 1
+    fi
+}
+
+# ===========================================================================
+# config_set_value_conf
+# ---------------------------------------------------------------------------
+# Funktion.: Schreibe einzelnen Wert in .conf Datei (atomic write)
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "disk2iso")
+#            $2 = key
+#            $3 = value
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Type-Detection:
+#   - Pure Integer (^-?[0-9]+$) → Ohne Quotes
+#   - Boolean (true|false|0|1|yes|no) → Normalisiert zu true/false, ohne Quotes
+#   - String → Mit Quotes, escaped
+# Beispiel.: config_set_value_conf "disk2iso" "MQTT_PORT" "1883"
+#            → MQTT_PORT=1883
+#            config_set_value_conf "disk2iso" "MQTT_BROKER" "192.168.1.1"
+#            → MQTT_BROKER="192.168.1.1"
+# ===========================================================================
+config_set_value_conf() {
+    local module="$1"
+    local key="$2"
+    local value="$3"
+    
+    # Validierung
+    if [[ -z "$module" ]]; then
+        log_error "config_set_value_conf: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$key" ]]; then
+        log_error "config_set_value_conf: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        return 1
+    fi
+    
+    # Pfad-Resolution über zentrale Funktion
+    local filepath
+    filepath=$(get_module_conf_path "$module") || {
+        log_error "config_set_value_conf: Path resolution failed for module: $module" 2>/dev/null || echo "ERROR: Path resolution failed" >&2
+        return 1
+    }
+    
+    # Type Detection (Smart Quoting)
+    local formatted_value
+    
+    if [[ "$value" =~ ^-?[0-9]+$ ]]; then
+        # Pure Integer - keine Quotes
+        formatted_value="${value}"
+        
+    elif [[ "$value" =~ ^(true|false|0|1|yes|no|on|off)$ ]]; then
+        # Boolean - normalisieren zu true/false, keine Quotes
+        case "$value" in
+            true|1|yes|on)   formatted_value="true" ;;
+            false|0|no|off)  formatted_value="false" ;;
+        esac
+        
+    else
+        # String - mit Quotes + Escaping
+        # Escape existing quotes
+        local escaped_value="${value//\"/\\\"}"
+        formatted_value="\"${escaped_value}\""
+    fi
+    
+    # Atomic write mit sed
+    /usr/bin/sed -i "s|^${key}=.*|${key}=${formatted_value}|" "$filepath" 2>/dev/null
     return $?
 }
 
+# ===========================================================================
+# config_del_value_conf
+# ---------------------------------------------------------------------------
+# Funktion.: Lösche einzelnen Wert aus .conf Datei
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "disk2iso")
+#            $2 = key
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beispiel.: config_del_value_conf "disk2iso" "OLD_KEY"
+# ===========================================================================
+config_del_value_conf() {
+    local module="$1"
+    local key="$2"
+    
+    # Validierung
+    if [[ -z "$module" ]]; then
+        log_error "config_del_value_conf: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$key" ]]; then
+        log_error "config_del_value_conf: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        return 1
+    fi
+    
+    # Pfad-Resolution über zentrale Funktion
+    local filepath
+    filepath=$(get_module_conf_path "$module") || {
+        log_error "config_del_value_conf: Path resolution failed for module: $module" 2>/dev/null || echo "ERROR: Path resolution failed" >&2
+        return 1
+    }
+    
+    # Lösche Zeile mit sed (in-place)
+    /usr/bin/sed -i "/^${key}=/d" "$filepath" 2>/dev/null
+    return $?
+}
+
+# ============================================================================
+# UNIFIED CONFIG API - SINGLE VALUE OPERATIONS (.ini FORMAT)
+# ============================================================================
+# Format: .ini = Sectioned Key=Value
+# Beispiel: libaudio.ini
+#   [dependencies]
+#   optional=cdparanoia,lame,genisoimage
+#   [metadata]
+#   version=1.2.0
+
+# ===========================================================================
+# config_get_value_ini
+# ---------------------------------------------------------------------------
+# Funktion.: Lese einzelnen Wert aus .ini Datei (KERN-IMPLEMENTIERUNG)
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
+#            $2 = section (z.B. "dependencies")
+#            $3 = key (z.B. "optional")
+#            $4 = default (optional, Fallback wenn Key nicht gefunden)
+# Rückgabe.: 0 = Erfolg (Wert oder Default), 1 = Fehler (Key fehlt, kein Default)
+# Ausgabe..: Value (stdout)
+# Beispiel.: tools=$(config_get_value_ini "audio" "dependencies" "optional" "")
+# ===========================================================================
+config_get_value_ini() {
+    #-- Parameter einlesen --------------------------------------------------
+    local module="$1"
+    local section="$2"
+    local key="$3"
+    local default="${4:-}"
+    
+    #-- Validiere Dependencies ----------------------------------------------
+    if ! type -t get_module_ini_path &>/dev/null; then
+        log_error "config_get_value_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        return 1
+    fi
+    
+    #-- Hole Pfad zur INI-Datei via get_module_ini_path() -------------------
+    local filepath=$(get_module_ini_path "$module") || {
+        if [[ -n "$default" ]]; then
+            echo "$default"
+            return 0
+        fi
+        log_error "config_get_value_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        return 1
+    }
+    
+    #-- Validierung der Parameter -------------------------------------------
+    if [[ -z "$module" ]]; then
+        log_error "config_get_value_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$section" ]]; then
+        log_error "config_get_value_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$key" ]]; then
+        log_error "config_get_value_ini: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        return 1
+    fi
+    
+    #-- awk-Logik für INI-Parsing -------------------------------------------
+    local value
+    value=$(awk -F'=' -v section="[${section}]" -v key="$key" '
+        # Wenn Zeile = Section-Header → Sektion gefunden
+        $0 == section { in_section=1; next }
+        
+        # Wenn neue Section beginnt → Sektion verlassen
+        /^\[.*\]/ { in_section=0 }
+        
+        # Wenn in Sektion UND Key matcht → Wert extrahieren
+        in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
+            # Entferne Whitespace vor/nach Wert
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2)
+            print $2
+            exit
+        }
+    ' "$filepath")
+    
+    #-- Wert gefunden oder Default nutzen (Self-Healing) -------------------
+    if [[ -n "$value" ]]; then
+        echo "$value"
+        return 0
+    elif [[ -n "$default" ]]; then
+        # Self-Healing: Default-Wert in INI-Datei schreiben (falls nicht in Schleife)
+        if [[ "$_CONFIG_SAVE_DEFAULT_INI" == false ]]; then
+            _CONFIG_SAVE_DEFAULT_INI=true
+            
+            # Schreibe Default in INI-Datei
+            if config_set_value_ini "$module" "$section" "$key" "$default" 2>/dev/null; then
+                # Lese Wert erneut zur Bestätigung (rekursiver Aufruf)
+                _CONFIG_SAVE_DEFAULT_INI=false
+                config_get_value_ini "$module" "$section" "$key" "$default"
+                return $?
+            else
+                # Schreibfehler - gebe Default trotzdem zurück
+                _CONFIG_SAVE_DEFAULT_INI=false
+                log_warning "config_get_value_ini: Default konnte nicht gespeichert werden: ${module}.[${section}].${key}=${default}" 2>/dev/null
+                echo "$default"
+                return 0
+            fi
+        else
+            # In rekursivem Aufruf - verhindere Endlosschleife
+            echo "$default"
+            return 0
+        fi
+    else
+        return 1
+    fi
+}
+
+# ===========================================================================
+# config_set_value_ini
+# ---------------------------------------------------------------------------
+# Funktion.: Schreibe/Aktualisiere einzelnen Wert in .ini Datei (KERN-IMPLEMENTIERUNG)
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
+#            $2 = section
+#            $3 = key
+#            $4 = value
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Hinweis..: INI-Format speichert immer als String, keine Type-Detection
+# Beispiel.: config_set_value_ini "audio" "dependencies" "optional" "cdparanoia,lame"
+# ===========================================================================
+config_set_value_ini() {
+    local module="$1"
+    local section="$2"
+    local key="$3"
+    local value="$4"
+    
+    # Validiere Dependencies (Lazy Initialization)
+    if ! type -t get_module_ini_path &>/dev/null; then
+        log_error "config_set_value_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        return 1
+    fi
+    
+    # Hole Pfad zur INI-Datei via get_module_ini_path()
+    local filepath
+    filepath=$(get_module_ini_path "$module") || {
+        log_error "config_set_value_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        return 1
+    }
+    
+    # Validierung
+    if [[ -z "$module" ]]; then
+        log_error "config_set_value_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$section" ]]; then
+        log_error "config_set_value_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$key" ]]; then
+        log_error "config_set_value_ini: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        return 1
+    fi
+    
+    # KERN-IMPLEMENTIERUNG: Atomic write mit awk
+    # Hinweis: Datei-Existenz ist garantiert durch get_module_ini_path() (Self-Healing)
+    # Escape Sonderzeichen für sed
+    local escaped_key=$(echo "$key" | sed 's/[\/&]/\\&/g')
+    local escaped_value=$(echo "$value" | sed 's/[\/&]/\\&/g')
+    
+    # Prüfe ob Section existiert
+    if ! grep -q "^\[${section}\]" "$filepath" 2>/dev/null; then
+        # Section fehlt - erstelle sie
+        echo "" >> "$filepath"
+        echo "[${section}]" >> "$filepath"
+        echo "${key}=${value}" >> "$filepath"
+        return 0
+    fi
+    
+    # Prüfe ob Key in Section existiert
+    if awk -v section="[${section}]" -v key="$key" '
+        $0 == section { in_section=1; next }
+        /^\[.*\]/ { in_section=0 }
+        in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" { found=1; exit }
+        END { exit !found }
+    ' "$filepath"; then
+        # Key existiert - aktualisiere Wert
+        awk -v section="[${section}]" -v key="$key" -v value="$value" '
+            $0 == section { in_section=1; print; next }
+            /^\[.*\]/ { in_section=0 }
+            in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
+                print key "=" value
+                next
+            }
+            { print }
+        ' "$filepath" > "${filepath}.tmp" && mv "${filepath}.tmp" "$filepath"
+    else
+        # Key fehlt - füge in Section ein
+        awk -v section="[${section}]" -v key="$key" -v value="$value" '
+            $0 == section { in_section=1; print; print key "=" value; next }
+            /^\[.*\]/ { in_section=0 }
+            { print }
+        ' "$filepath" > "${filepath}.tmp" && mv "${filepath}.tmp" "$filepath"
+    fi
+    
+    return 0
+}
+
+# ===========================================================================
+# config_del_value_ini
+# ---------------------------------------------------------------------------
+# Funktion.: Lösche einzelnen Key aus .ini Datei (KERN-IMPLEMENTIERUNG)
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
+#            $2 = section
+#            $3 = key
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beispiel.: config_del_value_ini "audio" "dependencies" "old_key"
+# ===========================================================================
+config_del_value_ini() {
+    local module="$1"
+    local section="$2"
+    local key="$3"
+    
+    # Validiere Dependencies (Lazy Initialization)
+    if ! type -t get_module_ini_path &>/dev/null; then
+        log_error "config_del_value_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        return 1
+    fi
+    
+    # Hole Pfad zur INI-Datei via get_module_ini_path()
+    local filepath
+    filepath=$(get_module_ini_path "$module") || {
+        log_error "config_del_value_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        return 1
+    }
+    
+    # Validierung
+    if [[ -z "$module" ]]; then
+        log_error "config_del_value_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$section" ]]; then
+        log_error "config_del_value_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$key" ]]; then
+        log_error "config_del_value_ini: Key missing" 2>/dev/null || echo "ERROR: Key missing" >&2
+        return 1
+    fi
+    
+    # Hinweis: Datei-Existenz ist garantiert durch get_module_ini_path() (Self-Healing)
+    # KERN-IMPLEMENTIERUNG: awk löscht Key=Value Zeile in angegebener Sektion
+    awk -v section="[${section}]" -v key="$key" '
+        $0 == section { in_section=1; print; next }
+        /^\[.*\]/ { in_section=0 }
+        in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" { next }
+        { print }
+    ' "$filepath" > "${filepath}.tmp" && mv "${filepath}.tmp" "$filepath"
+    
+    return 0
+}
+
+# ============================================================================
+# UNIFIED CONFIG API - ARRAY OPERATIONS (.ini FORMAT)
+# ============================================================================
+# Arrays werden als komma-separierte Werte gespeichert
+# Beispiel: tools=cdparanoia,lame,genisoimage
+
+# ===========================================================================
+# config_get_array_ini
+# ---------------------------------------------------------------------------
+# Funktion.: Lese komma-separierte Liste aus .ini Datei als Bash-Array
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
+#            $2 = section (z.B. "dependencies")
+#            $3 = key (z.B. "optional")
+#            $4 = default (optional, komma-separiert wenn Key nicht gefunden)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Ausgabe..: Array-Elemente (eine Zeile pro Element)
+# Beispiel.: mapfile -t tools < <(config_get_array_ini "audio" "dependencies" "optional")
+#            → tools=("cdparanoia" "lame" "genisoimage")
+# Hinweis..: Nutzt config_get_value_ini() intern
+# ===========================================================================
+config_get_array_ini() {
+    local module="$1"
+    local section="$2"
+    local key="$3"
+    local default="${4:-}"
+    
+    # Lese komma-separierte Liste
+    local value
+    value=$(config_get_value_ini "$module" "$section" "$key" "$default") || return 1
+    
+    if [[ -z "$value" ]]; then
+        return 1
+    fi
+    
+    # Split by Komma, trim Whitespace, ausgeben (eine Zeile pro Element)
+    echo "$value" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$'
+    return 0
+}
+
+# ===========================================================================
+# config_set_array_ini
+# ---------------------------------------------------------------------------
+# Funktion.: Schreibe Bash-Array als komma-separierte Liste in .ini Datei
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
+#            $2 = section
+#            $3 = key
+#            $4+ = values (alle weiteren Parameter werden als Array-Elemente behandelt)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beispiel.: config_set_array_ini "audio" "dependencies" "optional" "cdparanoia" "lame" "genisoimage"
+#            → optional=cdparanoia,lame,genisoimage
+#            
+#            # Mit Array-Expansion:
+#            tools=("cdparanoia" "lame" "genisoimage")
+#            config_set_array_ini "audio" "dependencies" "optional" "${tools[@]}"
+# Hinweis..: Nutzt config_set_value_ini() intern
+# ===========================================================================
+config_set_array_ini() {
+    local module="$1"
+    local section="$2"
+    local key="$3"
+    shift 3
+    
+    # Validierung
+    if [[ $# -eq 0 ]]; then
+        log_error "config_set_array_ini: No values provided" 2>/dev/null || echo "ERROR: No values provided" >&2
+        return 1
+    fi
+    
+    # Join Array zu komma-separiertem String
+    local value
+    local first=true
+    for item in "$@"; do
+        if [[ "$first" == true ]]; then
+            value="$item"
+            first=false
+        else
+            value="${value},${item}"
+        fi
+    done
+    
+    # Schreibe als einfachen Wert
+    config_set_value_ini "$module" "$section" "$key" "$value"
+}
+
+# ===========================================================================
+# config_del_array_ini
+# ---------------------------------------------------------------------------
+# Funktion.: Lösche Array-Key aus .ini Datei (Wrapper)
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
+#            $2 = section
+#            $3 = key
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beispiel.: config_del_array_ini "audio" "dependencies" "optional"
+# Hinweis..: Wrapper um config_del_value_ini() - Arrays werden wie Werte gelöscht
+# ===========================================================================
+config_del_array_ini() {
+    local module="$1"
+    local section="$2"
+    local key="$3"
+    
+    config_del_value_ini "$module" "$section" "$key"
+}
+
+# ============================================================================
+# UNIFIED CONFIG API - SECTION OPERATIONS (.ini FORMAT)
+# ============================================================================
+# Operationen auf ganzen INI-Sektionen
+
+# ===========================================================================
+# config_get_section_ini
+# ---------------------------------------------------------------------------
+# Funktion.: Lese alle Key=Value Paare einer INI-Sektion
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
+#            $2 = section (z.B. "metadata")
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Ausgabe..: Key=Value Paare (eine Zeile pro Entry)
+# Beispiel.: config_get_section_ini "audio" "metadata"
+#            → "name=Audio Ripper"
+#            → "version=1.2.0"
+# Hinweis..: Ignoriert Kommentare und Leerzeilen
+# ===========================================================================
+config_get_section_ini() {
+    local module="$1"
+    local section="$2"
+    
+    # Validierung
+    if [[ -z "$module" ]]; then
+        log_error "config_get_section_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$section" ]]; then
+        log_error "config_get_section_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        return 1
+    fi
+    
+    # Validiere Dependencies
+    if ! type -t get_module_ini_path &>/dev/null; then
+        log_error "config_get_section_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        return 1
+    fi
+    
+    # Hole Pfad zur INI-Datei
+    local filepath
+    filepath=$(get_module_ini_path "$module") || {
+        log_error "config_get_section_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        return 1
+    }
+    
+    # awk: Drucke alle Key=Value Zeilen innerhalb der Sektion
+    awk -v section="[${section}]" '
+        # Section-Header gefunden
+        $0 == section { in_section=1; next }
+        
+        # Neue Section beginnt
+        /^\[.*\]/ { in_section=0 }
+        
+        # In Sektion: Drucke Key=Value Zeilen (ignoriere Kommentare/Leerzeilen)
+        in_section && /^[^#;[:space:]].*=/ { print $0 }
+    ' "$filepath"
+}
+
+# ===========================================================================
+# config_set_section_ini
+# ---------------------------------------------------------------------------
+# Funktion.: Erstelle/Überschreibe komplette INI-Sektion mit Key=Value Paaren
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
+#            $2 = section
+#            $3+ = key=value Paare (alle weiteren Parameter)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beispiel.: config_set_section_ini "audio" "metadata" "name=Audio Ripper" "version=1.2.0"
+# Hinweis..: Löscht existierende Sektion komplett und erstellt sie neu
+# ===========================================================================
+config_set_section_ini() {
+    local module="$1"
+    local section="$2"
+    shift 2
+    
+    # Validierung
+    if [[ -z "$module" ]]; then
+        log_error "config_set_section_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$section" ]]; then
+        log_error "config_set_section_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        return 1
+    fi
+    
+    if [[ $# -eq 0 ]]; then
+        log_error "config_set_section_ini: No key=value pairs provided" 2>/dev/null || echo "ERROR: No key=value pairs provided" >&2
+        return 1
+    fi
+    
+    # Validiere Dependencies
+    if ! type -t get_module_ini_path &>/dev/null; then
+        log_error "config_set_section_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        return 1
+    fi
+    
+    # Hole Pfad zur INI-Datei
+    local filepath
+    filepath=$(get_module_ini_path "$module") || {
+        log_error "config_set_section_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        return 1
+    }
+    
+    # Lösche existierende Sektion falls vorhanden
+    config_del_section_ini "$module" "$section" 2>/dev/null
+    
+    # Erstelle neue Sektion
+    echo "" >> "$filepath"
+    echo "[${section}]" >> "$filepath"
+    
+    # Füge alle Key=Value Paare hinzu
+    for pair in "$@"; do
+        # Validiere Format key=value
+        if [[ "$pair" =~ ^[^=]+=.* ]]; then
+            echo "$pair" >> "$filepath"
+        else
+            log_warning "config_set_section_ini: Invalid key=value pair skipped: $pair" 2>/dev/null
+        fi
+    done
+    
+    return 0
+}
+
+# ===========================================================================
+# config_del_section_ini
+# ---------------------------------------------------------------------------
+# Funktion.: Lösche komplette INI-Sektion inklusive aller Einträge
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
+#            $2 = section
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beispiel.: config_del_section_ini "audio" "metadata"
+# Hinweis..: Entfernt Section-Header und alle zugehörigen Key=Value Zeilen
+# ===========================================================================
+config_del_section_ini() {
+    local module="$1"
+    local section="$2"
+    
+    # Validierung
+    if [[ -z "$module" ]]; then
+        log_error "config_del_section_ini: Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$section" ]]; then
+        log_error "config_del_section_ini: Section missing" 2>/dev/null || echo "ERROR: Section missing" >&2
+        return 1
+    fi
+    
+    # Validiere Dependencies
+    if ! type -t get_module_ini_path &>/dev/null; then
+        log_error "config_del_section_ini: get_module_ini_path() not available. Load libfiles.sh first!" 2>/dev/null || echo "ERROR: get_module_ini_path() not available" >&2
+        return 1
+    fi
+    
+    # Hole Pfad zur INI-Datei
+    local filepath
+    filepath=$(get_module_ini_path "$module") || {
+        log_error "config_del_section_ini: Module INI not found: $module" 2>/dev/null || echo "ERROR: Module INI not found: $module" >&2
+        return 1
+    }
+    
+    # awk: Lösche Section-Header und alle zugehörigen Zeilen
+    awk -v section="[${section}]" '
+        # Section-Header gefunden - überspringe
+        $0 == section { in_section=1; next }
+        
+        # Neue Section beginnt - verlasse Delete-Modus
+        /^\[.*\]/ { in_section=0 }
+        
+        # In Section - überspringe alle Zeilen
+        in_section { next }
+        
+        # Alle anderen Zeilen ausgeben
+        { print }
+    ' "$filepath" > "${filepath}.tmp" && mv "${filepath}.tmp" "$filepath"
+    
+    return 0
+}
+
+# ===========================================================================
+# config_count_section_entries_ini
+# ---------------------------------------------------------------------------
+# Funktion.: Zähle Anzahl der Einträge in einer INI-Sektion
+# Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
+#            $2 = section (z.B. "metadata")
+# Rückgabe.: Anzahl der Einträge (0-N) via stdout
+# Beispiel.: count=$(config_count_section_entries_ini "audio" "dependencies")
+#            → "3"
+# Hinweis..: Zählt nur Key=Value Zeilen, keine Kommentare/Leerzeilen
+# ===========================================================================
+config_count_section_entries_ini() {
+    local module="$1"
+    local section="$2"
+    
+    # Validierung
+    if [[ -z "$module" ]] || [[ -z "$section" ]]; then
+        echo 0
+        return 0
+    fi
+    
+    # Validiere Dependencies
+    if ! type -t get_module_ini_path &>/dev/null; then
+        echo 0
+        return 0
+    fi
+    
+    # Hole Pfad zur INI-Datei
+    local filepath
+    filepath=$(get_module_ini_path "$module") 2>/dev/null || {
+        echo 0
+        return 0
+    }
+    
+    # awk: Zähle Key=Value Zeilen in Sektion
+    local count=$(awk -v section="[${section}]" '
+        $0 == section { in_section=1; next }
+        /^\[.*\]/ { in_section=0 }
+        in_section && /^[^#;[:space:]].*=/ { count++ }
+        END { print count+0 }
+    ' "$filepath")
+    
+    echo "$count"
+}
+
+# ============================================================================
+# UNIFIED CONFIG API - JSON OPERATIONS
+# ============================================================================
+# JSON-Dateien für API-Status und Metadaten (api/ Verzeichnis)
+# Beispiel: api/status.json, api/progress.json
+
+# ===========================================================================
+# config_get_value_json
+# ---------------------------------------------------------------------------
+# Funktion.: Lese einzelnen Wert aus JSON-Datei
+# Parameter: $1 = json_file (Dateiname ohne Pfad, z.B. "status")
+#            $2 = json_path (jq-kompatibel, z.B. ".disc_type" oder ".metadata.title")
+#            $3 = default (optional, Fallback wenn Key nicht gefunden)
+# Rückgabe.: 0 = Erfolg (Wert oder Default), 1 = Fehler (Key fehlt, kein Default)
+# Ausgabe..: Value (stdout, als JSON-String)
+# Beispiel.: disc_type=$(config_get_value_json "status" ".disc_type" "unknown")
+# Hinweis..: Benötigt jq (wird bei Dependency-Check validiert)
+# ===========================================================================
+config_get_value_json() {
+    local json_file="$1"
+    local json_path="$2"
+    local default="${3:-}"
+    
+    # Validierung
+    if [[ -z "$json_file" ]]; then
+        log_error "config_get_value_json: JSON filename missing" 2>/dev/null || echo "ERROR: JSON filename missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$json_path" ]]; then
+        log_error "config_get_value_json: JSON path missing" 2>/dev/null || echo "ERROR: JSON path missing" >&2
+        return 1
+    fi
+    
+    # Pfad-Resolution: api/${json_file}.json
+    local filepath="${INSTALL_DIR:-/opt/disk2iso}/api/${json_file}.json"
+    
+    # Prüfe ob Datei existiert
+    if [[ ! -f "$filepath" ]]; then
+        if [[ -n "$default" ]]; then
+            echo "$default"
+            return 0
+        fi
+        log_error "config_get_value_json: JSON file not found: $filepath" 2>/dev/null || echo "ERROR: JSON file not found" >&2
+        return 1
+    fi
+    
+    # Prüfe ob jq verfügbar ist
+    if ! command -v jq &>/dev/null; then
+        log_error "config_get_value_json: jq not available" 2>/dev/null || echo "ERROR: jq not available" >&2
+        return 1
+    fi
+    
+    # Lese Wert mit jq
+    local value
+    value=$(jq -r "${json_path}" "$filepath" 2>/dev/null)
+    
+    # Wert gefunden oder Default nutzen
+    if [[ -n "$value" ]] && [[ "$value" != "null" ]]; then
+        echo "$value"
+        return 0
+    elif [[ -n "$default" ]]; then
+        echo "$default"
+        return 0
+    else
+        return 1
+    fi
+}
+
+# ===========================================================================
+# config_set_value_json
+# ---------------------------------------------------------------------------
+# Funktion.: Schreibe einzelnen Wert in JSON-Datei
+# Parameter: $1 = json_file (Dateiname ohne Pfad, z.B. "status")
+#            $2 = json_path (jq-kompatibel, z.B. ".disc_type" oder ".metadata.title")
+#            $3 = value (String, Number oder Boolean)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beispiel.: config_set_value_json "status" ".disc_type" "audio-cd"
+#            config_set_value_json "progress" ".percentage" "75"
+# Hinweis..: Erstellt Datei falls nicht vorhanden, erstellt verschachtelte Pfade
+# ===========================================================================
+config_set_value_json() {
+    local json_file="$1"
+    local json_path="$2"
+    local value="$3"
+    
+    # Validierung
+    if [[ -z "$json_file" ]]; then
+        log_error "config_set_value_json: JSON filename missing" 2>/dev/null || echo "ERROR: JSON filename missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$json_path" ]]; then
+        log_error "config_set_value_json: JSON path missing" 2>/dev/null || echo "ERROR: JSON path missing" >&2
+        return 1
+    fi
+    
+    # Pfad-Resolution: api/${json_file}.json
+    local filepath="${INSTALL_DIR:-/opt/disk2iso}/api/${json_file}.json"
+    
+    # Prüfe ob jq verfügbar ist
+    if ! command -v jq &>/dev/null; then
+        log_error "config_set_value_json: jq not available" 2>/dev/null || echo "ERROR: jq not available" >&2
+        return 1
+    fi
+    
+    # Erstelle Datei falls nicht vorhanden
+    if [[ ! -f "$filepath" ]]; then
+        echo '{}' > "$filepath"
+    fi
+    
+    # Type Detection für JSON
+    local json_value
+    if [[ "$value" =~ ^-?[0-9]+$ ]]; then
+        # Integer - ohne Quotes
+        json_value="$value"
+    elif [[ "$value" =~ ^(true|false)$ ]]; then
+        # Boolean - ohne Quotes
+        json_value="$value"
+    else
+        # String - mit Quotes (jq escaped automatisch)
+        json_value="\"$value\""
+    fi
+    
+    # Schreibe Wert mit jq (atomic write)
+    jq "${json_path} = ${json_value}" "$filepath" > "${filepath}.tmp" && mv "${filepath}.tmp" "$filepath"
+    return $?
+}
+
+# ===========================================================================
+# config_del_value_json
+# ---------------------------------------------------------------------------
+# Funktion.: Lösche einzelnen Key aus JSON-Datei
+# Parameter: $1 = json_file (Dateiname ohne Pfad, z.B. "status")
+#            $2 = json_path (jq-kompatibel, z.B. ".disc_type" oder ".metadata.title")
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beispiel.: config_del_value_json "status" ".disc_type"
+# ===========================================================================
+config_del_value_json() {
+    local json_file="$1"
+    local json_path="$2"
+    
+    # Validierung
+    if [[ -z "$json_file" ]]; then
+        log_error "config_del_value_json: JSON filename missing" 2>/dev/null || echo "ERROR: JSON filename missing" >&2
+        return 1
+    fi
+    
+    if [[ -z "$json_path" ]]; then
+        log_error "config_del_value_json: JSON path missing" 2>/dev/null || echo "ERROR: JSON path missing" >&2
+        return 1
+    fi
+    
+    # Pfad-Resolution: api/${json_file}.json
+    local filepath="${INSTALL_DIR:-/opt/disk2iso}/api/${json_file}.json"
+    
+    # Prüfe ob Datei existiert
+    if [[ ! -f "$filepath" ]]; then
+        return 0
+    fi
+    
+    # Prüfe ob jq verfügbar ist
+    if ! command -v jq &>/dev/null; then
+        log_error "config_del_value_json: jq not available" 2>/dev/null || echo "ERROR: jq not available" >&2
+        return 1
+    fi
+    
+    # Lösche Key mit jq (atomic write)
+    jq "del(${json_path})" "$filepath" > "${filepath}.tmp" && mv "${filepath}.tmp" "$filepath"
+    return $?
+}
+
+
+
+
+# ===========================================================================
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
+# ===========================================================================
+
+# ============================================================================
+# CONFIG MANAGEMENT - NEUE ARCHITEKTUR
+# ============================================================================
+
+# Globale Service-Restart-Flags
+disk2iso_restart_required=false
+disk2iso_web_restart_required=false
+
+# Config-Metadaten: Key → Handler:RestartService
+# HINWEIS: MQTT/TMDB/MP3 Config werden nun über Modul-INI-Dateien verwaltet
+#          (libmqtt.ini, libtmdb.ini, libaudio.ini)
+declare -A CONFIG_HANDLERS=(
+    ["DEFAULT_OUTPUT_DIR"]="set_default_output_dir:disk2iso"
+    ["DDRESCUE_RETRIES"]="set_ddrescue_retries:none"
+    ["USB_DRIVE_DETECTION_ATTEMPTS"]="set_usb_detection_attempts:none"
+    ["USB_DRIVE_DETECTION_DELAY"]="set_usb_detection_delay:none"
+)
+
+# ============================================================================
+# CONFIG SETTER FUNCTIONS
+# ============================================================================
+
 set_ddrescue_retries() {
     local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
     
     if ! [[ "$value" =~ ^[0-9]+$ ]]; then
         echo '{"success": false, "message": "Ungültiger Wert (Zahl erwartet)"}' >&2
         return 1
     fi
     
-    /usr/bin/sed -i "s|^DDRESCUE_RETRIES=.*|DDRESCUE_RETRIES=${value}|" "$config_file" 2>/dev/null
+    /usr/bin/sed -i "s|^DDRESCUE_RETRIES=.*|DDRESCUE_RETRIES=${value}|" "$CONFIG_FILE" 2>/dev/null
     return $?
 }
 
 set_usb_detection_attempts() {
     local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
     
     if ! [[ "$value" =~ ^[0-9]+$ ]]; then
         echo '{"success": false, "message": "Ungültiger Wert (Zahl erwartet)"}' >&2
         return 1
     fi
     
-    /usr/bin/sed -i "s|^USB_DRIVE_DETECTION_ATTEMPTS=.*|USB_DRIVE_DETECTION_ATTEMPTS=${value}|" "$config_file" 2>/dev/null
+    /usr/bin/sed -i "s|^USB_DRIVE_DETECTION_ATTEMPTS=.*|USB_DRIVE_DETECTION_ATTEMPTS=${value}|" "$CONFIG_FILE" 2>/dev/null
     return $?
 }
 
 set_usb_detection_delay() {
     local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
     
     if ! [[ "$value" =~ ^[0-9]+$ ]]; then
         echo '{"success": false, "message": "Ungültiger Wert (Zahl erwartet)"}' >&2
         return 1
     fi
     
-    /usr/bin/sed -i "s|^USB_DRIVE_DETECTION_DELAY=.*|USB_DRIVE_DETECTION_DELAY=${value}|" "$config_file" 2>/dev/null
-    return $?
-}
-
-set_mqtt_enabled() {
-    local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
-    
-    if [[ "$value" != "true" && "$value" != "false" ]]; then
-        echo '{"success": false, "message": "Ungültiger Wert (true/false)"}' >&2
-        return 1
-    fi
-    
-    /usr/bin/sed -i "s|^MQTT_ENABLED=.*|MQTT_ENABLED=${value}|" "$config_file" 2>/dev/null
-    return $?
-}
-
-set_mqtt_broker() {
-    local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
-    
-    /usr/bin/sed -i "s|^MQTT_BROKER=.*|MQTT_BROKER=\"${value}\"|" "$config_file" 2>/dev/null
-    return $?
-}
-
-set_mqtt_port() {
-    local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
-    
-    if ! [[ "$value" =~ ^[0-9]+$ ]] || [ "$value" -lt 1 ] || [ "$value" -gt 65535 ]; then
-        echo '{"success": false, "message": "Ungültiger Port (1-65535)"}' >&2
-        return 1
-    fi
-    
-    /usr/bin/sed -i "s|^MQTT_PORT=.*|MQTT_PORT=${value}|" "$config_file" 2>/dev/null
-    return $?
-}
-
-set_mqtt_user() {
-    local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
-    
-    /usr/bin/sed -i "s|^MQTT_USER=.*|MQTT_USER=\"${value}\"|" "$config_file" 2>/dev/null
-    return $?
-}
-
-set_mqtt_password() {
-    local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
-    
-    /usr/bin/sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=\"${value}\"|" "$config_file" 2>/dev/null
-    return $?
-}
-
-set_tmdb_api_key() {
-    local value="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
-    
-    /usr/bin/sed -i "s|^TMDB_API_KEY=.*|TMDB_API_KEY=\"${value}\"|" "$config_file" 2>/dev/null
+    /usr/bin/sed -i "s|^USB_DRIVE_DETECTION_DELAY=.*|USB_DRIVE_DETECTION_DELAY=${value}|" "$CONFIG_FILE" 2>/dev/null
     return $?
 }
 
@@ -387,82 +1308,54 @@ restart_service() {
 # CONFIG MANAGEMENT FUNKTIONEN (LEGACY - für Kompatibilität)
 # ============================================================================
 
-# Funktion: Lese Config-Wert aus config.sh
+# Funktion: Lese Config-Wert aus disk2iso.conf (WRAPPER für Rückwärtskompatibilität)
 # Parameter: $1 = Key (z.B. "DEFAULT_OUTPUT_DIR")
 # Rückgabe: JSON mit {"success": true, "value": "..."} oder {"success": false, "message": "..."}
-# NOTE: Diese Funktion ist veraltet. Nutze get_all_config_values() für vollständige Config
+# NOTE: LEGACY WRAPPER - Nutze config_get_value_conf() direkt für neue Implementierungen
 get_config_value() {
     local key="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/lib/config.sh"
     
     if [[ -z "$key" ]]; then
         echo '{"success": false, "message": "Key erforderlich"}'
         return 1
     fi
     
-    if [[ ! -f "$config_file" ]]; then
-        echo '{"success": false, "message": "config.sh nicht gefunden"}'
+    # Nutze neue unified config API
+    local value
+    value=$(config_get_value_conf "disk2iso" "$key") || {
+        echo '{"success": false, "message": "Key nicht gefunden"}'
         return 1
-    fi
+    }
     
-    # Lese Wert mit sed
-    local value=$(sed -n "s/^${key}=\(.*\)/\1/p" "$config_file" | head -1)
-    
-    # Entferne Anführungszeichen
-    value=$(echo "$value" | sed 's/^"\(.*\)"$/\1/')
-    
-    if [[ -n "$value" ]]; then
-        # Escape JSON special characters
-        value=$(echo "$value" | sed 's/\\/\\\\/g; s/"/\\"/g')
-        echo "{\"success\": true, \"value\": \"${value}\"}"
-        return 0
-    else
-        echo "{\"success\": false, \"message\": \"Key nicht gefunden\"}"
-        return 1
-    fi
+    # Escape JSON special characters
+    value=$(echo "$value" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    echo "{\"success\": true, \"value\": \"${value}\"}"
+    return 0
 }
 
-# Funktion: Aktualisiere einzelnen Config-Wert in config.sh
+# Funktion: Aktualisiere einzelnen Config-Wert in config.sh (WRAPPER für Rückwärtskompatibilität)
 # Parameter: $1 = Key (z.B. "DEFAULT_OUTPUT_DIR")
 #            $2 = Value (z.B. "/media/iso")
-#            $3 = Quote-Mode ("quoted" oder "unquoted", default: auto-detect)
+#            $3 = Quote-Mode (DEPRECATED, wird ignoriert - Type Detection erfolgt automatisch)
 # Rückgabe: JSON mit {"success": true} oder {"success": false, "message": "..."}
+# NOTE: LEGACY WRAPPER - Nutze config_set_value_conf() direkt für neue Implementierungen
 update_config_value() {
     local key="$1"
     local value="$2"
     local quote_mode="${3:-auto}"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
     
     if [[ -z "$key" ]]; then
         echo '{"success": false, "message": "Key erforderlich"}'
         return 1
     fi
     
-    if [[ ! -f "$config_file" ]]; then
+    config_validate_file || {
         echo '{"success": false, "message": "config.sh nicht gefunden"}'
         return 1
-    fi
+    }
     
-    # Auto-detect quote mode basierend auf aktuellem Wert
-    if [[ "$quote_mode" == "auto" ]]; then
-        local current_line=$(/usr/bin/grep "^${key}=" "$config_file" | /usr/bin/head -1)
-        if [[ "$current_line" =~ =\".*\" ]]; then
-            quote_mode="quoted"
-        else
-            quote_mode="unquoted"
-        fi
-    fi
-    
-    # Erstelle neue Zeile
-    local new_line
-    if [[ "$quote_mode" == "quoted" ]]; then
-        new_line="${key}=\"${value}\""
-    else
-        new_line="${key}=${value}"
-    fi
-    
-    # Aktualisiere mit sed (in-place)
-    if /usr/bin/sed -i "s|^${key}=.*|${new_line}|" "$config_file" 2>/dev/null; then
+    # Nutze neue unified config API (quote_mode wird ignoriert - automatische Type Detection)
+    if config_set_value_conf "disk2iso" "$key" "$value" 2>/dev/null; then
         echo '{"success": true}'
         return 0
     else
@@ -471,80 +1364,29 @@ update_config_value() {
     fi
 }
 
-# Funktion: Lese alle Config-Werte als JSON
+# Funktion: Lese alle Config-Werte als JSON (WRAPPER für Web-API)
 # Rückgabe: JSON mit allen Konfigurations-Werten
+# NOTE: DEPRECATED - Nur noch für Core-Settings (disk2iso.conf)
+#       Module lesen ihre Konfiguration aus eigenen INI-Dateien
+#       Python-API sollte config_get_value_conf() oder config_get_value_ini() direkt nutzen
+#       (Field-by-field, nicht als Batch)
 get_all_config_values() {
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
-    
-    if [[ ! -f "$config_file" ]]; then
-        echo '{"success": false, "message": "config.sh nicht gefunden"}'
+    config_validate_file || {
+        echo '{"success": false, "message": "disk2iso.conf nicht gefunden"}'
         return 1
-    fi
+    }
     
-    # Extrahiere relevante Werte mit awk (entferne Kommentare)
-    local values=$(/usr/bin/awk -F'=' '
-        /^DEFAULT_OUTPUT_DIR=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t"]+|[ \t"]+$/, "", $2)
-            print "\"output_dir\": \"" $2 "\"," 
-        }
-        /^MP3_QUALITY=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t]+|[ \t]+$/, "", $2)
-            print "\"mp3_quality\": " $2 "," 
-        }
-        /^DDRESCUE_RETRIES=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t]+|[ \t]+$/, "", $2)
-            print "\"ddrescue_retries\": " $2 "," 
-        }
-        /^USB_DRIVE_DETECTION_ATTEMPTS=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t]+|[ \t]+$/, "", $2)
-            print "\"usb_detection_attempts\": " $2 "," 
-        }
-        /^USB_DRIVE_DETECTION_DELAY=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t]+|[ \t]+$/, "", $2)
-            print "\"usb_detection_delay\": " $2 "," 
-        }
-        /^MQTT_ENABLED=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t]+|[ \t]+$/, "", $2)
-            print "\"mqtt_enabled\": " ($2 == "true" ? "true" : "false") "," 
-        }
-        /^MQTT_BROKER=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t"]+|[ \t"]+$/, "", $2)
-            print "\"mqtt_broker\": \"" $2 "\"," 
-        }
-        /^MQTT_PORT=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t]+|[ \t]+$/, "", $2)
-            print "\"mqtt_port\": " $2 "," 
-        }
-        /^MQTT_USER=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t"]+|[ \t"]+$/, "", $2)
-            print "\"mqtt_user\": \"" $2 "\"," 
-        }
-        /^MQTT_PASSWORD=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t"]+|[ \t"]+$/, "", $2)
-            print "\"mqtt_password\": \"" $2 "\"," 
-        }
-        /^TMDB_API_KEY=/ { 
-            gsub(/#.*/, "", $2)
-            gsub(/^[ \t"]+|[ \t"]+$/, "", $2)
-            print "\"tmdb_api_key\": \"" $2 "\"," 
-        }
-    ' "$config_file")
+    # Lese nur Core-Settings aus disk2iso.conf (keine Modul-Settings mehr!)
+    local output_dir=$(config_get_value_conf "disk2iso" "DEFAULT_OUTPUT_DIR" "" 2>/dev/null)
+    local ddrescue_retries=$(config_get_value_conf "disk2iso" "DDRESCUE_RETRIES" "3" 2>/dev/null)
+    local usb_attempts=$(config_get_value_conf "disk2iso" "USB_DRIVE_DETECTION_ATTEMPTS" "5" 2>/dev/null)
+    local usb_delay=$(config_get_value_conf "disk2iso" "USB_DRIVE_DETECTION_DELAY" "10" 2>/dev/null)
     
-    # Entferne letztes Komma
-    local output=$(echo "$values" | /usr/bin/sed '$ s/,$//')
+    # Escape JSON special characters in strings
+    output_dir=$(echo "$output_dir" | sed 's/\\/\\\\/g; s/"/\\"/g')
     
-    # Ausgabe nur zu stdout (kein logging)
-    echo "{\"success\": true, ${output}}"
+    # Erstelle JSON-Response (nur Core-Settings, Module lesen eigene INI-Dateien)
+    echo "{\"success\": true, \"output_dir\": \"${output_dir}\", \"ddrescue_retries\": ${ddrescue_retries}, \"usb_detection_attempts\": ${usb_attempts}, \"usb_detection_delay\": ${usb_delay}}"
     return 0
 }
 
@@ -558,7 +1400,8 @@ get_all_config_values() {
 # Rückgabe: JSON mit {"success": true} oder {"success": false, "message": "..."}
 save_config_and_restart() {
     local json_input="$1"
-    local config_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+    
+    config_validate_file || return 1
     
     if [[ -z "$json_input" ]]; then
         echo '{"success": false, "message": "Keine Konfigurationsdaten empfangen"}'
@@ -579,18 +1422,12 @@ save_config_and_restart() {
     fi
     
     # Mapping: JSON-Key -> Config-Key
+    # HINWEIS: MQTT/TMDB/MP3 werden über unified config API verwaltet
     declare -A config_mapping=(
         ["output_dir"]="DEFAULT_OUTPUT_DIR"
-        ["mp3_quality"]="MP3_QUALITY"
         ["ddrescue_retries"]="DDRESCUE_RETRIES"
         ["usb_detection_attempts"]="USB_DRIVE_DETECTION_ATTEMPTS"
         ["usb_detection_delay"]="USB_DRIVE_DETECTION_DELAY"
-        ["mqtt_enabled"]="MQTT_ENABLED"
-        ["mqtt_broker"]="MQTT_BROKER"
-        ["mqtt_port"]="MQTT_PORT"
-        ["mqtt_user"]="MQTT_USER"
-        ["mqtt_password"]="MQTT_PASSWORD"
-        ["tmdb_api_key"]="TMDB_API_KEY"
     )
     
     # Aktualisiere alle Werte
@@ -629,226 +1466,6 @@ save_config_and_restart() {
     fi
 }
 
-# ===========================================================================
-# MANIFEST-BASED DEPENDENCY CHECKING (INI-FORMAT)
-# ===========================================================================
-
-# ===========================================================================
-# get_ini_value
-# ---------------------------------------------------------------------------
-# Funktion.: Lese einzelnen Wert aus INI-Manifest
-# Parameter: $1 = ini_file (z.B. "conf/libcd.ini")
-#            $2 = section (z.B. "metadata")
-#            $3 = key (z.B. "name")
-# Rückgabe.: Value (String), leer bei Fehler
-# Beispiel.: get_ini_value "conf/libcd.ini" "metadata" "version"
-#            → "1.2.0"
-# ===========================================================================
-get_ini_value() {
-    local ini_file="$1"
-    local section="$2"
-    local key="$3"
-    
-    if [[ ! -f "$ini_file" ]]; then
-        return 1
-    fi
-    
-    # awk-Logik: Finde Sektion, dann Key innerhalb der Sektion
-    awk -F'=' -v section="[${section}]" -v key="$key" '
-        # Wenn Zeile = Section-Header → Sektion gefunden
-        $0 == section { in_section=1; next }
-        
-        # Wenn neue Section beginnt → Sektion verlassen
-        /^\[.*\]/ { in_section=0 }
-        
-        # Wenn in Sektion UND Key matcht → Wert extrahieren
-        in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
-            # Entferne Whitespace vor/nach Wert
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2)
-            print $2
-            exit
-        }
-    ' "$ini_file"
-}
-
-# ===========================================================================
-# get_ini_array
-# ---------------------------------------------------------------------------
-# Funktion.: Lese komma-separierte Liste aus INI
-# Parameter: $1 = ini_file
-#            $2 = section
-#            $3 = key
-# Rückgabe.: Array-Elemente (eine Zeile pro Element)
-# Beispiel.: get_ini_array "conf/libcd.ini" "dependencies" "external"
-#            → "cdparanoia\nlame\ngenisoimage"
-# ===========================================================================
-get_ini_array() {
-    local ini_file="$1"
-    local section="$2"
-    local key="$3"
-    
-    # Lese Wert (Komma-separiert)
-    local value
-    value=$(get_ini_value "$ini_file" "$section" "$key")
-    
-    if [[ -n "$value" ]]; then
-        # Split by Komma, trim Whitespace
-        echo "$value" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-    fi
-}
-
-# ===========================================================================
-# get_ini_section
-# ---------------------------------------------------------------------------
-# Funktion.: Lese alle Key=Value Paare einer INI-Sektion
-# Parameter: $1 = ini_file
-#            $2 = section
-# Rückgabe.: Key=Value Paare (eine Zeile pro Entry)
-# Beispiel.: get_ini_section ".failed_discs" "data"
-#            → "UUID1:Label1:700=2026-01-26|ddrescue|1"
-#            → "UUID2:Label2:650=2026-01-25|dd|2"
-# ===========================================================================
-get_ini_section() {
-    local ini_file="$1"
-    local section="$2"
-    
-    if [[ ! -f "$ini_file" ]]; then
-        return 1
-    fi
-    
-    # awk: Drucke alle Key=Value Zeilen innerhalb der Sektion
-    awk -v section="[${section}]" '
-        # Section-Header gefunden
-        $0 == section { in_section=1; next }
-        
-        # Neue Section beginnt
-        /^\[.*\]/ { in_section=0 }
-        
-        # In Sektion: Drucke Key=Value Zeilen (ignoriere Kommentare/Leerzeilen)
-        in_section && /^[^#;[:space:]].*=/ { print $0 }
-    ' "$ini_file"
-}
-
-# ===========================================================================
-# write_ini_value
-# ---------------------------------------------------------------------------
-# Funktion.: Schreibe/Aktualisiere einzelnen Wert in INI-Sektion
-# Parameter: $1 = ini_file
-#            $2 = section
-#            $3 = key
-#            $4 = value
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: write_ini_value ".failed_discs" "data" "UUID:Label:700" "2026-01-26|ddrescue|1"
-# ===========================================================================
-write_ini_value() {
-    local ini_file="$1"
-    local section="$2"
-    local key="$3"
-    local value="$4"
-    
-    # Escape Sonderzeichen für sed
-    local escaped_key=$(echo "$key" | sed 's/[\/&]/\\&/g')
-    local escaped_value=$(echo "$value" | sed 's/[\/&]/\\&/g')
-    
-    # Erstelle Datei falls nicht vorhanden
-    if [[ ! -f "$ini_file" ]]; then
-        touch "$ini_file"
-    fi
-    
-    # Prüfe ob Section existiert
-    if ! grep -q "^\[${section}\]" "$ini_file" 2>/dev/null; then
-        # Section fehlt - erstelle sie
-        echo "" >> "$ini_file"
-        echo "[${section}]" >> "$ini_file"
-        echo "${key}=${value}" >> "$ini_file"
-        return 0
-    fi
-    
-    # Prüfe ob Key in Section existiert
-    if awk -v section="[${section}]" -v key="$key" '
-        $0 == section { in_section=1; next }
-        /^\[.*\]/ { in_section=0 }
-        in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" { found=1; exit }
-        END { exit !found }
-    ' "$ini_file"; then
-        # Key existiert - aktualisiere Wert
-        awk -v section="[${section}]" -v key="$key" -v value="$value" '
-            $0 == section { in_section=1; print; next }
-            /^\[.*\]/ { in_section=0 }
-            in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
-                print key "=" value
-                next
-            }
-            { print }
-        ' "$ini_file" > "${ini_file}.tmp" && mv "${ini_file}.tmp" "$ini_file"
-    else
-        # Key fehlt - füge in Section ein
-        awk -v section="[${section}]" -v key="$key" -v value="$value" '
-            $0 == section { in_section=1; print; print key "=" value; next }
-            /^\[.*\]/ { in_section=0 }
-            { print }
-        ' "$ini_file" > "${ini_file}.tmp" && mv "${ini_file}.tmp" "$ini_file"
-    fi
-    
-    return 0
-}
-
-# ===========================================================================
-# delete_ini_value
-# ---------------------------------------------------------------------------
-# Funktion.: Lösche einzelnen Key aus INI-Sektion
-# Parameter: $1 = ini_file
-#            $2 = section
-#            $3 = key
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: delete_ini_value ".failed_discs" "data" "UUID:Label:700"
-# ===========================================================================
-delete_ini_value() {
-    local ini_file="$1"
-    local section="$2"
-    local key="$3"
-    
-    if [[ ! -f "$ini_file" ]]; then
-        return 1
-    fi
-    
-    # awk: Lösche Key=Value Zeile in angegebener Sektion
-    awk -v section="[${section}]" -v key="$key" '
-        $0 == section { in_section=1; print; next }
-        /^\[.*\]/ { in_section=0 }
-        in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" { next }
-        { print }
-    ' "$ini_file" > "${ini_file}.tmp" && mv "${ini_file}.tmp" "$ini_file"
-    
-    return 0
-}
-
-# ===========================================================================
-# count_ini_section_entries
-# ---------------------------------------------------------------------------
-# Funktion.: Zähle Anzahl der Einträge in INI-Sektion
-# Parameter: $1 = ini_file
-#            $2 = section
-# Rückgabe.: Anzahl (0-N)
-# Beispiel.: count_ini_section_entries ".failed_discs" "data"
-#            → "3"
-# ===========================================================================
-count_ini_section_entries() {
-    local ini_file="$1"
-    local section="$2"
-    
-    if [[ ! -f "$ini_file" ]]; then
-        echo 0
-        return
-    fi
-    
-    # awk: Zähle Key=Value Zeilen in Sektion
-    local count=$(awk -v section="[${section}]" '
-        $0 == section { in_section=1; next }
-        /^\[.*\]/ { in_section=0 }
-        in_section && /^[^#;[:space:]].*=/ { count++ }
-        END { print count+0 }
-    ' "$ini_file")
-    
-    echo "$count"
-}
+# ============================================================================
+# END OF LIBCONFIG.SH
+# ============================================================================

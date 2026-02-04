@@ -308,7 +308,7 @@ common_get_disc_failure_count() {
     local disc_type=$(discinfo_get_type)
     
     #-- Lese Wert aus INI (Format: timestamp|method|retry_count) ------------
-    local value=$(get_ini_value "$failed_file" "$disc_type" "$identifier")
+    local value=$(config_get_value_ini "failed_discs" "$disc_type" "$identifier")
     
     #-- Prüfe ob Eintrag vorhanden ist --------------------------------------
     if [[ -n "$value" ]]; then
@@ -352,7 +352,7 @@ common_register_disc_failure() {
     retry_count=$((retry_count + 1))
     
     #-- Schreibe/Aktualisiere Eintrag: timestamp|method|retry_count ---------
-    write_ini_value "$failed_file" "$disc_type" "$identifier" "${timestamp}|${method}|${retry_count}"
+    config_set_value_ini "failed_discs" "$disc_type" "$identifier" "${timestamp}|${method}|${retry_count}"
     log_warning "$MSG_WARNING_DISC_FAILURE_REGISTERED $identifier ($method, Versuch #${retry_count})"
 }
 
@@ -379,11 +379,11 @@ common_clear_disc_failures() {
     local disc_type=$(discinfo_get_type)
     
     #-- Prüfe ob Eintrag existiert ------------------------------------------
-    local value=$(get_ini_value "$failed_file" "$disc_type" "$identifier")
+    local value=$(config_get_value_ini "failed_discs" "$disc_type" "$identifier")
     
     if [[ -n "$value" ]]; then
         #-- Lösche existierenden Eintrag ------------------------------------
-        delete_ini_value "$failed_file" "$disc_type" "$identifier"
+        config_del_value_ini "failed_discs" "$disc_type" "$identifier"
         log_info "$MSG_INFO_FAILURE_HISTORY_CLEARED $identifier"
         return 0
     else
