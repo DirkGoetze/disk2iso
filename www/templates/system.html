@@ -12,22 +12,30 @@
         </ul>
     </nav>
 
-    <!-- System Information Grid (2x1 Widgets) -->
-    <div class="system-grid">
-        <!-- System Info Widget (2x1) -->
-        {% include 'widgets/sysinfo_2x1_systeminfo.html' %}
+    <!-- 6-Spalten Grid Layout -->
+    <div class="grid-container">
+        <!-- System Info Widget (50% = 3 Spalten) -->
+        <div class="col-3">
+            {% include 'widgets/sysinfo_3x5_systeminfo.html' %}
+        </div>
 
-        <!-- disk2iso Service Widget (2x1) -->
-        {% include 'widgets/status_2x1_disk2iso.html' %}
+        <!-- disk2iso Service Widget (50% = 3 Spalten) -->
+        <div class="col-3">
+            {% include 'widgets/status_3x4_disk2iso.html' %}
+        </div>
         
-        <!-- Output Directory Widget (2x1) -->
-        {% include 'widgets/outputdir_2x1_systeminfo.html' %}
+        <!-- Output Directory Widget (50% = 3 Spalten) -->
+        <div class="col-3">
+            {% include 'widgets/outputdir_3x4_systeminfo.html' %}
+        </div>
         
-        <!-- Archiv Widget (2x1) -->
-        {% include 'widgets/archiv_2x1_systeminfo.html' %}
+        <!-- Archiv Widget (50% = 3 Spalten) -->
+        <div class="col-3">
+            {% include 'widgets/archiv_3x2_systeminfo.html' %}
+        </div>
     </div>
 
-    <!-- Software Dependencies (Modulare Widgets) -->
+    <!-- Software Dependencies (volle Breite) -->
     <div class="card">
         <h2>
             <img src="{{ url_for('static', filename='img/package.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">{{ t.SYSTEM_CONFIG }}
@@ -39,7 +47,7 @@
         
         <div id="software-container">
             <!-- Core Dependencies (immer geladen) -->
-            {% include 'widgets/dependencies_4x1_systeminfo.html' %}
+            {% include 'widgets/dependencies_4x2_systeminfo.html' %}
             
             <!-- Audio Module Dependencies (nur wenn Modul verfügbar) -->
             <!-- Widget wird dynamisch geladen via dependencies_4x1_audio.js -->
@@ -66,13 +74,13 @@
 
 {% block scripts %}
     <script src="{{ url_for('static', filename='js/system.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/sysinfo_2x1_systeminfo.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/status_2x1_disk2iso.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/outputdir_2x1_systeminfo.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/archiv_2x1_systeminfo.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/sysinfo_3x5_systeminfo.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/status_3x4_disk2iso.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/outputdir_3x4_systeminfo.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/archiv_3x2_systeminfo.js') }}"></script>
     
     <!-- Core Dependencies Widget (immer geladen) -->
-    <script src="{{ url_for('static', filename='js/widgets/dependencies_4x1_systeminfo.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/dependencies_4x2_systeminfo.js') }}"></script>
     
     <!-- Module Dependency Widgets (TODO: Auto-Loading implementieren) -->
     <!-- Werden später über module-loader.js dynamisch geladen wenn Modul verfügbar -->

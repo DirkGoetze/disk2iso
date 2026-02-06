@@ -16,28 +16,33 @@
         </ul>
     </nav>
 
-    <div class="help-container">
-        <!-- Document Selection Sidebar -->
-        <aside class="docs-sidebar">
-            <h3>{{ t.HELP_HEADER }}</h3>
-            <ul class="docs-menu" id="docs-menu">
-                <li><a href="#" data-doc="Handbuch.md" class="active">📖 Handbuch</a></li>
-                <li><a href="#" data-doc="Verwendung.md">🎯 Verwendung</a></li>
-                <li><a href="#" data-doc="Installation-Script.md">⚙️ Installation (Script)</a></li>
-                <li><a href="#" data-doc="Installation-Service.md">🔧 Installation (Service)</a></li>
-                <li><a href="#" data-doc="MQTT-HomeAssistant.md">🏠 MQTT & Home Assistant</a></li>
-                <li><a href="#" data-doc="Deinstallation.md">🗑️ Deinstallation</a></li>
-                <li><a href="#" data-doc="Entwickler.md">👨‍💻 Entwickler</a></li>
-                <li><a href="#" data-doc="Fehler-Tracking.md">🐛 Fehler-Tracking</a></li>
-            </ul>
-        </aside>
+    <!-- 6-Spalten Grid Layout -->
+    <div class="grid-container">
+        <!-- Document Selection Sidebar (2 Spalten = 33%) -->
+        <div class="col-2">
+            <aside class="docs-sidebar card">
+                <h3>{{ t.HELP_HEADER }}</h3>
+                <ul class="docs-menu" id="docs-menu">
+                    <li><a href="#" data-doc="Handbuch.md" class="active">📖 Handbuch</a></li>
+                    <li><a href="#" data-doc="Verwendung.md">🎯 Verwendung</a></li>
+                    <li><a href="#" data-doc="Installation-Script.md">⚙️ Installation (Script)</a></li>
+                    <li><a href="#" data-doc="Installation-Service.md">🔧 Installation (Service)</a></li>
+                    <li><a href="#" data-doc="MQTT-HomeAssistant.md">🏠 MQTT & Home Assistant</a></li>
+                    <li><a href="#" data-doc="Deinstallation.md">🗑️ Deinstallation</a></li>
+                    <li><a href="#" data-doc="Entwickler.md">👨‍💻 Entwickler</a></li>
+                    <li><a href="#" data-doc="Fehler-Tracking.md">🐛 Fehler-Tracking</a></li>
+                </ul>
+            </aside>
+        </div>
 
-        <!-- Document Content -->
-        <div class="docs-content card">
-            <div id="markdown-content">
-                <p style="text-align: center; padding: 40px; color: #666;">
-                    {{ t.COMMON_LOADING }}
-                </p>
+        <!-- Document Content (4 Spalten = 67%) -->
+        <div class="col-4">
+            <div class="docs-content card">
+                <div id="markdown-content">
+                    <p style="text-align: center; padding: 40px; color: #666;">
+                        {{ t.COMMON_LOADING }}
+                    </p>
+                </div>
             </div>
         </div>
     </div>

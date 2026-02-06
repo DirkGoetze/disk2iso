@@ -14,65 +14,76 @@
 
     <div class="container">
 
-    <!-- Statistik-Übersicht -->
-    <div class="card" style="margin-bottom: 30px;">
-        <h2><img src="{{ url_for('static', filename='img/stats.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_HEADER }}</h2>
-        <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-            <div class="info-row">
-                <span class="info-label">{{ t.ARCHIVE_FILTER_ALL }}</span>
-                <span class="info-value" id="total-count">0</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label"><img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_CD }}</span>
-                <span class="info-value" id="audio-count">0</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label"><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_DVD }}</span>
-                <span class="info-value" id="dvd-count">0</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label"><img src="{{ url_for('static', filename='img/bluray.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_BLURAY }}</span>
-                <span class="info-value" id="bluray-count">0</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label"><img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_DATA }}</span>
-                <span class="info-value" id="data-count">0</span>
+    <!-- 6-Spalten Grid Layout -->
+    <div class="grid-container">
+        <!-- Statistik-Übersicht (volle Breite = 6 Spalten) -->
+        <div class="col-6">
+            <div class="card">
+                <h2><img src="{{ url_for('static', filename='img/stats.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_HEADER }}</h2>
+                <div class="status-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="info-row">
+                        <span class="info-label">{{ t.ARCHIVE_FILTER_ALL }}</span>
+                        <span class="info-value" id="total-count">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label"><img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_CD }}</span>
+                        <span class="info-value" id="audio-count">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label"><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_DVD }}</span>
+                        <span class="info-value" id="dvd-count">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label"><img src="{{ url_for('static', filename='img/bluray.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_BLURAY }}</span>
+                        <span class="info-value" id="bluray-count">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label"><img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;">{{ t.ARCHIVE_FILTER_DATA }}</span>
+                        <span class="info-value" id="data-count">0</span>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Audio CDs -->
-    <div class="card" id="audio-section" style="display: none;">
-        <h3><img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_CD }}</h3>
-        <div class="archive-list" id="audio-list">
-            <p class="loading">{{ t.COMMON_LOADING }}</p>
+        <!-- Audio CDs (volle Breite = 6 Spalten) -->
+        <div class="col-6">
+            <div class="card" id="audio-section" style="display: none;">
+                <h3><img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_CD }}</h3>
+                <div class="archive-list" id="audio-list">
+                    <p class="loading">{{ t.COMMON_LOADING }}</p>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- DVDs -->
-    <div class="card" id="dvd-section" style="display: none;">
-        <h3><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_DVD }}</h3>
-        <div class="archive-list" id="dvd-list">
-            <p class="loading">{{ t.COMMON_LOADING }}</p>
+        <!-- DVDs (volle Breite = 6 Spalten) -->
+        <div class="col-6">
+            <div class="card" id="dvd-section" style="display: none;">
+                <h3><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_DVD }}</h3>
+                <div class="archive-list" id="dvd-list">
+                    <p class="loading">{{ t.COMMON_LOADING }}</p>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- Blu-rays -->
-    <div class="card" id="bluray-section" style="display: none;">
-        <h3><img src="{{ url_for('static', filename='img/bluray.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_BLURAY }}</h3>
-        <div class="archive-list" id="bluray-list">
-            <p class="loading">{{ t.COMMON_LOADING }}</p>
+        <!-- Blu-rays (volle Breite = 6 Spalten) -->
+        <div class="col-6">
+            <div class="card" id="bluray-section" style="display: none;">
+                <h3><img src="{{ url_for('static', filename='img/bluray.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_BLURAY }}</h3>
+                <div class="archive-list" id="bluray-list">
+                    <p class="loading">{{ t.COMMON_LOADING }}</p>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- Daten -->
-    <div class="card" id="data-section" style="display: none;">
-        <h3><img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_DATA }}</h3>
-        <div class="archive-list" id="data-list">
-            <p class="loading">{{ t.COMMON_LOADING }}</p>
+        <!-- Daten (volle Breite = 6 Spalten) -->
+        <div class="col-6">
+            <div class="card" id="data-section" style="display: none;">
+                <h3><img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_DATA }}</h3>
+                <div class="archive-list" id="data-list">
+                    <p class="loading">{{ t.COMMON_LOADING }}</p>
+                </div>
+            </div>
         </div>
-    </div>
-
     </div>
 
     <!-- Metadata Modal -->
