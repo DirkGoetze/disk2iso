@@ -51,28 +51,28 @@
     <!-- Speicherplatz und ISO Archive (zweispaltig) -->
     <div class="two-column-grid">
         <!-- Output Directory Widget (2x1) -->
-        {% include 'widgets/systeminfo_widget_2x1_outputdir.html' %}
+        {% include 'widgets/outputdir_2x1_systeminfo.html' %}
         
         <!-- Archivierte Medien Widget (2x1) -->
-        {% include 'widgets/systeminfo_widget_2x1_archiv.html' %}
+        {% include 'widgets/archiv_2x1_systeminfo.html' %}
     </div>
     
     <!-- Services (zweispaltig) -->
     <div class="two-column-grid">
         <!-- disk2iso Service Widget (2x1) -->
-        {% include 'widgets/disk2iso_widget_2x1_status.html' %}
+        {% include 'widgets/status_2x1_disk2iso.html' %}
         
         <!-- disk2iso-web Service Widget (2x1) -->
-        {% include 'widgets/disk2iso-web_widget_2x1_status.html' %}
+        {% include 'widgets/status_2x1_disk2iso-web.html' %}
     </div>
     
     <!-- MQTT Service + Software Check (zweispaltig) -->
     <div class="two-column-grid">
-        <!-- MQTT Service Widget wird dynamisch geladen via mqtt_widget_2x1_status.js -->
-        <!-- Widget-Container wird von mqtt_widget_2x1_status.js hier eingefügt falls MQTT_ENABLED=true -->
+        <!-- MQTT Service Widget wird dynamisch geladen via status_2x1_mqtt.js -->
+        <!-- Widget-Container wird von status_2x1_mqtt.js hier eingefügt falls MQTT_ENABLED=true -->
         
         <!-- Software Check Widget (2x1) -->
-        {% include 'widgets/systeminfo_widget_2x1_softwarecheck.html' %}
+        {% include 'widgets/softwarecheck_2x1_systeminfo.html' %}
     </div>
     
     <!-- MusicBrainz Album-Auswahl Modal -->
@@ -112,10 +112,10 @@
 {% endblock %}
 
 {% block scripts %}
-    <script src="{{ url_for('static', filename='js/widgets/disk2iso_widget_2x1_status.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/disk2iso-web_widget_2x1_status.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_2x1_outputdir.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_2x1_archiv.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_2x1_softwarecheck.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/status_2x1_disk2iso.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/status_2x1_disk2iso-web.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/outputdir_2x1_systeminfo.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/archiv_2x1_systeminfo.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/softwarecheck_2x1_systeminfo.js') }}"></script>
 {% endblock %}
 

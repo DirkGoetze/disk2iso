@@ -5,7 +5,36 @@ settings_4x1_audio.*
 └── audio .................... Bash-Modul (libaudio)
 
 Während der Anpassung des Widget auf korrekte Umsetzung der Middleware, den HTML/JS Code und die Verbindungen zu den Bash Modulen prüfen.
-Datei(en): config_widget_4x1_settings.*
+Datei(en): 
+config_widget_4x1_settings.*
+drivestat_widget_4x1_settings.*
+common_widget_4x1_settings.*
+audio_widget_4x1_settings.*
+dvd_widget_4x1_settings.*
+bluray_widget_4x1_settings.*
+metadata_widget_4x1_settings.*
+mqtt_widget_4x1_settings.*
+cdtext_widget_4x1_settings.*
+musicbrainz_widget_4x1_settings.*
+tmdb_widget_4x1_settings.*
+systeminfo_widget_2x1_sysinfo.*
+disk2iso_widget_2x1_status.*
+systeminfo_widget_4x1_dependencies.*
+audio_widget_4x1_dependencies.*
+dvd_widget_4x1_dependencies.*
+bluray_widget_4x1_dependencies.*
+metadata_widget_4x1_dependencies.*
+mqtt_widget_4x1_dependencies.*
+cdtext_widget_4x1_dependencies.*
+musicbrainz_widget_4x1_dependencies.*
+tmdb_widget_4x1_dependencies.*
+systeminfo_widget_2x1_archiv.*
+systeminfo_widget_2x1_outputdir.*
+disk2iso_widget_2x1_status.*
+disk2iso-web_widget_2x1_status.*
+mqtt_widget_2x1_status.*
+systeminfo_widget_2x1_softwarecheck.*
+
 
 ---
 
@@ -55,21 +84,4 @@ Index Seite
 | libmqtt       | mqtt_widget_2x1_status.html | mqtt_widget_2x1_status.js | mqtt_widget_2x1_status.py |
 | libsysteminfo | systeminfo_widget_2x1_softwarecheck.html | systeminfo_widget_2x1_softwarecheck.js | systeminfo_widget_2x1_softwarecheck.py |
 
-----
 
-#Analyse 
-Die bisherige Namenskonvention für Widget Dateien besagte, das unabhägig vom Dateityp (html,js,css,py) immer diese Konvention gilt:
-
-audio_widget_4x1_settings.*
-|     |      |   └──────── Inhalt des Widget
-|     |      └──────────── Größe (Spalte x Zeile [wobei Zeile aktuell immer = 1])
-|     └─────────────────── Kennzeichnung als Widget
-└───────────────────────── Bash Modul das genutzt wird
-
-Folgende Überlegung. Wir haben sowohl in 'routes', 'static' und 'templates' den Unterordner 'widgets' angelegt. Daher tendiere ich zu folgender Namenskonvention für Widget Dateien (html,js,css,py).
-1. Ablage immer im Unterordner widget ('routes/widgets', 'static/widgets', 'templates/widgets')
-2. Folgender Aufbau des Namen
-settings_4x1_audio
-|        |   └──────── Name des Bash Modul für das die Daten angezeigt werden
-|        └──────────── Größe (Spalte x Zeile [wobei Zeile aktuell immer = 1])
-└───────────────────── Inhalt des Widget

@@ -81,7 +81,7 @@ def api_drivestat_settings_widget():
     config = get_drivestat_settings()
     
     # Rendere Widget-Template
-    return render_template('widgets/drivestat_widget_settings.html',
-                         settings=settings,
+    return render_template('widgets/settings_4x1_drivestat.html',
+                         settings=config,
                          t=t)
 

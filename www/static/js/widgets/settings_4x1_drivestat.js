@@ -1,5 +1,5 @@
 /**
- * disk2iso - Drivestat Widget Settings
+ * disk2iso - Settings Widget (4x1) - Drivestat
  * Dynamisches Laden und Verwalten der Hardware-Erkennungs-Einstellungen (USB Detection)
  * Auto-Save bei Fokus-Verlust (moderne UX)
  */

@@ -15,16 +15,16 @@
     <!-- System Information Grid (2x1 Widgets) -->
     <div class="system-grid">
         <!-- System Info Widget (2x1) -->
-        {% include 'widgets/systeminfo_widget_2x1_sysinfo.html' %}
+        {% include 'widgets/sysinfo_2x1_systeminfo.html' %}
 
         <!-- disk2iso Service Widget (2x1) -->
-        {% include 'widgets/disk2iso_widget_2x1_status.html' %}
+        {% include 'widgets/status_2x1_disk2iso.html' %}
         
         <!-- Output Directory Widget (2x1) -->
-        {% include 'widgets/systeminfo_widget_2x1_outputdir.html' %}
+        {% include 'widgets/outputdir_2x1_systeminfo.html' %}
         
         <!-- Archiv Widget (2x1) -->
-        {% include 'widgets/systeminfo_widget_2x1_archiv.html' %}
+        {% include 'widgets/archiv_2x1_systeminfo.html' %}
     </div>
 
     <!-- Software Dependencies (Modulare Widgets) -->
@@ -39,26 +39,26 @@
         
         <div id="software-container">
             <!-- Core Dependencies (immer geladen) -->
-            {% include 'widgets/systeminfo_widget_4x1_dependencies.html' %}
+            {% include 'widgets/dependencies_4x1_systeminfo.html' %}
             
             <!-- Audio Module Dependencies (nur wenn Modul verfügbar) -->
-            <!-- Widget wird dynamisch geladen via audio_widget_4x1_dependencies.js -->
+            <!-- Widget wird dynamisch geladen via dependencies_4x1_audio.js -->
             <div id="audio-dependencies-container"></div>
             
             <!-- DVD Module Dependencies (nur wenn Modul verfügbar) -->
-            <!-- Widget wird dynamisch geladen via dvd_widget_4x1_dependencies.js -->
+            <!-- Widget wird dynamisch geladen via dependencies_4x1_dvd.js -->
             <div id="dvd-dependencies-container"></div>
             
             <!-- Bluray Module Dependencies (nur wenn Modul verfügbar) -->
-            <!-- Widget wird dynamisch geladen via bluray_widget_4x1_dependencies.js -->
+            <!-- Widget wird dynamisch geladen via dependencies_4x1_bluray.js -->
             <div id="bluray-dependencies-container"></div>
             
             <!-- Metadata Provider Dependencies (nur wenn Modul verfügbar) -->
-            <!-- Widget wird dynamisch geladen via musicbrainz/tmdb_widget_4x1_dependencies.js -->
+            <!-- Widget wird dynamisch geladen via dependencies_4x1_musicbrainz/tmdb.js -->
             <div id="metadata-dependencies-container"></div>
             
             <!-- MQTT Module Dependencies (nur wenn Modul verfügbar) -->
-            <!-- Widget wird dynamisch geladen via mqtt_widget_4x1_dependencies.js -->
+            <!-- Widget wird dynamisch geladen via dependencies_4x1_mqtt.js -->
             <div id="mqtt-dependencies-container"></div>
         </div>
     </div>
@@ -66,13 +66,13 @@
 
 {% block scripts %}
     <script src="{{ url_for('static', filename='js/system.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_2x1_sysinfo.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/disk2iso_widget_2x1_status.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_2x1_outputdir.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_2x1_archiv.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/sysinfo_2x1_systeminfo.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/status_2x1_disk2iso.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/outputdir_2x1_systeminfo.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/archiv_2x1_systeminfo.js') }}"></script>
     
     <!-- Core Dependencies Widget (immer geladen) -->
-    <script src="{{ url_for('static', filename='js/widgets/systeminfo_widget_4x1_dependencies.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/dependencies_4x1_systeminfo.js') }}"></script>
     
     <!-- Module Dependency Widgets (TODO: Auto-Loading implementieren) -->
     <!-- Werden später über module-loader.js dynamisch geladen wenn Modul verfügbar -->

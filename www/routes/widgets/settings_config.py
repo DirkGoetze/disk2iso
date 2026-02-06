@@ -1,6 +1,13 @@
 """
-disk2iso - Config Widget Settings Routes
-Stellt die System-Einstellungen bereit (Output Dir, Sprache)
+============================================================================
+disk2iso - Settings Widget - Config
+============================================================================
+Filepath: www/routes/widgets/settings_config.py
+
+Beschreibung:
+    Flask Blueprint für Config Settings Widget
+    - System-Einstellungen (Output Dir, Sprache)
+============================================================================
 """
 
 import os
@@ -9,7 +16,7 @@ from flask import Blueprint, render_template, jsonify, request
 from i18n import t
 
 # Blueprint für Config Settings Widget
-settings_bp = Blueprint('config_settings', __name__)
+settings_config_bp = Blueprint('settings_config', __name__)
 
 def get_config_settings():
     """

@@ -1,11 +1,11 @@
 /**
- * disk2iso-web Service Status Widget (2x1)
+ * Status Widget (2x1) - Disk2iso-web
  * Lädt dynamisch den Status des disk2iso-web Service
  * Version: 1.0.0
  */
 
 function loadDisk2IsoWebServiceWidget() {
-    fetch('/api/service/status/disk2iso-web')
+    fetch('/api/widgets/disk2iso-web/status')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -62,7 +62,7 @@ if (typeof restartServiceWidget !== 'function') {
             return;
         }
         
-        fetch(`/api/service/restart/${serviceName}`, {
+        fetch(`/api/widgets/disk2iso-web/restart`, {
             method: 'POST'
         })
         .then(response => response.json())

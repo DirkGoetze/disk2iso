@@ -24,11 +24,11 @@ app = Flask(__name__)
 
 # Widget Settings Blueprints (Core Widgets)
 try:
-    from routes.widgets.settings_4x1_config import settings_bp
-    from routes.widgets.common_widget_settings import common_settings_bp
-    from routes.widgets.drivestat_widget_settings import drivestat_settings_bp
-    from routes.widgets.metadata_widget_settings import metadata_widget_settings_bp
-    app.register_blueprint(settings_bp)
+    from routes.widgets.settings_config import settings_config_bp
+    from routes.widgets.settings_common import common_settings_bp
+    from routes.widgets.settings_drivestat import drivestat_settings_bp
+    from routes.widgets.settings_metadata import metadata_widget_settings_bp
+    app.register_blueprint(settings_config_bp)
     app.register_blueprint(common_settings_bp)
     app.register_blueprint(drivestat_settings_bp)
     app.register_blueprint(metadata_widget_settings_bp)
@@ -36,15 +36,121 @@ try:
 except ImportError as e:
     print(f"WARNING: Some widget settings failed to load: {e}", file=sys.stderr)
 
-# MQTT-Modul Detection (externes Plugin)
+# Widget Status/Info Blueprints (Systeminfo, Status, etc.)
+try:
+    from routes.widgets.status_disk2iso import status_disk2iso_bp
+    from routes.widgets.status_disk2iso_web import status_disk2iso_web_bp
+    from routes.widgets.sysinfo_systeminfo import sysinfo_systeminfo_bp
+    from routes.widgets.outputdir_systeminfo import outputdir_systeminfo_bp
+    from routes.widgets.archiv_systeminfo import archiv_systeminfo_bp
+    from routes.widgets.softwarecheck_systeminfo import softwarecheck_systeminfo_bp
+    from routes.widgets.dependencies_systeminfo import dependencies_systeminfo_bp
+    
+    app.register_blueprint(status_disk2iso_bp)
+    app.register_blueprint(status_disk2iso_web_bp)
+    app.register_blueprint(sysinfo_systeminfo_bp)
+    app.register_blueprint(outputdir_systeminfo_bp)
+    app.register_blueprint(archiv_systeminfo_bp)
+    app.register_blueprint(softwarecheck_systeminfo_bp)
+    app.register_blueprint(dependencies_systeminfo_bp)
+    print("INFO: Widget status/info modules loaded", file=sys.stderr)
+except ImportError as e:
+    print(f"WARNING: Some widget modules failed to load: {e}", file=sys.stderr)
+
+# Module Dependencies-Widgets (optionale externe Module)
+# Erweitere Python-Path für Submodul-Importe
+MODULE_BASE_DIR = Path("/opt")  # Basis-Verzeichnis für alle disk2iso-Module
+
+try:
+    # Audio-Modul Dependencies
+    audio_path = MODULE_BASE_DIR / "disk2iso-audio" / "www"
+    if audio_path.exists():
+        sys.path.insert(0, str(audio_path))
+        from routes.widgets.dependencies_audio import dependencies_audio_bp
+        app.register_blueprint(dependencies_audio_bp)
+        print("INFO: Audio dependencies widget loaded", file=sys.stderr)
+except ImportError as e:
+    print(f"INFO: Audio dependencies widget not available: {e}", file=sys.stderr)
+
+try:
+    # DVD-Modul Dependencies
+    dvd_path = MODULE_BASE_DIR / "disk2iso-dvd" / "www"
+    if dvd_path.exists():
+        sys.path.insert(0, str(dvd_path))
+        from routes.widgets.dependencies_dvd import dependencies_dvd_bp
+        app.register_blueprint(dependencies_dvd_bp)
+        print("INFO: DVD dependencies widget loaded", file=sys.stderr)
+except ImportError as e:
+    print(f"INFO: DVD dependencies widget not available: {e}", file=sys.stderr)
+
+try:
+    # Bluray-Modul Dependencies
+    bluray_path = MODULE_BASE_DIR / "disk2iso-bluray" / "www"
+    if bluray_path.exists():
+        sys.path.insert(0, str(bluray_path))
+        from routes.widgets.dependencies_bluray import dependencies_bluray_bp
+        app.register_blueprint(dependencies_bluray_bp)
+        print("INFO: Bluray dependencies widget loaded", file=sys.stderr)
+except ImportError as e:
+    print(f"INFO: Bluray dependencies widget not available: {e}", file=sys.stderr)
+
+try:
+    # Metadata-Modul Dependencies
+    metadata_path = MODULE_BASE_DIR / "disk2iso-metadata" / "www"
+    if metadata_path.exists():
+        sys.path.insert(0, str(metadata_path))
+        from routes.widgets.dependencies_metadata import dependencies_metadata_bp
+        from routes.widgets.dependencies_cdtext import dependencies_cdtext_bp
+        app.register_blueprint(dependencies_metadata_bp)
+        app.register_blueprint(dependencies_cdtext_bp)
+        print("INFO: Metadata/CDText dependencies widgets loaded", file=sys.stderr)
+except ImportError as e:
+    print(f"INFO: Metadata dependencies widgets not available: {e}", file=sys.stderr)
+
+try:
+    # MusicBrainz-Modul Dependencies
+    musicbrainz_path = MODULE_BASE_DIR / "disk2iso-musicbrainz" / "www"
+    if musicbrainz_path.exists():
+        sys.path.insert(0, str(musicbrainz_path))
+        from routes.widgets.dependencies_musicbrainz import dependencies_musicbrainz_bp
+        app.register_blueprint(dependencies_musicbrainz_bp)
+        print("INFO: MusicBrainz dependencies widget loaded", file=sys.stderr)
+except ImportError as e:
+    print(f"INFO: MusicBrainz dependencies widget not available: {e}", file=sys.stderr)
+
+try:
+    # TMDB-Modul Dependencies
+    tmdb_path = MODULE_BASE_DIR / "disk2iso-tmdb" / "www"
+    if tmdb_path.exists():
+        sys.path.insert(0, str(tmdb_path))
+        from routes.widgets.dependencies_tmdb import dependencies_tmdb_bp
+        app.register_blueprint(dependencies_tmdb_bp)
+        print("INFO: TMDB dependencies widget loaded", file=sys.stderr)
+except ImportError as e:
+    print(f"INFO: TMDB dependencies widget not available: {e}", file=sys.stderr)
+
+try:
+    # MQTT-Modul Dependencies + Status
+    mqtt_path = MODULE_BASE_DIR / "disk2iso-mqtt" / "www"
+    if mqtt_path.exists():
+        sys.path.insert(0, str(mqtt_path))
+        from routes.widgets.dependencies_mqtt import dependencies_mqtt_bp
+        from routes.widgets.status_mqtt import status_mqtt_bp
+        app.register_blueprint(dependencies_mqtt_bp)
+        app.register_blueprint(status_mqtt_bp)
+        print("INFO: MQTT dependencies + status widgets loaded", file=sys.stderr)
+except ImportError as e:
+    print(f"INFO: MQTT widgets not available: {e}", file=sys.stderr)
+
+# MQTT-Modul Detection (externes Plugin - Legacy Routes)
 MQTT_MODULE_AVAILABLE = False
 try:
     from routes import mqtt_bp
     app.register_blueprint(mqtt_bp)
     MQTT_MODULE_AVAILABLE = True
-    print("INFO: MQTT module loaded", file=sys.stderr)
+    print("INFO: MQTT module (legacy) loaded", file=sys.stderr)
 except ImportError:
-    print("INFO: MQTT module not installed (install from: https://github.com/DirkGoetze/disk2iso-mqtt)", file=sys.stderr)
+    pass  # Normal wenn nur neue Widget-Struktur verwendet wird
 
 # Konfiguration
 INSTALL_DIR = Path("/opt/disk2iso")
@@ -1201,12 +1307,12 @@ def api_metadata_select():
 # DEPRECATED ROUTE REMOVED: /api/config
 # Replaced by widget-specific endpoints:
 #   - /api/widgets/config/settings (settings_4x1_config.py)
-#   - /api/widgets/common/settings (common_widget_settings.py)
-#   - /api/widgets/drivestat/settings (drivestat_widget_settings.py)
-#   - /api/widgets/metadata/settings (metadata_widget_settings.py)
-#   - /api/widgets/audio/settings (audio_widget_settings.py)
-#   - /api/widgets/mqtt/settings (mqtt_widget_settings.py)
-#   - /api/widgets/tmdb/settings (tmdb_widget_settings.py)
+#   - /api/widgets/common/settings (settings_common.py)
+#   - /api/widgets/drivestat/settings (settings_drivestat.py)
+#   - /api/widgets/metadata/settings (settings_metadata.py)
+#   - /api/widgets/audio/settings (settings_audio.py)
+#   - /api/widgets/mqtt/settings (settings_mqtt.py)
+#   - /api/widgets/tmdb/settings (settings_tmdb.py)
 # Each widget loads and saves its own settings independently.
 # No batch-loading, no centralized /api/config endpoint.
 

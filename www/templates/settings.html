@@ -136,27 +136,27 @@
         <div id="config-settings-container"></div>
         
         <!-- Kopier-Einstellungen (libcommon) -->
-        <!-- Widget wird dynamisch geladen via common_widget_4x1_settings.js -->
+        <!-- Widget wird dynamisch geladen via settings_4x1_common.js -->
         <div id="common-settings-container"></div>
         
         <!-- Metadata Framework (libmetadata) -->
-        <!-- Widget wird dynamisch geladen via metadata_widget_4x1_settings.js -->
+        <!-- Widget wird dynamisch geladen via settings_4x1_metadata.js -->
         <div id="metadata-settings-container"></div>
         
         <!-- Audio-CD Modul (libaudio) -->
-        <!-- Widget wird dynamisch geladen via audio_widget_4x1_settings.js -->
+        <!-- Widget wird dynamisch geladen via settings_4x1_audio.js -->
         <div id="audio-settings-container"></div>
         
         <!-- Hardware-Erkennung (libdrivestat) -->
-        <!-- Widget wird dynamisch geladen via drivestat_widget_4x1_settings.js -->
+        <!-- Widget wird dynamisch geladen via settings_4x1_drivestat.js -->
         <div id="drivestat-settings-container"></div>
         
         <!-- MQTT Integration (libmqtt) -->
-        <!-- Widget wird dynamisch geladen via mqtt_widget_4x1_settings.js -->
+        <!-- Widget wird dynamisch geladen via settings_4x1_mqtt.js -->
         <div id="mqtt-settings-container"></div>
         
         <!-- TMDB API Integration (libtmdb) -->
-        <!-- Widget wird dynamisch geladen via tmdb_widget_4x1_settings.js -->
+        <!-- Widget wird dynamisch geladen via settings_4x1_tmdb.js -->
         <div id="tmdb-settings-container"></div>
         
         <div class="form-actions">
@@ -176,14 +176,14 @@
 {% block scripts %}
     <!-- Core Widget Settings (automatisch geladen) -->
     <script src="{{ url_for('static', filename='js/widgets/settings_4x1_config.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/common_widget_4x1_settings.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/metadata_widget_4x1_settings.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/audio_widget_4x1_settings.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/drivestat_widget_4x1_settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/settings_4x1_common.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/settings_4x1_metadata.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/settings_4x1_audio.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/settings_4x1_drivestat.js') }}"></script>
     
     <!-- Module Widget Settings (TODO: Auto-Loading implementieren) -->
-    <script src="{{ url_for('static', filename='js/widgets/mqtt_widget_4x1_settings.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/widgets/tmdb_widget_4x1_settings.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/settings_4x1_mqtt.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/widgets/settings_4x1_tmdb.js') }}"></script>
     
     <!-- DEPRECATED: settings.js removed - widgets manage their own settings -->
 {% endblock %}

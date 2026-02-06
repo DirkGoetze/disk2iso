@@ -1,5 +1,5 @@
 /**
- * disk2iso - Common Widget Settings
+ * disk2iso - Settings Widget (4x1) - Common
  * Dynamisches Laden und Verwalten der Kopier-Einstellungen (Audio CD, ddrescue)
  * Auto-Save bei Fokus-Verlust (moderne UX)
  */

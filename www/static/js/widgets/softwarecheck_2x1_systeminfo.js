@@ -1,11 +1,11 @@
 /**
- * System Info - Software Check Widget (2x1)
+ * Softwarecheck Widget (2x1) - Systeminfo
  * Kompakte Übersicht: Alle aktuell ✅ oder Updates verfügbar ⚠️
  * Version: 1.0.0
  */
 
 function loadSoftwareCheckStatus() {
-    fetch('/api/system')
+    fetch('/api/widgets/systeminfo/softwarecheck')
         .then(response => response.json())
         .then(data => {
             if (data.success && data.software) {

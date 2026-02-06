@@ -58,7 +58,7 @@ def api_common_settings_widget():
     config = get_common_settings()
     
     # Rendere Widget-Template
-    return render_template('widgets/common_widget_settings.html',
-                         settings=settings,
+    return render_template('widgets/settings_4x1_common.html',
+                         settings=config,
                          t=t)
 

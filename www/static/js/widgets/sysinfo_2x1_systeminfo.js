@@ -1,11 +1,11 @@
 /**
- * System Information Widget (2x1)
+ * Sysinfo Widget (2x1) - Systeminfo
  * Lädt dynamisch OS-Informationen
  * Version: 1.0.0
  */
 
 function loadSystemInfoWidget() {
-    fetch('/api/system')
+    fetch('/api/widgets/systeminfo/sysinfo')
         .then(response => response.json())
         .then(data => {
             if (data.success && data.os) {

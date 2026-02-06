@@ -1,11 +1,11 @@
 /**
- * System Info - Archivierte Medien Widget (2x1)
+ * Archiv Widget (2x1) - Systeminfo
  * Lädt dynamisch Archiv-Statistiken basierend auf Ordnerstruktur
  * Version: 1.0.0
  */
 
 function loadArchivWidget() {
-    fetch('/api/archive')
+    fetch('/api/widgets/systeminfo/archiv')
         .then(response => response.json())
         .then(data => {
             if (data.success && data.archive_counts) {

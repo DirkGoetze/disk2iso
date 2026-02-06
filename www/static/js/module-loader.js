@@ -38,7 +38,7 @@
             init: null
         },
         'mqtt': {
-            files: ['widgets/mqtt_widget_2x1_status.js'],  // MQTT Widget Loader (2x1)
+            files: ['widgets/status_2x1_mqtt.js'],  // MQTT Widget Loader (2x1)
             init: function() {
                 // MQTT initialisiert sich selbst
                 if (typeof window.mqtt !== 'undefined' && typeof window.mqtt.init === 'function') {

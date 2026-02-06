@@ -1,7 +1,7 @@
 # Feature Request: Archiv-Widget - Modulare Label-Namen
 
 ## 📋 Beschreibung
-Das `systeminfo_widget_2x1_archiv` Widget zeigt aktuell nur technische Ordnernamen (`/audio`, `/dvd`, `/bd`, `/data`). Für eine bessere User Experience sollten die Module ihre eigenen Display-Namen definieren können.
+Das `archiv_2x1_systeminfo` Widget zeigt aktuell nur technische Ordnernamen (`/audio`, `/dvd`, `/bd`, `/data`). Für eine bessere User Experience sollten die Module ihre eigenen Display-Namen definieren können.
 
 ## 🎯 Ziel
 Anzeige von benutzerfreundlichen Labels statt Ordnernamen:
@@ -79,7 +79,7 @@ def api_archive():
 ```
 
 ### 5. JavaScript-Widget Update
-**In `systeminfo_widget_2x1_archiv.js`:**
+**In `archiv_2x1_systeminfo.js`:**
 
 ```javascript
 function updateArchivWidget(archiveCounts, archiveLabels) {
@@ -120,7 +120,7 @@ function updateArchivWidget(archiveCounts, archiveLabels) {
 - `disk2iso-dvd/conf/libdvd.ini` - output_label  
 - `disk2iso-bluray/conf/libbluray.ini` - output_label
 - `www/app.py` - API-Erweiterung
-- `www/static/js/widgets/systeminfo_widget_2x1_archiv.js` - Label-Rendering
+- `www/static/js/widgets/archiv_2x1_systeminfo.js` - Label-Rendering
 
 ## ⏱️ Aufwand
 **Geschätzt: ~4 Stunden**

@@ -1,11 +1,11 @@
 /**
- * System Info - Core Dependencies Widget (4x1)
+ * Dependencies Widget (4x1) - Systeminfo
  * Zeigt Core-System-Tools (ddrescue, genisoimage, python, flask, etc.)
  * Version: 1.0.0
  */
 
 function loadSystemInfoDependencies() {
-    fetch('/api/system')
+    fetch('/api/widgets/systeminfo/dependencies')
         .then(response => response.json())
         .then(data => {
             if (data.success && data.software) {

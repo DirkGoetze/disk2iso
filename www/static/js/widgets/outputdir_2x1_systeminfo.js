@@ -1,11 +1,11 @@
 /**
- * System Info - Output Directory Widget (2x1)
+ * Outputdir Widget (2x1) - Systeminfo
  * Lädt dynamisch Speicherplatz-Informationen für das Ausgabeverzeichnis
  * Version: 1.0.0
  */
 
 function loadOutputDirWidget() {
-    fetch('/api/archive')
+    fetch('/api/widgets/systeminfo/outputdir')
         .then(response => response.json())
         .then(data => {
             if (data.success && data.disk_space) {
