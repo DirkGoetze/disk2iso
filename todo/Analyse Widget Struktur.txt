@@ -1,0 +1,75 @@
+Passe den Dateinamen an die neue Konvention an
+settings_4x1_audio.*
+├── settings ................. Inhalt/Zweck
+├── 4x1 ...................... Größe (4 Spalten × 1 Zeile)
+└── audio .................... Bash-Modul (libaudio)
+
+Während der Anpassung des Widget auf korrekte Umsetzung der Middleware, den HTML/JS Code und die Verbindungen zu den Bash Modulen prüfen.
+Datei(en): config_widget_4x1_settings.*
+
+---
+
+Einstellungen Seite
+===================
+
+| Modul | HTML Widget | JS Funktionen | Middleware |
++-------+-------------+---------------+------------+
+| libconfig | config_widget_4x1_settings.html | config_widget_4x1_settings.js | config_widget_4x1_settings.py |
+| libdrivestat | drivestat_widget_4x1_settings.html | drivestat_widget_4x1_settings.js | drivestat_widget_4x1_settings.py |
+| libcommon | common_widget_4x1_settings.hmtl | common_widget_4x1_settings.js | common_widget_4x1_settings.py |
+| libaudio | audio_widget_4x1_settings.html | audio_widget_4x1_settings.js | audio_widget_4x1_settings.py |
+| libdvd | dvd_widget_4x1_settings.html | dvd_widget_4x1_settings.js | dvd_widget_4x1_settings.py |
+| libbluray | bluray_widget_4x1_settings.html | bluray_widget_4x1_settings.js | bluray_widget_4x1_settings.py |
+| libmetadata | metadata_widget_4x1_settings.html | metadata_widget_4x1_settings.js | metadata_widget_4x1_settings.py |
+| libmqtt | mqtt_widget_4x1_settings.html | mqtt_widget_4x1_settings.js | mqtt_widget_4x1_settings.py |
+| libcdtext | cdtext_widget_4x1_settings.html | cdtext_widget_4x1_settings.js | cdtext_widget_4x1_settings.py |
+| libmusicbrainz | musicbrainz_widget_4x1_settings.html | musicbrainz_widget_4x1_settings.js | musicbrainz_widget_4x1_settings.py |
+| libtmdb | tmdb_widget_4x1_settings.html | tmdb_widget_4x1_settings.js | tmdb_widget_4x1_settings.py |
+
+Systeminfo Seite
+================
+
+| Modul | HTML Widget | JS Funktionen | Middleware |
++-------+-------------+---------------+------------+
+| libsysteminfo | systeminfo_widget_2x1_sysinfo.html | systeminfo_widget_2x1_sysinfo.js | systeminfo_widget_2x1_sysinfo.py |
+| libsysteminfo | disk2iso_widget_2x1_status.html | disk2iso_widget_2x1_status.js | disk2iso_widget_2x1_status.py |
+| libsysteminfo | systeminfo_widget_4x1_dependencies.html | systeminfo_widget_4x1_dependencies.js | systeminfo_widget_4x1_dependencies.py |
+| libaudio | audio_widget_4x1_dependencies.html | audio_widget_4x1_dependencies.js | audio_widget_4x1_dependencies.py |
+| libdvd | dvd_widget_4x1_dependencies.html | dvd_widget_4x1_dependencies.js | dvd_widget_4x1_dependencies.py |
+| libbluray | bluray_widget_4x1_dependencies.html | bluray_widget_4x1_dependencies.js | bluray_widget_4x1_dependencies.py |
+| libmetadata | metadata_widget_4x1_dependencies.html | metadata_widget_4x1_settings.js | metadata_widget_4x1_settings.py |
+| libmqtt | mqtt_widget_4x1_dependencies.html | mqtt_widget_4x1_dependencies.js | mqtt_widget_4x1_dependencies.py |
+| libcdtext | cdtext_widget_4x1_dependencies.html | cdtext_widget_4x1_settings.js | cdtext_widget_4x1_settings.py |
+| libmusicbrainz | musicbrainz_widget_4x1_settings.html | musicbrainz_widget_4x1_settings.js | musicbrainz_widget_4x1_settings.py |
+| libtmdb | tmdb_widget_4x1_dependencies.html | tmdb_widget_4x1_dependencies.js | tmdb_widget_4x1_dependencies.py |
+
+Index Seite
+===========
+
+| Modul | HTML Widget | JS Funktionen | Middleware |
++-------+-------------+---------------+------------+
+| libsysteminfo | systeminfo_widget_2x1_archiv.html | systeminfo_widget_2x1_archiv.js | systeminfo_widget_2x1_archiv.py |
+| libsysteminfo | systeminfo_widget_2x1_outputdir.html | systeminfo_widget_2x1_outputdir.js | systeminfo_widget_2x1_outputdir.py |
+| libsysteminfo | disk2iso_widget_2x1_status.html | disk2iso_widget_2x1_status.js | disk2iso_widget_2x1_status.py |
+| libsysteminfo | disk2iso-web_widget_2x1_status.html | disk2iso-web_widget_2x1_status.js | disk2iso-web_widget_2x1_status.py |
+| libmqtt       | mqtt_widget_2x1_status.html | mqtt_widget_2x1_status.js | mqtt_widget_2x1_status.py |
+| libsysteminfo | systeminfo_widget_2x1_softwarecheck.html | systeminfo_widget_2x1_softwarecheck.js | systeminfo_widget_2x1_softwarecheck.py |
+
+----
+
+#Analyse 
+Die bisherige Namenskonvention für Widget Dateien besagte, das unabhägig vom Dateityp (html,js,css,py) immer diese Konvention gilt:
+
+audio_widget_4x1_settings.*
+|     |      |   └──────── Inhalt des Widget
+|     |      └──────────── Größe (Spalte x Zeile [wobei Zeile aktuell immer = 1])
+|     └─────────────────── Kennzeichnung als Widget
+└───────────────────────── Bash Modul das genutzt wird
+
+Folgende Überlegung. Wir haben sowohl in 'routes', 'static' und 'templates' den Unterordner 'widgets' angelegt. Daher tendiere ich zu folgender Namenskonvention für Widget Dateien (html,js,css,py).
+1. Ablage immer im Unterordner widget ('routes/widgets', 'static/widgets', 'templates/widgets')
+2. Folgender Aufbau des Namen
+settings_4x1_audio
+|        |   └──────── Name des Bash Modul für das die Daten angezeigt werden
+|        └──────────── Größe (Spalte x Zeile [wobei Zeile aktuell immer = 1])
+└───────────────────── Inhalt des Widget

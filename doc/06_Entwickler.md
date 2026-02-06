@@ -798,7 +798,7 @@ if __name__ == '__main__':
 www/
 ├── app.py                    # Flask-Backend
 ├── templates/
-│   ├── base.html            # Layout + Navigation
+│   ├─ base.html            # Layout + Navigation
 │   ├── index.html           # Home (Status)
 │   ├── archive.html         # Archive-Liste
 │   ├── logs.html            # Logs

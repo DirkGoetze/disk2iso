@@ -56,7 +56,7 @@ def api_config_settings_widget():
     settings = get_config_settings()
     
     # Rendere Widget-Template
-    return render_template('widgets/config_widget_settings.html',
+    return render_template('widgets/settings_4x1_config.html',
                          settings=settings,
                          t=t)
 

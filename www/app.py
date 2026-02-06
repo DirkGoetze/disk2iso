@@ -24,7 +24,7 @@ app = Flask(__name__)
 
 # Widget Settings Blueprints (Core Widgets)
 try:
-    from routes.widgets.config_widget_settings import settings_bp
+    from routes.widgets.settings_4x1_config import settings_bp
     from routes.widgets.common_widget_settings import common_settings_bp
     from routes.widgets.drivestat_widget_settings import drivestat_settings_bp
     from routes.widgets.metadata_widget_settings import metadata_widget_settings_bp
@@ -1200,7 +1200,7 @@ def api_metadata_select():
 
 # DEPRECATED ROUTE REMOVED: /api/config
 # Replaced by widget-specific endpoints:
-#   - /api/widgets/config/settings (config_widget_settings.py)
+#   - /api/widgets/config/settings (settings_4x1_config.py)
 #   - /api/widgets/common/settings (common_widget_settings.py)
 #   - /api/widgets/drivestat/settings (drivestat_widget_settings.py)
 #   - /api/widgets/metadata/settings (metadata_widget_settings.py)
