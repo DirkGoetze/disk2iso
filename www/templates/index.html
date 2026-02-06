@@ -16,38 +16,9 @@
 
     <!-- 6-Spalten Grid Layout -->
     <div class="grid-container">
-        <!-- Live Status (volle Breite = 6 Spalten) -->
+        <!-- Live Status Widget (volle Breite = 6 Spalten) -->
         <div class="col-6">
-            <div class="card live-status-card" id="live-status-card">
-                <h2>Live Status</h2>
-                <div class="info-row">
-                    <span class="info-label">{{ t.INDEX_HEADER }}</span>
-                    <span class="info-value" id="live-status-text">
-                        <span class="status-indicator {% if live_status.status == 'copying' %}copying{% elif service_running %}stopped{% else %}stopped{% endif %}" id="live-status-indicator"></span>
-                        <span id="live-status-label">{{ status_text }}</span>
-                    </span>
-                </div>
-                <div class="info-row inactive" id="disc-medium-row">
-                    <span class="info-label">Medium</span>
-                    <span class="info-value" id="disc-medium">-</span>
-                </div>
-                <div class="info-row inactive" id="disc-mode-row">
-                    <span class="info-label">Modus</span>
-                    <span class="info-value" id="disc-mode">-</span>
-                </div>
-                <div class="info-row inactive" id="progress-row">
-                    <span class="info-label">{{ t.INDEX_PROGRESS }}</span>
-                    <span class="info-value"><span id="progress-percent">0</span>% (<span id="progress-mb">0</span> / <span id="total-mb">0</span> <span id="progress-unit">MB</span>)</span>
-                </div>
-                <div class="progress-bar inactive" id="progress-bar" data-label="0%">
-                    <div class="progress-background-copying"></div>
-                    <div class="progress-overlay-copying" style="width: 100%"></div>
-                </div>
-                <div class="info-row inactive" id="eta-row">
-                    <span class="info-label">{{ t.INDEX_TIME }}</span>
-                    <span class="info-value" id="eta-text">-</span>
-                </div>
-            </div>
+            {% include 'widgets/livestatus_6x6_systeminfo.html' %}
         </div>
         
         <!-- Output Directory Widget (50% = 3 Spalten) -->
@@ -116,10 +87,12 @@
 {% endblock %}
 
 {% block scripts %}
+    <script src="{{ url_for('static', filename='js/widgets/livestatus_6x6_systeminfo.js') }}"></script>
     <script src="{{ url_for('static', filename='js/widgets/status_3x4_disk2iso.js') }}"></script>
     <script src="{{ url_for('static', filename='js/widgets/status_3x4_disk2iso-web.js') }}"></script>
     <script src="{{ url_for('static', filename='js/widgets/outputdir_3x4_systeminfo.js') }}"></script>
     <script src="{{ url_for('static', filename='js/widgets/archiv_3x2_systeminfo.js') }}"></script>
     <script src="{{ url_for('static', filename='js/widgets/softwarecheck_3x2_systeminfo.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 {% endblock %}
 

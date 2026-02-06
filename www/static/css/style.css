@@ -660,6 +660,165 @@ body {
 }
 
 /* ============================================================================
+   ARCHIVE CARD STYLES (Grid Layout)
+   ============================================================================ */
+
+.archive-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.archive-card:hover {
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+    transform: translateY(-2px);
+}
+
+.archive-card-cover {
+    width: 100%;
+    height: 200px;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 2px solid #e5e7eb;
+    overflow: hidden;
+}
+
+.archive-card-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.archive-card-cover svg {
+    opacity: 0.3;
+}
+
+.archive-card-content {
+    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.archive-card-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.archive-card-artist {
+    color: #667eea;
+    font-size: 0.95em;
+    font-weight: 500;
+    margin: 0;
+}
+
+.archive-card-meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    color: #666;
+    font-size: 0.85em;
+    flex-wrap: wrap;
+}
+
+.archive-card-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.archive-card-meta svg {
+    width: 14px;
+    height: 14px;
+    fill: #9ca3af;
+}
+
+.archive-card-technical {
+    padding: 10px 15px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8em;
+    color: #666;
+}
+
+.archive-card-actions {
+    padding: 12px 15px;
+    background: #f3f4f6;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+}
+
+.archive-card-actions button {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.archive-card-actions button svg {
+    width: 14px;
+    height: 14px;
+}
+
+.archive-card-actions .btn-edit {
+    background: #667eea;
+    color: white;
+}
+
+.archive-card-actions .btn-edit:hover {
+    background: #5568d3;
+    transform: translateY(-1px);
+}
+
+.archive-card-actions .btn-search {
+    background: #10b981;
+    color: white;
+}
+
+.archive-card-actions .btn-search:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.archive-card-actions .btn-download {
+    background: #f59e0b;
+    color: white;
+}
+
+.archive-card-actions .btn-download:hover {
+    background: #d97706;
+    transform: translateY(-1px);
+}
+
+/* ============================================================================
    LOG VIEWER STYLES
    ============================================================================ */
 

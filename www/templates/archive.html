@@ -49,8 +49,9 @@
         <div class="col-6">
             <div class="card" id="audio-section" style="display: none;">
                 <h3><img src="{{ url_for('static', filename='img/audio.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_CD }}</h3>
-                <div class="archive-list" id="audio-list">
-                    <p class="loading">{{ t.COMMON_LOADING }}</p>
+                <!-- Grid Container für Archive Cards (3 Cards pro Zeile bei col-2) -->
+                <div class="grid-container" id="audio-list" style="margin-top: 15px;">
+                    <p class="loading col-6">{{ t.COMMON_LOADING }}</p>
                 </div>
             </div>
         </div>
@@ -59,8 +60,9 @@
         <div class="col-6">
             <div class="card" id="dvd-section" style="display: none;">
                 <h3><img src="{{ url_for('static', filename='img/dvd.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_DVD }}</h3>
-                <div class="archive-list" id="dvd-list">
-                    <p class="loading">{{ t.COMMON_LOADING }}</p>
+                <!-- Grid Container für Archive Cards (3 Cards pro Zeile bei col-2) -->
+                <div class="grid-container" id="dvd-list" style="margin-top: 15px;">
+                    <p class="loading col-6">{{ t.COMMON_LOADING }}</p>
                 </div>
             </div>
         </div>
@@ -69,8 +71,9 @@
         <div class="col-6">
             <div class="card" id="bluray-section" style="display: none;">
                 <h3><img src="{{ url_for('static', filename='img/bluray.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_BLURAY }}</h3>
-                <div class="archive-list" id="bluray-list">
-                    <p class="loading">{{ t.COMMON_LOADING }}</p>
+                <!-- Grid Container für Archive Cards (3 Cards pro Zeile bei col-2) -->
+                <div class="grid-container" id="bluray-list" style="margin-top: 15px;">
+                    <p class="loading col-6">{{ t.COMMON_LOADING }}</p>
                 </div>
             </div>
         </div>
@@ -79,8 +82,9 @@
         <div class="col-6">
             <div class="card" id="data-section" style="display: none;">
                 <h3><img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:22px;height:22px;vertical-align:middle;margin-right:8px;">{{ t.ARCHIVE_FILTER_DATA }}</h3>
-                <div class="archive-list" id="data-list">
-                    <p class="loading">{{ t.COMMON_LOADING }}</p>
+                <!-- Grid Container für Archive Cards (3 Cards pro Zeile bei col-2) -->
+                <div class="grid-container" id="data-list" style="margin-top: 15px;">
+                    <p class="loading col-6">{{ t.COMMON_LOADING }}</p>
                 </div>
             </div>
         </div>

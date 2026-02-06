@@ -23,121 +23,131 @@ function formatDate(dateString) {
 }
 
 function createFileItem(file) {
-    const div = document.createElement('div');
-    div.className = 'archive-item';
+    const card = document.createElement('div');
+    card.className = 'archive-card col-2';
     
     // Prüfe ob Metadaten fehlen (Disc_* Pattern oder keine .nfo)
     const needsMetadata = file.name.startsWith('Disc_') || file.name.startsWith('disc_') || !file.metadata;
     const isAudioCD = file.path.includes('/audio/');
     const isDVDorBD = file.path.includes('/dvd/') || file.path.includes('/bd/');
     
-    // Wenn Metadaten vorhanden sind (Audio-CD, DVD oder Blu-ray mit .nfo)
+    // Bestimme Typ für Placeholder
+    let mediaType = 'data';
+    if (isAudioCD) mediaType = 'audio';
+    else if (file.path.includes('/dvd/')) mediaType = 'dvd';
+    else if (file.path.includes('/bd/')) mediaType = 'bluray';
+    
+    // Cover Section
+    let coverHTML = '';
+    if (file.metadata && file.thumbnail) {
+        const thumbUrl = `/api/archive/thumbnail/${file.thumbnail}`;
+        coverHTML = `<img src="${thumbUrl}" alt="Cover" onerror="this.style.display='none'; this.parentElement.innerHTML=getPlaceholderSVG('${mediaType}');">`;
+    } else {
+        coverHTML = getPlaceholderSVG(mediaType);
+    }
+    
+    // Metadata extraction
+    let title = file.name;
+    let artist = '';
+    let year = '';
+    let tracks = '';
+    let duration = '';
+    let genre = '';
+    let rating = '';
+    
     if (file.metadata) {
         const meta = file.metadata;
-        let thumbUrl, placeholderUrl;
+        title = meta.title || file.name;
         
         if (meta.type === 'audio-cd') {
-            thumbUrl = file.thumbnail ? `/api/archive/thumbnail/${file.thumbnail}` : '/static/img/audio-cd-placeholder.png';
-            placeholderUrl = '/static/img/audio-cd-placeholder.png';
-            
-            div.innerHTML = `
-                <div class="archive-item-layout">
-                    <img src="${thumbUrl}" alt="Cover" class="archive-cover" onerror="this.src='${placeholderUrl}'">
-                    <div class="archive-info">
-                        <div class="archive-title">${escapeHtml(meta.title || file.name)}</div>
-                        <div class="archive-artist">${escapeHtml(meta.artist || 'Unknown Artist')}</div>
-                        <div class="archive-details">
-                            <i>${meta.date || 'Unknown'} ${meta.country && meta.country !== 'unknown' ? meta.country : ''}</i>
-                            (${meta.tracks || 0} Tracks${meta.duration ? ' / ' + meta.duration : ''})
-                        </div>
-                        <div class="archive-meta">
-                            <span>💾 ${formatBytes(file.size)}</span>
-                            <span>📅 ${formatDate(file.modified)}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
+            artist = meta.artist || 'Unknown Artist';
+            year = meta.date || meta.year || '';
+            tracks = meta.tracks || '';
+            duration = meta.duration || '';
         } else if (meta.type === 'dvd-video' || meta.type === 'bd-video') {
-            thumbUrl = file.thumbnail ? `/api/archive/thumbnail/${file.thumbnail}` : '/static/img/dvd-placeholder.png';
-            placeholderUrl = '/static/img/dvd-placeholder.png';
-            
-            const mediaType = meta.type === 'bd-video' ? 'Blu-ray' : 'DVD';
-            const runtime = meta.runtime ? `${meta.runtime} Min.` : '';
-            
-            // Extrahiere Season/Disc Info aus Dateinamen (z.B. "supernatural_season_10_disc_2")
+            // Extrahiere Season/Disc Info
             const filename = file.name.toLowerCase().replace('.iso', '');
-            let seasonInfo = '';
-            
             const seasonMatch = filename.match(/season[_\s]*(\d+)/i);
             const discMatch = filename.match(/dis[ck][_\s]*(\d+)/i);
             
             if (seasonMatch || discMatch) {
-                // Serien-DVD: Zeige Season/Disc statt Regisseur
                 let parts = [];
                 if (seasonMatch) parts.push(`Season ${seasonMatch[1]}`);
                 if (discMatch) parts.push(`Disc ${discMatch[1]}`);
-                seasonInfo = parts.join(' • ');
+                artist = parts.join(' • ');
+            } else {
+                artist = meta.director || 'Unknown Director';
             }
             
-            // Zweite Zeile: Season/Disc bei Serien, Regisseur bei Filmen
-            const secondLine = seasonInfo || escapeHtml(meta.director || 'Unknown Director');
-            
-            div.innerHTML = `
-                <div class="archive-item-layout">
-                    <img src="${thumbUrl}" alt="Poster" class="archive-cover movie-poster" onerror="this.src='${placeholderUrl}'">
-                    <div class="archive-info">
-                        <div class="archive-title">${escapeHtml(meta.title || file.name)}</div>
-                        <div class="archive-artist">${secondLine}</div>
-                        <div class="archive-details">
-                            <i>${meta.year || 'Unknown'} • ${meta.genre || 'Unknown Genre'}</i>
-                            ${runtime ? `(${runtime})` : ''}
-                            ${meta.rating ? ` ⭐ ${meta.rating}/10` : ''}
-                        </div>
-                        <div class="archive-meta">
-                            <span>🎬 ${mediaType}</span>
-                            <span>💾 ${formatBytes(file.size)}</span>
-                            <span>📅 ${formatDate(file.modified)}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        } else {
-            // Unbekannter Metadaten-Typ → Einfache Anzeige
-            div.innerHTML = `
-                <div class="archive-item-header">
-                    <span class="archive-filename">${escapeHtml(file.name)}</span>
-                    <span class="archive-size">${formatBytes(file.size)}</span>
-                </div>
-                <div class="archive-item-meta">
-                    <span>📅 ${formatDate(file.modified)}</span>
-                </div>
-            `;
-        }
-    } else {
-        // Fallback: Einfache Anzeige ohne Metadaten
-        div.innerHTML = `
-            <div class="archive-item-header">
-                <span class="archive-filename">${escapeHtml(file.name)}</span>
-                <span class="archive-size">${formatBytes(file.size)}</span>
-            </div>
-            <div class="archive-item-meta">
-                <span>📅 ${formatDate(file.modified)}</span>
-                ${needsMetadata && (isAudioCD || isDVDorBD) ? '<button class="btn-add-metadata" data-path="' + file.path + '" data-type="' + (isAudioCD ? 'audio' : 'video') + '">📝 Metadaten hinzufügen</button>' : ''}
-            </div>
-        `;
-    }
-    
-    // Event-Listener für Metadaten-Button
-    if (needsMetadata && (isAudioCD || isDVDorBD)) {
-        const metadataBtn = div.querySelector('.btn-add-metadata');
-        if (metadataBtn) {
-            metadataBtn.addEventListener('click', () => {
-                openMetadataModal(file.path, metadataBtn.dataset.type);
-            });
+            year = meta.year || '';
+            genre = meta.genre || '';
+            rating = meta.rating || '';
+            duration = meta.runtime ? `${meta.runtime} Min.` : '';
         }
     }
     
-    return div;
+    // Build card HTML
+    card.innerHTML = `
+        <div class="archive-card-cover">
+            ${coverHTML}
+        </div>
+        <div class="archive-card-content">
+            <h4 class="archive-card-title">${escapeHtml(title)}</h4>
+            ${artist ? `<p class="archive-card-artist">${escapeHtml(artist)}</p>` : ''}
+            <div class="archive-card-meta">
+                ${year ? `<span><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>${escapeHtml(year)}</span>` : ''}
+                ${tracks ? `<span><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>${escapeHtml(tracks)} Tracks</span>` : ''}
+                ${duration ? `<span><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 6v6l4 2"/></svg>${escapeHtml(duration)}</span>` : ''}
+                ${genre ? `<span>${escapeHtml(genre)}</span>` : ''}
+                ${rating ? `<span>⭐ ${escapeHtml(rating)}/10</span>` : ''}
+            </div>
+        </div>
+        <div class="archive-card-technical">
+            <span>💾 ${formatBytes(file.size)}</span>
+            <span>📅 ${formatDate(file.modified)}</span>
+        </div>
+        <div class="archive-card-actions">
+            <button class="btn-edit" onclick="openMetadataModal('${file.path}', '${mediaType}')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                </svg>
+                Metadaten
+            </button>
+            <button class="btn-search" onclick="searchMetadataForFile('${file.path}', '${mediaType}')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                </svg>
+                Suchen
+            </button>
+            <button class="btn-download" onclick="downloadISO('${file.path}')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                </svg>
+                Download
+            </button>
+        </div>
+    `;
+    
+    return card;
+}
+
+// Helper function to generate SVG placeholders
+function getPlaceholderSVG(type) {
+    const svgs = {
+        'audio': `<svg width="120" height="120" viewBox="0 0 24 24" fill="#9ca3af">
+            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+        </svg>`,
+        'dvd': `<svg width="120" height="120" viewBox="0 0 24 24" fill="#9ca3af">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-12.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 5.5c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/>
+        </svg>`,
+        'bluray': `<svg width="120" height="120" viewBox="0 0 24 24" fill="#9ca3af">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-12.5c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 5.5c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/>
+        </svg>`,
+        'data': `<svg width="120" height="120" viewBox="0 0 24 24" fill="#9ca3af">
+            <path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/>
+        </svg>`
+    };
+    return svgs[type] || svgs['data'];
 }
 
 function loadArchive() {
@@ -668,6 +678,37 @@ function applyTMDBMetadata(tmdbId, title, mediaType) {
     .catch(err => {
         resultsDiv.innerHTML = `<p class="error">❌ Fehler: ${err.message}</p>`;
     });
+}
+
+// =============================================================================
+// ARCHIVE CARD ACTIONS
+// =============================================================================
+
+/**
+ * Öffnet Metadaten-Suche direkt für ein bestimmtes ISO
+ */
+function searchMetadataForFile(isoPath, mediaType) {
+    openMetadataModal(isoPath, mediaType);
+    // Automatisch Suche starten basierend auf Dateiname
+    setTimeout(() => {
+        const searchButton = document.getElementById('metadata-search-button');
+        if (searchButton) {
+            searchButton.click();
+        }
+    }, 500);
+}
+
+/**
+ * Startet Download einer ISO-Datei
+ */
+function downloadISO(isoPath) {
+    // Erstelle einen versteckten Link zum Download
+    const link = document.createElement('a');
+    link.href = `/api/archive/download${isoPath}`;
+    link.download = isoPath.split('/').pop();
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // Initialisierung beim Laden der Seite

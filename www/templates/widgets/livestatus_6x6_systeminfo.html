@@ -1,0 +1,47 @@
+<!-- Widget: livestatus_6x6_systeminfo - Live Status Dashboard -->
+<!-- Grid: 6 Spalten x 6 Zeilen (Header + 5 Content-Zeilen + Progress Bar) -->
+<div class="card live-status-card" id="live-status-card">
+    <h2>Live Status</h2>
+    
+    <!-- Zeile 1: Status -->
+    <div class="info-row">
+        <span class="info-label">{{ t.INDEX_HEADER }}</span>
+        <span class="info-value" id="live-status-text">
+            <span class="status-indicator {% if live_status.status == 'copying' %}copying{% elif service_running %}stopped{% else %}stopped{% endif %}" id="live-status-indicator"></span>
+            <span id="live-status-label">{{ status_text }}</span>
+        </span>
+    </div>
+    
+    <!-- Zeile 2: Medium (ISO-Dateiname) -->
+    <div class="info-row inactive" id="disc-medium-row">
+        <span class="info-label">Medium</span>
+        <span class="info-value" id="disc-medium">-</span>
+    </div>
+    
+    <!-- Zeile 3: Modus (Disc-Typ + Methode) -->
+    <div class="info-row inactive" id="disc-mode-row">
+        <span class="info-label">Modus</span>
+        <span class="info-value" id="disc-mode">-</span>
+    </div>
+    
+    <!-- Zeile 4: Fortschritt (Prozent + MB) -->
+    <div class="info-row inactive" id="progress-row">
+        <span class="info-label">{{ t.INDEX_PROGRESS }}</span>
+        <span class="info-value">
+            <span id="progress-percent">0</span>% 
+            (<span id="progress-mb">0</span> / <span id="total-mb">0</span> <span id="progress-unit">MB</span>)
+        </span>
+    </div>
+    
+    <!-- Zeile 5: Progress Bar -->
+    <div class="progress-bar inactive" id="progress-bar" data-label="0%">
+        <div class="progress-background-copying"></div>
+        <div class="progress-overlay-copying" style="width: 100%"></div>
+    </div>
+    
+    <!-- Zeile 6: ETA (Geschätzte verbleibende Zeit) -->
+    <div class="info-row inactive" id="eta-row">
+        <span class="info-label">{{ t.INDEX_TIME }}</span>
+        <span class="info-value" id="eta-text">-</span>
+    </div>
+</div>
