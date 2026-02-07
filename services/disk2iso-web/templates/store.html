@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <ul class="breadcrumb-list">
+            <li>
+                <a href="/"><img src="{{ url_for('static', filename='img/home.svg') }}" alt="" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;">{{ t.NAV_HOME }}</a>
+            </li>
+            <li class="breadcrumb-separator">></li>
+            <li class="current">{{ t.STORE_TITLE }}</li>
+        </ul>
+    </nav>
+
+    <!-- 6-Spalten Grid Layout -->
+    <div class="grid-container">
+        <!-- Überschrift (6x1 = volle Breite) -->
+        <div class="col-6">
+            <div class="card">
+                <h2>
+                    <img src="{{ url_for('static', filename='img/package.svg') }}" alt="" style="width:24px;height:24px;vertical-align:middle;margin-right:8px;">
+                    {{ t.STORE_HEADER }}
+                </h2>
+            </div>
+        </div>
+
+        <!-- Beschreibungstext (6x1 = volle Breite) -->
+        <div class="col-6">
+            <div class="card">
+                <p id="store-description">{{ t.STORE_MODULES_INFO }}</p>
+            </div>
+        </div>
+
+        <!-- Core Module (6x1 = volle Breite) -->
+        <div class="col-6">
+            <div class="card">
+                <h3 id="core-category-title">
+                    <img src="{{ url_for('static', filename='img/control.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">
+                    Hauptsystem
+                </h3>
+                <div id="core-modules-container" class="modules-grid">
+                    <!-- Core modules will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Optionale Module (6x1 = volle Breite) -->
+        <div class="col-6">
+            <div class="card">
+                <h3 id="optional-category-title">
+                    <img src="{{ url_for('static', filename='img/plugin.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">
+                    Optionale Module
+                </h3>
+                <div id="optional-modules-container" class="modules-grid">
+                    <!-- Optional modules will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Provider Module (6x1 = volle Breite) -->
+        <div class="col-6">
+            <div class="card">
+                <h3 id="providers-category-title">
+                    <img src="{{ url_for('static', filename='img/data.svg') }}" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;">
+                    Metadata Provider
+                </h3>
+                <div id="providers-modules-container" class="modules-grid">
+                    <!-- Provider modules will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/store.js') }}"></script>
+{% endblock %}

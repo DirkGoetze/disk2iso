@@ -27,6 +27,14 @@ readonly MSG_INDEX_TIME="Temps"
 # Page d'archive
 readonly MSG_ARCHIVE_TITLE="Médias Archivés"
 readonly MSG_ARCHIVE_HEADER="Archive des Médias"
+
+# Page de boutique
+readonly MSG_STORE_TITLE="Boutique"
+readonly MSG_STORE_HEADER="Boutique de Modules"
+readonly MSG_STORE_INFO="Statut"
+readonly MSG_STORE_COMING_SOON="Bientôt disponible"
+readonly MSG_STORE_MODULES="Modules Disponibles"
+readonly MSG_STORE_MODULES_INFO="Les modules et extensions disponibles seront affichés ici à l'avenir."
 readonly MSG_ARCHIVE_SEARCH="Rechercher..."
 readonly MSG_ARCHIVE_FILTER_ALL="Tous"
 readonly MSG_ARCHIVE_FILTER_CD="CDs Audio"

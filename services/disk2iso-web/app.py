@@ -624,6 +624,17 @@ def archive_page():
         page_title='ARCHIVE_TITLE'
     )
 
+@app.route('/store')
+def store_page():
+    """Store-Seite"""
+    version = get_version()
+    
+    return render_template('store.html',
+        version=version,
+        active_page='store',
+        page_title='STORE_TITLE'
+    )
+
 @app.route('/logs')
 def logs_page():
     """Log-Viewer-Seite"""
@@ -656,6 +667,36 @@ def help_page():
         active_page='help',
         page_title='HELP_TITLE'
     )
+
+@app.route('/api/store/catalog')
+def api_store_catalog():
+    """API-Endpoint für Store-Katalog
+    
+    Liefert die catalog.json mit verfügbaren Modulen und Kategorien
+    """
+    try:
+        catalog_path = INSTALL_DIR / 'store' / 'catalog.json'
+        if catalog_path.exists():
+            with open(catalog_path, 'r', encoding='utf-8') as f:
+                catalog_data = json.load(f)
+            return jsonify({
+                'success': True,
+                'catalog': catalog_data,
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Catalog not found',
+                'timestamp': datetime.now().isoformat()
+            }), 404
+    except Exception as e:
+        print(f"Error loading catalog: {e}", file=sys.stderr)
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 @app.route('/api/modules')
 def api_modules():

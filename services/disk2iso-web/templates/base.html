@@ -48,6 +48,12 @@
                             </a>
                         </li>
                         <li>
+                            <a href="/store" class="{% if active_page == 'store' %}active{% endif %}">
+                                <span class="nav-icon"><img src="{{ url_for('static', filename='img/package.svg') }}" alt=""></span>
+                                <span>{{ t.NAV_STORE }}</span>
+                            </a>
+                        </li>
+                        <li>
                             <a href="/logs" class="{% if active_page == 'logs' %}active{% endif %}">
                                 <span class="nav-icon"><img src="{{ url_for('static', filename='img/logs.svg') }}" alt=""></span>
                                 <span>{{ t.NAV_LOGS }}</span>

@@ -2269,3 +2269,183 @@ body {
     padding: 12px 25px;
     font-size: 1em;
 }
+
+/* ============================================================================
+   STORE PAGE - MODULE CARDS
+   ============================================================================ */
+
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.module-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.module-card:hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    border-color: #667eea;
+    transform: translateY(-2px);
+}
+
+.module-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.module-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.module-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.module-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 5px 0;
+}
+
+.module-status {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.module-status.installed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.module-status.available {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.module-card-body {
+    flex: 1;
+}
+
+.module-description {
+    font-size: 11px;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0 0 10px 0;
+}
+
+.module-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    color: #9ca3af;
+}
+
+.module-version {
+    font-weight: 500;
+}
+
+.module-card-footer {
+    display: flex;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #f3f4f6;
+}
+
+.module-card-footer button {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 11px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.btn-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.btn-warning:hover {
+    background: #fde68a;
+}
+
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.no-modules {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 11px;
+    padding: 40px 20px;
+}
+
+.error-message {
+    color: #dc2626;
+    font-size: 11px;
+    padding: 20px;
+    text-align: center;
+    background: #fee2e2;
+    border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+    .modules-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .module-card-footer {
+        flex-direction: column;
+    }
+    
+    .module-card-footer button {
+        width: 100%;
+    }
+}

@@ -5,6 +5,7 @@
 # Navigation
 readonly MSG_NAV_HOME="Home"
 readonly MSG_NAV_ARCHIVE="Archive"
+readonly MSG_NAV_STORE="Store"
 readonly MSG_NAV_LOGS="Logs"
 readonly MSG_NAV_SYSTEM="System"
 readonly MSG_NAV_CONFIG="Settings"
@@ -29,6 +30,14 @@ readonly MSG_INDEX_TIME="Time"
 # Archive Page
 readonly MSG_ARCHIVE_TITLE="Archived Media"
 readonly MSG_ARCHIVE_HEADER="Media Archive"
+
+# Store Page
+readonly MSG_STORE_TITLE="Store"
+readonly MSG_STORE_HEADER="Module Store"
+readonly MSG_STORE_INFO="Status"
+readonly MSG_STORE_COMING_SOON="Coming soon"
+readonly MSG_STORE_MODULES="Available Modules"
+readonly MSG_STORE_MODULES_INFO="Available modules and extensions will be displayed here in the future."
 readonly MSG_ARCHIVE_SEARCH="Search..."
 readonly MSG_ARCHIVE_FILTER_ALL="All"
 readonly MSG_ARCHIVE_FILTER_CD="Audio CDs"
