@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-02-07T12:00:00Z",
+  "base_url": "https://disk2iso.goetze-privat.de",
+  "categories": [
+    {
+      "id": "core",
+      "name": "Hauptsystem",
+      "name_de": "Hauptsystem",
+      "name_en": "Core System",
+      "name_es": "Sistema Principal",
+      "name_fr": "Système Principal",
+      "description": "disk2iso Basis-Installation",
+      "description_de": "disk2iso Basis-Installation",
+      "description_en": "disk2iso base installation",
+      "description_es": "Instalación base de disk2iso",
+      "description_fr": "Installation de base disk2iso"
+    },
+    {
+      "id": "optional",
+      "name": "Optionale Module",
+      "name_de": "Optionale Module",
+      "name_en": "Optional Modules",
+      "name_es": "Módulos Opcionales",
+      "name_fr": "Modules Optionnels",
+      "description": "Kopier-Tools, Metadaten und MQTT-Integration",
+      "description_de": "Kopier-Tools, Metadaten und MQTT-Integration",
+      "description_en": "Copy tools, metadata and MQTT integration",
+      "description_es": "Herramientas de copia, metadatos e integración MQTT",
+      "description_fr": "Outils de copie, métadonnées et intégration MQTT"
+    },
+    {
+      "id": "providers",
+      "name": "Metadata Provider",
+      "name_de": "Metadaten-Anbieter",
+      "name_en": "Metadata Providers",
+      "name_es": "Proveedores de Metadatos",
+      "name_fr": "Fournisseurs de Métadonnées",
+      "description": "Anbieter für Metadaten (erfordert Metadata-Modul)",
+      "description_de": "Anbieter für Metadaten (erfordert Metadata-Modul)",
+      "description_en": "Metadata providers (requires Metadata module)",
+      "description_es": "Proveedores de metadatos (requiere módulo Metadata)",
+      "description_fr": "Fournisseurs de métadonnées (nécessite le module Metadata)"
+    }
+  ],
+  "modules": {
+    "core": {
+      "manifest_url": "https://raw.githubusercontent.com/Disk2ISO/disk2iso/main/store/core.json",
+      "enabled": true,
+      "required": true
+    },
+    "audio": {
+      "manifest_url": "https://raw.githubusercontent.com/Disk2ISO/disk2iso-audio/main/store/audio.json",
+      "enabled": true,
+      "required": false
+    },
+    "dvd": {
+      "manifest_url": "https://raw.githubusercontent.com/Disk2ISO/disk2iso-dvd/main/store/dvd.json",
+      "enabled": true,
+      "required": false
+    },
+    "bluray": {
+      "manifest_url": "https://raw.githubusercontent.com/Disk2ISO/disk2iso-bluray/main/store/bluray.json",
+      "enabled": true,
+      "required": false
+    },
+    "metadata": {
+      "manifest_url": "https://raw.githubusercontent.com/Disk2ISO/disk2iso-metadata/main/store/metadata.json",
+      "enabled": true,
+      "required": false
+    },
+    "mqtt": {
+      "manifest_url": "https://raw.githubusercontent.com/Disk2ISO/disk2iso-mqtt/main/store/mqtt.json",
+      "enabled": true,
+      "required": false
+    },
+    "musicbrainz": {
+      "manifest_url": "https://raw.githubusercontent.com/Disk2ISO/disk2iso-musicbrainz/main/store/musicbrainz.json",
+      "enabled": true,
+      "required": false
+    },
+    "tmdb": {
+      "manifest_url": "https://raw.githubusercontent.com/Disk2ISO/disk2iso-tmdb/main/store/tmdb.json",
+      "enabled": true,
+      "required": false
+    }
+  }
+}

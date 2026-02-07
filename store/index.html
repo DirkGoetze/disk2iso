@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>disk2iso Module Store</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        .icon {
+            font-size: 80px;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 32px;
+        }
+
+        .message {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 32px 0;
+            text-align: left;
+            border-radius: 4px;
+        }
+
+        .message p {
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .message p:last-child {
+            margin-bottom: 0;
+        }
+
+        .code {
+            background: #2d3748;
+            color: #68d391;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 24px 0;
+            text-align: left;
+            overflow-x: auto;
+        }
+
+        .links {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            margin-top: 48px;
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 40px 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .subtitle {
+                font-size: 16px;
+            }
+
+            .links {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📦</div>
+        
+        <h1>disk2iso Module Store</h1>
+        <div class="subtitle">Metadaten-Repository für Module und Provider</div>
+
+        <div class="message">
+            <p><strong>⚠️ Hinweis:</strong></p>
+            <p>Diese Seite ist nicht für den direkten Aufruf im Browser vorgesehen.</p>
+            <p>Der Module Store wird ausschließlich über die <strong>disk2iso Web-UI</strong> verwendet.</p>
+        </div>
+
+        <div class="code">
+# Zugriff über Web-UI:<br>
+https://&lt;dein-server&gt;:5000/settings/modules
+        </div>
+
+        <div class="message">
+            <p><strong>📋 Verfügbare Module:</strong></p>
+            <p style="margin-top: 12px;">
+                • Audio-CD Ripping<br>
+                • DVD-Video Backup<br>
+                • Blu-ray Backup<br>
+                • Metadata Framework (inkl. CD-TEXT)<br>
+                • MQTT Integration<br>
+                • MusicBrainz Provider<br>
+                • TMDB Provider
+            </p>
+        </div>
+
+        <div class="links">
+            <a href="https://github.com/Disk2ISO/disk2iso" class="btn btn-primary">
+                <span>📘</span>
+                <span>Dokumentation</span>
+            </a>
+            <a href="catalog.json" class="btn btn-secondary">
+                <span>📄</span>
+                <span>catalog.json anzeigen</span>
+            </a>
+        </div>
+
+        <div class="footer">
+            disk2iso © 2026 | 
+            <a href="https://github.com/Disk2ISO">GitHub Organization</a> | 
+            <a href="https://github.com/Disk2ISO/disk2iso/blob/main/LICENSE">MIT License</a>
+        </div>
+    </div>
+</body>
+</html>

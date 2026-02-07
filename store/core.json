@@ -1,0 +1,45 @@
+{
+  "id": "core",
+  "name": "disk2iso",
+  "category": "core",
+  "description": "Disk-to-ISO Conversion Tool mit Web-UI und modularer Architektur",
+  "icon": "https://raw.githubusercontent.com/Disk2ISO/disk2iso/main/store/icon.svg",
+  "author": "Disk2ISO Team",
+  "homepage": "https://github.com/Disk2ISO/disk2iso",
+  "repository": "https://github.com/Disk2ISO/disk2iso",
+  "license": "MIT",
+  "requires": {},
+  "recommends": {
+    "audio": ">=1.3.0",
+    "dvd": ">=1.3.0",
+    "bluray": ">=1.3.0",
+    "metadata": ">=1.3.0",
+    "mqtt": ">=1.3.0"
+  },
+  "current_version": "1.3.0",
+  "versions": [
+    {
+      "version": "1.3.0",
+      "released": "2026-02-07",
+      "changelog": "Service-Struktur Refactoring, Installation nach services/disk2iso-web/",
+      "download_url": "https://github.com/Disk2ISO/disk2iso/releases/download/v1.3.0/disk2iso-1.3.0.tar.gz",
+      "checksum_url": "https://github.com/Disk2ISO/disk2iso/releases/download/v1.3.0/disk2iso-1.3.0.tar.gz.sha256",
+      "size": "TBD"
+    }
+  ],
+  "install_method": "tar",
+  "install_path": "/opt/disk2iso/",
+  "post_install": [
+    "sudo bash /opt/disk2iso/install.sh",
+    "sudo systemctl enable disk2iso-web",
+    "sudo systemctl start disk2iso-web"
+  ],
+  "features": [
+    "Web-basierte Benutzeroberfläche",
+    "REST API für Automatisierung",
+    "Modulare Plugin-Architektur",
+    "Multi-Language Support (DE/EN/ES/FR)",
+    "Echtzeit-Fortschritts-Tracking",
+    "Automatische Medium-Erkennung"
+  ]
+}

@@ -1,0 +1,46 @@
+disk2iso-store/
+├── catalog.json                   # Master-Katalog (Übersicht aller Module)
+├── modules/                       # Manifest-Dateien
+│   ├── core.json                  # disk2iso Haupttool
+│   ├── audio.json                 # Audio-CD Modul
+│   ├── dvd.json                   # DVD Modul
+│   ├── bluray.json                # Blu-ray Modul
+│   ├── metadata.json              # Metadata Framework
+│   ├── mqtt.json                  # MQTT Modul
+│   ├── musicbrainz.json           # MusicBrainz Provider
+│   └── tmdb.json                  # TMDB Provider
+├── releases/                       # ZIP-Dateien + Checksummen
+│   ├── core/
+│   │   ├── v1.3.0/
+│   │   │   ├── disk2iso-1.3.0.tar.gz
+│   │   │   └── disk2iso-1.3.0.tar.gz.sha256
+│   ├── audio/
+│   │   ├── v1.3.0/
+│   │   │   ├── audio-module.zip
+│   │   │   └── audio-module.zip.sha256
+│   │   └── v1.2.1/
+│   │       ├── audio-module.zip
+│   │       └── audio-module.zip.sha256
+│   ├── dvd/
+│   │   └── v1.3.0/
+│   │       ├── dvd-module.zip
+│   │       └── dvd-module.zip.sha256
+│   ├── bluray/
+│   │   └── v1.3.0/
+│   ├── metadata/
+│   │   └── v1.3.0/
+│   ├── mqtt/
+│   │   └── v1.3.0/
+│   ├── musicbrainz/
+│   │   └── v1.3.0/
+│   └── tmdb/
+│       └── v1.3.0/
+├── icons/                         # (Optional) Modul-Icons
+│   ├── core.svg
+│   ├── audio.svg
+│   ├── dvd.svg
+│   └── ...
+└── screenshots/                   # (Optional) Screenshots
+    ├── audio/
+    ├── dvd/
+    └── ...
