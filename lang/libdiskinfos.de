@@ -7,9 +7,7 @@
 # ============================================================================
 
 # Dependency Check
-readonly MSG_ERROR_CRITICAL_TOOLS_MISSING="Kritische Tools für Disk-Erkennung fehlen"
 readonly MSG_INFO_INSTALL_MOUNT="Installation: apt install mount"
-readonly MSG_WARNING_OPTIONAL_TOOLS_MISSING="Optionale Tools für verbesserte Disk-Erkennung fehlen"
 readonly MSG_INFO_INSTALL_ISOINFO="Installation: apt install genisoimage util-linux"
 readonly MSG_INFO_FALLBACK_METHODS="Disk-Erkennung verwendet Fallback-Methoden"
 

@@ -104,7 +104,7 @@ check_module_dependencies() {
     # Lade DB-Datei falls definiert 
     # ------------------------------------------------------------------------
     local db_file
-    db_file=$(config_get_value_ini "${module_name}" "modulefiles" "db")
+    db_file=$(settings_get_value_ini "${module_name}" "modulefiles" "db")
 
     if [[ -n "$db_file" ]]; then
         local db_path="${INSTALL_DIR}/${db_file}"
@@ -248,8 +248,8 @@ check_module_dependencies() {
     local missing=()                      # Array der fehlende kritische Tools
     local external_deps                 # Kritische externe Tools aus Manifest
     
-    # Lese externe Tools aus Manifest (via config_get_array_ini)
-    external_deps=$(config_get_array_ini "${module_name}" "dependencies" "external")
+    # Lese externe Tools aus Manifest (via settings_get_array_ini)
+    external_deps=$(settings_get_array_ini "${module_name}" "dependencies" "external")
 
     # Prüfung der kritischen Tools, falls definiert
     if [[ -n "$external_deps" ]]; then
@@ -278,8 +278,8 @@ check_module_dependencies() {
     local optional_missing=()             # Array der fehlende optionale Tools
     local optional_deps                         # Optionale Tools aus Manifest
 
-    # Lese optionale Tools aus Manifest (via config_get_array_ini)
-    optional_deps=$(config_get_array_ini "${module_name}" "dependencies" "optional")
+    # Lese optionale Tools aus Manifest (via settings_get_array_ini)
+    optional_deps=$(settings_get_array_ini "${module_name}" "dependencies" "optional")
     
     # Prüfung der optionalen Tools, falls definiert
     if [[ -n "$optional_deps" ]]; then

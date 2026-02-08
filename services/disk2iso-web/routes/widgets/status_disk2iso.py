@@ -63,14 +63,14 @@ def api_disk2iso_status():
     """
     GET /api/widgets/disk2iso/status
     Liefert aktuellen Status des disk2iso Service
+    Timestamp kommt aus Bash (Zeitpunkt der Statusprüfung)
     """
     service_status = get_disk2iso_service_status()
     
     return jsonify({
         'success': True,
         'service': 'disk2iso',
-        **service_status,
-        'timestamp': datetime.now().isoformat()
+        **service_status
     })
 
 

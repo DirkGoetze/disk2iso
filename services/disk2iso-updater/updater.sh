@@ -33,19 +33,16 @@ source "${INSTALL_DIR}/lib/libservice.sh" || exit 1
 # Main
 # ===========================================================================
 
-# Initialisiere Logging (Silent-Mode für systemd)
-init_logging "update_volatile_data" "silent"
-
-# Sammle flüchtige Daten
+# Sammle flüchtige Daten (mit logger für systemd)
 {
     # Uptime-Information aktualisieren
-    systeminfo_collect_uptime_info || log_error "Fehler beim Sammeln von Uptime-Daten"
+    systeminfo_collect_uptime_info || echo "Fehler beim Sammeln von Uptime-Daten" >&2
     
     # Speicherplatz-Information aktualisieren
-    systeminfo_collect_storage_info || log_error "Fehler beim Sammeln von Storage-Daten"
+    systeminfo_collect_storage_info || echo "Fehler beim Sammeln von Storage-Daten" >&2
     
     # Service-Status aktualisieren
-    service_collect_status_info || log_error "Fehler beim Sammeln von Service-Status"
+    service_collect_status_info || echo "Fehler beim Sammeln von Service-Status" >&2
     
 } 2>&1 | logger -t "disk2iso-volatile-updater" -p user.info
 

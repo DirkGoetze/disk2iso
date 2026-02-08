@@ -39,32 +39,10 @@
 # .........  Laden der libcommon.sh.
 # ===========================================================================
 diskinfos_check_dependencies() {
-    # Lade Modul-Sprachdatei
-    load_module_language "diskinfos"
+    # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner)
+    check_module_dependencies "diskinfos" || return 1
     
-    local missing=()
-    
-    # Kritische Tools (müssen vorhanden sein)
-    command -v mount >/dev/null 2>&1 || missing+=("mount")
-    command -v umount >/dev/null 2>&1 || missing+=("umount")
-    
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_error "$MSG_ERROR_CRITICAL_TOOLS_MISSING: ${missing[*]}"
-        log_info "$MSG_INFO_INSTALL_MOUNT"
-        return 1
-    fi
-    
-    # Optionale aber wichtige Tools
-    local optional_missing=()
-    command -v isoinfo >/dev/null 2>&1 || optional_missing+=("isoinfo")
-    command -v blkid >/dev/null 2>&1 || optional_missing+=("blkid")
-    command -v blockdev >/dev/null 2>&1 || optional_missing+=("blockdev")
-    
-    if [[ ${#optional_missing[@]} -gt 0 ]]; then
-        log_warning "$MSG_WARNING_OPTIONAL_TOOLS_MISSING: ${optional_missing[*]}"
-        log_info "$MSG_INFO_INSTALL_ISOINFO"
-        log_info "$MSG_INFO_FALLBACK_METHODS"
-    fi
+    # Keine modul-spezifische Initialisierung nötig
     
     return 0
 }

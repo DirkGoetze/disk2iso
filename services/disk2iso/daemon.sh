@@ -566,7 +566,7 @@ main() {
     # ========================================================================
     
     # Lese OUTPUT_DIR aus Konfiguration
-    OUTPUT_DIR=$(config_get_output_dir)
+    OUTPUT_DIR=$(folders_get_output_dir)
     if [[ $? -ne 0 ]]; then
         log_info "$MSG_ERROR_OUTPUT_DIR_NOT_EXIST_MAIN"
         log_info "$MSG_CONFIG_OUTPUT_DIR"

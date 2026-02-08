@@ -39,22 +39,11 @@
 # .........  Laden der libcommon.sh.
 # ===========================================================================
 systeminfo_check_dependencies() {
-    # Lade Sprachdatei für dieses Modul
-    load_module_language "systeminfo"
+    # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner)
+    check_module_dependencies "systeminfo" || return 1
     
-    local missing=()
-    
-    # Basis-Tools für Systeminformationen
-    command -v df >/dev/null 2>&1 || missing+=("df")
-    command -v blkid >/dev/null 2>&1 || missing+=("blkid")
-    
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        log_error "$MSG_ERROR_SYSTEM_TOOLS_MISSING ${missing[*]}"
-        log_info "$MSG_INSTALLATION_SYSTEM_TOOLS"
-        return 1
-    fi
-    
-    #-- Erkenne Container-Umgebung ------------------------------------------
+    # Modul-spezifische Initialisierung
+    # Erkenne Container-Umgebung
     systeminfo_detect_container_env
     
     return 0
@@ -379,8 +368,7 @@ systeminfo_collect_storage_info() {
         fi
     fi
     
-    # Schreibe in JSON
-    settings_set_value_json "storage_info" ".output_dir" "$output_dir" || return 1
+    # Schreibe in JSON (nur Speicherplatz-Metriken, nicht das Verzeichnis selbst)
     settings_set_value_json "storage_info" ".total_gb" "$output_dir_total" || return 1
     settings_set_value_json "storage_info" ".free_gb" "$output_dir_space" || return 1
     settings_set_value_json "storage_info" ".used_percent" "$output_dir_used_percent" || return 1

@@ -49,9 +49,12 @@ service_check_dependencies() {
 service_get_status() {
     local service_name="$1"
     
+    # Timestamp der Prüfung
+    local timestamp=$(date -Iseconds)
+    
     # Prüfe ob Service existiert
     if ! systemctl list-unit-files "${service_name}.service" 2>/dev/null | grep -q "${service_name}.service"; then
-        echo '{"status":"not_installed","running":false}'
+        echo "{\"status\":\"not_installed\",\"running\":false,\"timestamp\":\"${timestamp}\"}"
         return 0
     fi
     
@@ -79,7 +82,10 @@ service_get_status() {
             ;;
     esac
     
-    echo "{\"status\":\"${status}\",\"running\":${running}}"
+    # Timestamp der Prüfung hinzufügen
+    local timestamp=$(date -Iseconds)
+    
+    echo "{\"status\":\"${status}\",\"running\":${running},\"timestamp\":\"${timestamp}\"}"
 }
 
 # ===========================================================================

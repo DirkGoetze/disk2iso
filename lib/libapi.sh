@@ -39,22 +39,10 @@
 # .........  Laden der libcommon.sh.
 # ===========================================================================
 api_check_dependencies() {
-    # Lade Sprachdatei für dieses Modul
-    load_module_language "api"
+    # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner)
+    check_module_dependencies "api" || return 1
     
-    # API-Modul benötigt keine externen Tools
-    # Verwendet nur Bash-Funktionen (cat, mv, chmod)
-    
-    # Prüfe ob API-Verzeichnis existiert (von install.sh erstellt)
-    local api_test
-    api_test=$(folders_get_api_dir)
-    
-    if [[ -z "$api_test" ]]; then
-        echo "$MSG_ERROR_API_DIR_NOT_FOUND"
-        echo "$MSG_INFO_REPAIR_INSTALLATION ${INSTALL_DIR}/install.sh"
-        return 1
-    fi
-    
+    # Modul-spezifische Initialisierung
     # Initialisiere API-Infrastruktur (leere JSONs)
     api_init || return 1
     

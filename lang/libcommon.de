@@ -31,7 +31,6 @@ readonly MSG_ERROR_VIDEO_DVD_NOT_AVAILABLE="FEHLER: Video-DVD Unterstützung nic
 readonly MSG_ERROR_BLURAY_NOT_AVAILABLE="FEHLER: Blu-ray Unterstützung nicht verfügbar"
 
 # Dependency Errors
-readonly MSG_ERROR_CRITICAL_TOOLS_MISSING="FEHLER: Kritische Tools fehlen:"
 readonly MSG_INSTALLATION_CORE_TOOLS="Installation: apt-get install coreutils util-linux eject"
 
 # ============================================================================
@@ -120,7 +119,6 @@ readonly MSG_COPIED="kopiert"
 # FEHLER-MELDUNGEN (DEPENDENCY CHECK)
 # ============================================================================
 
-readonly MSG_ERROR_OUTPUT_DIR_CREATE_FAILED="Ausgabe-Ordner für Daten-Discs konnte nicht erstellt werden:"
 readonly MSG_ERROR_OUTPUT_DIR_NOT_EXISTS="OUTPUT_DIR existiert nicht:"
 
 # ============================================================================
