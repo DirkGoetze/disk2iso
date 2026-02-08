@@ -5,7 +5,7 @@
 #
 # Beschreibung:
 #   Wizard-basierte Installation von disk2iso
-#   - Installations-Wizard mit whiptail
+#   - Installations-Wizard mit dialog
 #   - Optionale systemd Service-Konfiguration
 #
 # Version: 1.3.0
@@ -53,12 +53,13 @@ create_output_directory() {
     local output_dir="$1"
     [[ -z "$output_dir" ]] && return 1
     
-    # Erstelle Verzeichnisstruktur
-    mkdir -p "$output_dir"/{.log,.temp/mountpoints,audio,dvd,bd,data} || return 1
+    # Erstelle Basis-Verzeichnisstruktur
+    # Hinweis: audio/, dvd/, bd/ werden zur Laufzeit von optionalen Modulen erstellt
+    mkdir -p "$output_dir"/{.log,.temp/mountpoints,data} || return 1
     
     # Setze Berechtigungen
     chmod 755 "$output_dir"
-    chmod 755 "$output_dir"/{audio,dvd,bd,data} 2>/dev/null
+    chmod 755 "$output_dir"/data 2>/dev/null
     chmod 777 "$output_dir"/.log 2>/dev/null
     chmod 777 "$output_dir"/.temp 2>/dev/null
     chmod 777 "$output_dir"/.temp/mountpoints 2>/dev/null
@@ -89,19 +90,19 @@ print_info() {
 }
 
 # Whiptail-Wrapper für bessere UX
-use_whiptail() {
-    command -v whiptail >/dev/null 2>&1
+use_dialog() {
+    command -v dialog >/dev/null 2>&1
 }
 
 ask_yes_no() {
     local question="$1"
     local default="${2:-n}"
     
-    if use_whiptail; then
-        if [[ "$default" == "y" ]]; then
-            whiptail --title "disk2iso Installation" --yesno "$question" 10 60 --defaultno
+    if use_dialog; then
+        if [[ "$default" == "n" ]]; then
+            dialog --title "disk2iso Installation" --defaultno --yesno "$question" 10 60
         else
-            whiptail --title "disk2iso Installation" --yesno "$question" 10 60
+            dialog --title "disk2iso Installation" --yesno "$question" 10 60
         fi
         return $?
     else
@@ -122,8 +123,8 @@ show_info() {
     local title="$1"
     local message="$2"
     
-    if use_whiptail; then
-        whiptail --title "$title" --msgbox "$message" 20 70
+    if use_dialog; then
+        dialog --title "$title" --msgbox "$message" 20 70
     else
         echo -e "\n${BLUE}$title${NC}"
         echo "$message"
@@ -244,62 +245,46 @@ check_existing_installation() {
         action_mode="UPDATE"
     fi
     
-    if use_whiptail; then
+    if use_dialog; then
         local info=""
-        local yes_button=""
+        local action_label=""
+        local menu_title=""
         
         if [[ "$action_mode" == "REPARATUR" ]]; then
-            info="Eine bestehende disk2iso Installation wurde gefunden!
+            menu_title="Eine bestehende disk2iso Installation wurde gefunden!
 
 Installierter Pfad: $INSTALL_DIR
 Installierte Version: ${version}
 Neue Version: ${NEW_VERSION}
 
-➜ GLEICHE VERSION ERKANNT
-
-Wie möchten Sie fortfahren?
-
-REPARATUR (Empfohlen):
-• Überschreibt Programmdateien (services/*, lib/*.sh)
-• Behält ALLE Einstellungen bei (config.sh)
-• Behält Service-Status bei (aktiviert/deaktiviert)
-• Repariert beschädigte Installationen
-• Keine Änderung an Web-Server Konfiguration
-
-NEUINSTALLATION:
-• Führt vollständige Deinstallation durch
-• Startet kompletten Installations-Wizard
-• Einstellungen werden NICHT übernommen"
-            yes_button="Reparatur"
+➜ GLEICHE VERSION ERKANNT"
+            action_label="Reparatur"
         else
-            info="Eine bestehende disk2iso Installation wurde gefunden!
+            menu_title="Eine bestehende disk2iso Installation wurde gefunden!
 
 Installierter Pfad: $INSTALL_DIR
 Installierte Version: ${version}
 Neue Version: ${NEW_VERSION}
 
-➜ UPDATE VERFÜGBAR
-
-Wie möchten Sie fortfahren?
-
-UPDATE (Empfohlen):
-• Aktualisiert Programmdateien auf Version ${NEW_VERSION}
-• Behält ALLE Einstellungen bei (config.sh)
-• Optionale Änderung der Service-Konfiguration
-• Web-Server Einstellungen bleiben erhalten
-• Zeigt Installations-Fortschritt an
-
-NEUINSTALLATION:
-• Führt vollständige Deinstallation durch
-• Startet kompletten Installations-Wizard
-• Einstellungen werden NICHT übernommen"
-            yes_button="Update"
+➜ UPDATE VERFÜGBAR"
+            action_label="Update"
         fi
         
-        if whiptail --title "Bestehende Installation gefunden" \
-            --yesno "$info" 30 75 \
-            --yes-button "$yes_button" \
-            --no-button "Neuinstallation"; then
+        local choice
+        choice=$(dialog --title "Bestehende Installation gefunden" \
+            --menu "$menu_title" 22 75 2 \
+            "1" "$action_label (Empfohlen)" \
+            "2" "Neuinstallation" \
+            2>&1 >/dev/tty)
+        
+        local exit_code=$?
+        
+        # Abbruch bei ESC oder Cancel
+        if [[ $exit_code -ne 0 ]]; then
+            return 0
+        fi
+        
+        if [[ "$choice" == "1" ]]; then
             # UPDATE/REPARATUR gewählt
             if [[ "$action_mode" == "REPARATUR" ]]; then
                 IS_REPAIR=true
@@ -311,10 +296,10 @@ NEUINSTALLATION:
             return 1
         else
             # NEUINSTALLATION gewählt
-            if whiptail --title "Neuinstallation bestätigen" \
+            if dialog --title "Neuinstallation bestätigen" \
+                --defaultno \
                 --yesno "WARNUNG: Alle Einstellungen gehen verloren!\n\nSind Sie sicher, dass Sie eine komplette Neuinstallation durchführen möchten?\n\nDies kann NICHT rückgängig gemacht werden!" \
-                14 60 \
-                --defaultno; then
+                14 60; then
                 
                 print_info "Führe Deinstallation durch..."
                 if [[ -f "$INSTALL_DIR/uninstall.sh" ]]; then
@@ -451,7 +436,7 @@ perform_repair() {
         echo "100"
         echo "# Reparatur abgeschlossen!"
         sleep 0.5
-    ) | whiptail --title "Reparatur läuft" --gauge "Starte Reparatur..." 10 70 0
+    ) | dialog --title "Reparatur läuft" --gauge "Starte Reparatur..." 10 70 0
     
     # Prüfe fehlende Komponenten und biete Installation an
     local missing_components=false
@@ -460,8 +445,8 @@ perform_repair() {
     
     # Prüfe disk2iso.service
     if [[ ! -f "$SERVICE_FILE" ]]; then
-        if use_whiptail; then
-            if whiptail --title "Fehlende Komponente erkannt" \
+        if use_dialog; then
+            if dialog --title "Fehlende Komponente erkannt" \
                 --yesno "Der disk2iso Service ist nicht installiert.\n\nMöchten Sie ihn jetzt einrichten?\n\nDies ermöglicht automatisches Starten beim Booten." \
                 12 70; then
                 install_service_now=true
@@ -472,8 +457,8 @@ perform_repair() {
     
     # Prüfe Web-Server (Python venv)
     if [[ ! -d "$INSTALL_DIR/venv" ]] || [[ ! -f "$INSTALL_DIR/venv/bin/flask" ]]; then
-        if use_whiptail; then
-            if whiptail --title "Optionale Komponente" \
+        if use_dialog; then
+            if dialog --title "Optionale Komponente" \
                 --yesno "Web-Server ist nicht installiert.\n\nWeb-Server bietet:\n• Status-Überwachung im Browser\n• Archiv-Verwaltung und Übersicht\n• Log-Viewer mit Live-Updates\n• Responsive Design\n\nMöchten Sie den Web-Server jetzt installieren?" \
                 14 70; then
                 install_web_now=true
@@ -492,8 +477,8 @@ perform_repair() {
     if [[ "$install_service_now" == "true" ]]; then
         # Frage Ausgabeverzeichnis
         local output_dir="/media/iso"
-        if use_whiptail; then
-            output_dir=$(whiptail --title "Ausgabeverzeichnis" \
+        if use_dialog; then
+            output_dir=$(dialog --title "Ausgabeverzeichnis" \
                 --inputbox "Ausgabeverzeichnis für ISOs:" \
                 10 60 "/media/iso" 3>&1 1>&2 2>&3) || output_dir="/media/iso"
         fi
@@ -630,7 +615,7 @@ EOFREQ
             echo "Web-Server installiert!"
             echo "XXX"
             sleep 0.5
-        } | whiptail --title "Web-Server Installation" \
+        } | dialog --title "Web-Server Installation" \
             --gauge "Installiere Web-Server-Komponenten..." 8 70 0
         
         print_success "Web-Server installiert (Python/Flask)"
@@ -638,8 +623,8 @@ EOFREQ
     fi
     
     # Zeige Reparatur-Zusammenfassung
-    if use_whiptail; then
-        whiptail --title "Reparatur Abgeschlossen" --msgbox \
+    if use_dialog; then
+        dialog --title "Reparatur Abgeschlossen" --msgbox \
             "disk2iso wurde erfolgreich repariert!\n\nAlle Einstellungen wurden beibehalten.\nServices wurden neu gestartet (falls aktiviert).\n\nPfad: $INSTALL_DIR\nVersion: $NEW_VERSION" \
             14 70
     else
@@ -684,11 +669,11 @@ perform_update() {
     
     # Frage ob Benutzer Einstellungen ändern möchte
     local reconfigure=false
-    if use_whiptail; then
-        if whiptail --title "Update-Optionen" \
+    if use_dialog; then
+        if dialog --title "Update-Optionen" \
+            --defaultno \
             --yesno "Möchten Sie die Einstellungen während des Updates überprüfen/ändern?\n\nAktueller Status:\n  - disk2iso Service: $([ "$service_enabled" == "true" ] && echo "aktiviert" || echo "deaktiviert")\n  - disk2iso-web Service: $([ "$web_service_enabled" == "true" ] && echo "aktiviert" || echo "deaktiviert")\n\nJA: Einstellungen während Update anpassen\nNEIN: Nur Dateien aktualisieren (empfohlen)" \
-            16 70 \
-            --defaultno; then
+            16 70; then
             reconfigure=true
         fi
     fi
@@ -770,17 +755,17 @@ perform_update() {
         echo "100"
         echo "# Update abgeschlossen!"
         sleep 0.5
-    ) | whiptail --title "Update wird durchgeführt" --gauge "Starte Update von v$INSTALLED_VERSION auf v$NEW_VERSION..." 10 70 0
+    ) | dialog --title "Update wird durchgeführt" --gauge "Starte Update von v$INSTALLED_VERSION auf v$NEW_VERSION..." 10 70 0
     
     # Optional: Einstellungen anpassen
     if [[ "$reconfigure" == "true" ]]; then
-        if use_whiptail; then
+        if use_dialog; then
             # Service-Status ändern?
-            if whiptail --title "Service-Konfiguration" \
+            if dialog --title "Service-Konfiguration" \
                 --yesno "disk2iso Service aktuell: $([ "$service_enabled" == "true" ] && echo "aktiviert" || echo "deaktiviert")\n\nMöchten Sie den Service-Status ändern?" \
                 10 70; then
                 
-                if whiptail --title "Service aktivieren" \
+                if dialog --title "Service aktivieren" \
                     --yesno "disk2iso Service aktivieren und starten?" \
                     8 50; then
                     systemctl enable disk2iso 2>/dev/null || true
@@ -814,8 +799,8 @@ perform_update() {
     
     # Prüfe disk2iso.service
     if [[ ! -f "$SERVICE_FILE" ]]; then
-        if use_whiptail; then
-            if whiptail --title "Fehlende Komponente erkannt" \
+        if use_dialog; then
+            if dialog --title "Fehlende Komponente erkannt" \
                 --yesno "Der disk2iso Service ist nicht installiert.\n\nMöchten Sie ihn jetzt einrichten?\n\nDies ermöglicht automatisches Starten beim Booten." \
                 12 70; then
                 install_service_now=true
@@ -826,8 +811,8 @@ perform_update() {
     
     # Prüfe Web-Server (Python venv)
     if [[ ! -d "$INSTALL_DIR/venv" ]] || [[ ! -f "$INSTALL_DIR/venv/bin/flask" ]]; then
-        if use_whiptail; then
-            if whiptail --title "Optionale Komponente" \
+        if use_dialog; then
+            if dialog --title "Optionale Komponente" \
                 --yesno "Web-Server ist nicht installiert.\n\nWeb-Server bietet:\n• Status-Überwachung im Browser\n• Archiv-Verwaltung und Übersicht\n• Log-Viewer mit Live-Updates\n• Responsive Design\n\nMöchten Sie den Web-Server jetzt installieren?" \
                 14 70; then
                 install_web_now=true
@@ -846,8 +831,8 @@ perform_update() {
     if [[ "$install_service_now" == "true" ]]; then
         # Frage Ausgabeverzeichnis
         local output_dir="/media/iso"
-        if use_whiptail; then
-            output_dir=$(whiptail --title "Ausgabeverzeichnis" \
+        if use_dialog; then
+            output_dir=$(dialog --title "Ausgabeverzeichnis" \
                 --inputbox "Ausgabeverzeichnis für ISOs:" \
                 10 60 "/media/iso" 3>&1 1>&2 2>&3) || output_dir="/media/iso"
         fi
@@ -976,7 +961,7 @@ EOFREQ
             echo "Web-Server installiert!"
             echo "XXX"
             sleep 0.5
-        } | whiptail --title "Web-Server Installation" \
+        } | dialog --title "Web-Server Installation" \
             --gauge "Installiere Web-Server-Komponenten..." 8 70 0
         
         print_success "Web-Server installiert (Python/Flask)"
@@ -984,7 +969,7 @@ EOFREQ
     fi
     
     # Zeige Update-Zusammenfassung
-    if use_whiptail; then
+    if use_dialog; then
         local summary="disk2iso wurde erfolgreich aktualisiert!
 
 Version: $INSTALLED_VERSION → $NEW_VERSION
@@ -998,7 +983,7 @@ Service-Status:
 Pfad: $INSTALL_DIR
 
 Hinweis: Überprüfen Sie die Dokumentation für neue Features!"
-        whiptail --title "Update Abgeschlossen" --msgbox "$summary" 20 70
+        dialog --title "Update Abgeschlossen" --msgbox "$summary" 20 70
     else
         print_header "UPDATE ABGESCHLOSSEN"
         print_success "disk2iso wurde aktualisiert: $INSTALLED_VERSION → $NEW_VERSION"
@@ -1033,23 +1018,22 @@ install_package() {
 wizard_page_welcome() {
     local info="Willkommen zur disk2iso Installation!
 
-disk2iso ist ein Tool zur automatischen Erstellung von ISO-Images von optischen Medien (CD, DVD, Blu-ray).
+disk2iso ist ein Tool zur automatischen Erstellung von ISO-Images von optischen Medien.
 
-Funktionen:
+Basis-Funktionen:
 • Automatische Erkennung eingelegter Discs
-• Unterstützung für Audio-CDs, Video-DVDs und Blu-rays
-• MusicBrainz-Integration für Audio-CD Metadaten
-• Optional als systemd-Service für Autostart
+• Kopieren als ISO-Image
+• MD5-Checksummen für Datenintegrität
+• Web-Interface zur Überwachung
+• Optionale Autostart-Funktion
 
 Der Wizard führt Sie durch die Installation in einfachen Schritten.
 
 Möchten Sie fortfahren?"
 
-    if use_whiptail; then
-        if whiptail --title "disk2iso Installation - Seite 1/6" \
-            --yesno "$info" 20 70 \
-            --yes-button "Installation" \
-            --no-button "Abbrechen"; then
+    if use_dialog; then
+        if dialog --title "disk2iso Installation - Seite 1/6" \
+            --yesno "$info" 20 70; then
             return 0
         else
             return 1
@@ -1074,26 +1058,26 @@ wizard_page_base_packages() {
     local total=${#packages[@]}
     local current=0
     
-    if use_whiptail; then
+    if use_dialog; then
         {
-            echo "0"
             for pkg_info in "${packages[@]}"; do
                 IFS=':' read -r package description <<< "$pkg_info"
                 current=$((current + 1))
                 percent=$((current * 100 / total))
                 
+                echo "$percent"
                 echo "XXX"
                 echo "Installiere $description ($current/$total)..."
                 echo "XXX"
-                echo "$percent"
                 
                 if ! dpkg -l 2>/dev/null | grep -q "^ii  $package "; then
                     apt-get install -y -qq "$package" >/dev/null 2>&1 || true
                 fi
                 sleep 0.5
             done
-        } | whiptail --title "disk2iso Installation - Seite 2/6" \
-            --gauge "Installiere Audio-CD Modul..." 8 70 0
+            echo "100"
+        } | dialog --title "disk2iso Installation - Seite 2/6" \
+            --gauge "Vorbereite Installation..." 8 70 0
     else
         print_header "INSTALLATION BASIS-PAKETE"
         for pkg_info in "${packages[@]}"; do
@@ -1105,11 +1089,11 @@ wizard_page_base_packages() {
 
 # Seite 3: Service-Installation
 wizard_page_service_setup() {
-    if use_whiptail; then
+    if use_dialog; then
         # Ausgabeverzeichnis abfragen
-        SERVICE_OUTPUT_DIR=$(whiptail --title "disk2iso Installation - Seite 3/4" \
-            --inputbox "Geben Sie das Verzeichnis ein, in dem die ISOs gespeichert werden sollen:\n\nHinweis: Es werden automatisch Unterordner erstellt:\n  • audio/   (Audio-CDs)\n  • dvd/     (Video-DVDs)\n  • bd/      (Blu-rays)\n  • data/    (Daten-Discs)\n  • .log/    (Log-Dateien)\n  • .temp/   (Temporäre Dateien)" \
-            18 70 "/media/iso" 3>&1 1>&2 2>&3)
+        SERVICE_OUTPUT_DIR=$(dialog --title "disk2iso Installation - Seite 3/4" \
+            --inputbox "Geben Sie das Verzeichnis ein, in dem die ISOs gespeichert werden sollen:\n\nHinweis: Es werden automatisch Unterordner erstellt:\n  • data/    (ISO-Images)\n  • .log/    (Log-Dateien)\n  • .temp/   (Temporäre Dateien)" \
+            16 70 "/media/iso" 3>&1 1>&2 2>&3)
         
         if [ -z "$SERVICE_OUTPUT_DIR" ]; then
             SERVICE_OUTPUT_DIR="/media/iso"
@@ -1124,27 +1108,14 @@ wizard_page_service_setup() {
 wizard_page_complete() {
     local info="Installation erfolgreich abgeschlossen!
 
-disk2iso wurde mit allen Services installiert:
+disk2iso läuft jetzt auf Ihrem System.
 
-Services:
-• disk2iso: Überwacht Laufwerke und erstellt ISOs
-• disk2iso-web: Web-Interface auf Port 8080
-• disk2iso-updater: API-Daten Aktualisierung
+Web-Interface:
+http://$(hostname -I | awk '{print $1}'):8080"
 
-Service-Befehle:
-• Status: systemctl status disk2iso
-• Logs: journalctl -u disk2iso -f
-• Web-Interface: http://$(hostname -I | awk '{print $1}'):8080
-
-Wartung:
-• Update: sudo /opt/disk2iso/install.sh
-• Deinstallation: sudo /opt/disk2iso/uninstall.sh
-
-Alle Services sind aktiv und laufen."
-
-    if use_whiptail; then
-        whiptail --title "disk2iso Installation - Seite 4/4" \
-            --msgbox "$info" 20 70
+    if use_dialog; then
+        dialog --title "disk2iso Installation - Seite 4/4" \
+            --msgbox "$info" 12 70
     else
         echo "$info"
     fi
@@ -1241,7 +1212,7 @@ install_disk2iso_files() {
 configure_all_services() {
     local output_dir="${SERVICE_OUTPUT_DIR:-/media/iso}"
     
-    if use_whiptail; then
+    if use_dialog; then
         {
             # Schritt 1: Ausgabeverzeichnis erstellen (17%)
             echo "0"
@@ -1313,7 +1284,7 @@ configure_all_services() {
             sleep 0.3
             
             echo "100"
-        } | whiptail --title "disk2iso Installation - Seite 3/4" \
+        } | dialog --title "disk2iso Installation - Seite 3/4" \
             --gauge "Installiere Services..." 8 70 0
     else
         # Text-Modus
@@ -1365,6 +1336,12 @@ main() {
     # System-Checks
     check_root
     check_debian
+    
+    # Installiere dialog für Wizard-UI (falls noch nicht vorhanden)
+    if ! command -v dialog >/dev/null 2>&1; then
+        apt-get update -qq
+        apt-get install -y -qq dialog >/dev/null 2>&1
+    fi
     
     # Prüfe auf bestehende Installation
     if check_existing_installation; then

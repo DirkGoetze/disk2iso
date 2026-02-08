@@ -5,7 +5,7 @@
 #
 # Beschreibung:
 #   Wizard-basierte Deinstallation von disk2iso
-#   - 4-Seiten Deinstallations-Wizard mit whiptail
+#   - 4-Seiten Deinstallations-Wizard mit dialog
 #   - Entfernt Service, Dateien und optional Ausgabeverzeichnis
 #
 # Version: 1.3.0
@@ -19,13 +19,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Lade Installation Library (Shared Utilities)
 # Wenn noch nicht installiert, nutze lokale Kopie
-if [[ -f "/opt/disk2iso/lib/lib-install.sh" ]]; then
-    source "/opt/disk2iso/lib/lib-install.sh"
-elif [[ -f "$SCRIPT_DIR/lib/lib-install.sh" ]]; then
-    source "$SCRIPT_DIR/lib/lib-install.sh"
+if [[ -f "/opt/disk2iso/lib/libinstall.sh" ]]; then
+    source "/opt/disk2iso/lib/libinstall.sh"
+elif [[ -f "$SCRIPT_DIR/lib/libinstall.sh" ]]; then
+    source "$SCRIPT_DIR/lib/libinstall.sh"
 else
-    echo "FEHLER: lib/lib-install.sh nicht gefunden!"
+    echo "FEHLER: lib/libinstall.sh nicht gefunden!"
     exit 1
+fi
+
+# Fallback: use_dialog Funktion falls libinstall.sh sie nicht definiert
+if ! declare -f use_dialog >/dev/null 2>&1; then
+    use_dialog() {
+        command -v dialog >/dev/null 2>&1
+    }
 fi
 
 # Installationspfade
@@ -44,7 +51,7 @@ fi
 # CHECKS
 # ============================================================================
 
-# check_root() ist bereits in lib/lib-install.sh definiert
+# check_root() ist bereits in lib/libinstall.sh definiert
 
 # ============================================================================
 # WIZARD FUNCTIONS
@@ -70,12 +77,10 @@ Sie verlieren die Möglichkeit zur automatisierten ISO-Erstellung von optischen 
 
 Möchten Sie wirklich fortfahren?"
 
-    if use_whiptail; then
-        if whiptail --title "disk2iso Deinstallation - Seite 1/4" \
-            --yesno "$info" 20 70 \
-            --yes-button "Deinstallieren" \
-            --no-button "Abbrechen" \
-            --defaultno; then
+    if use_dialog; then
+        if dialog --title "disk2iso Deinstallation - Seite 1/4" \
+            --defaultno \
+            --yesno "$info" 20 70; then
             return 0
         else
             return 1
@@ -115,8 +120,9 @@ wizard_page_uninstall() {
     local total=${#steps[@]}
     local current=0
     
-    if use_whiptail; then
+    if use_dialog; then
         {
+            echo "0"
             # Service stoppen
             if [[ -f "$SERVICE_FILE" ]]; then
                 current=$((current + 1))
@@ -176,7 +182,7 @@ wizard_page_uninstall() {
             fi
             
             echo "100"
-        } | whiptail --title "disk2iso Deinstallation - Seite 2/4" \
+        } | dialog --title "disk2iso Deinstallation - Seite 2/4" \
             --gauge "Deinstalliere disk2iso..." 8 70 0
     else
         print_header "DEINSTALLATION"
@@ -237,15 +243,14 @@ Möchten Sie dieses Verzeichnis und alle darin enthaltenen Dateien löschen?
 
 WARNUNG: Diese Aktion kann nicht rückgängig gemacht werden!"
 
-    if use_whiptail; then
-        if whiptail --title "disk2iso Deinstallation - Seite 3/4" \
-            --yesno "$info" 18 70 \
-            --yes-button "Löschen" \
-            --no-button "Überspringen" \
-            --defaultno; then
+    if use_dialog; then
+        if dialog --title "disk2iso Deinstallation - Seite 3/4" \
+            --defaultno \
+            --yesno "$info" 18 70; then
             
             # Lösche Verzeichnis
             {
+                echo "0"
                 echo "50"
                 echo "XXX"
                 echo "Lösche Ausgabeverzeichnis..."
@@ -253,8 +258,8 @@ WARNUNG: Diese Aktion kann nicht rückgängig gemacht werden!"
                 rm -rf "$OUTPUT_DIR"
                 sleep 0.5
                 echo "100"
-            } | whiptail --title "Ausgabeverzeichnis löschen" \
-                --gauge "Lösche $OUTPUT_DIR..." 8 70 0
+            } | dialog --title "Ausgabeverzeichnis löschen" \
+                --gauge "Vorbereite Löschvorgang..." 8 70 0
         fi
     else
         echo "$info"
@@ -292,8 +297,8 @@ Diese könnten von anderen Programmen verwendet werden.
 Bei Bedarf können Sie diese manuell entfernen mit:
 apt-get remove genisoimage gddrescue dvdbackup"
 
-    if use_whiptail; then
-        whiptail --title "disk2iso Deinstallation - Seite 4/4" \
+    if use_dialog; then
+        dialog --title "disk2iso Deinstallation - Seite 4/4" \
             --msgbox "$info" 22 70
     else
         print_header "DEINSTALLATION ABGESCHLOSSEN"
@@ -308,6 +313,12 @@ apt-get remove genisoimage gddrescue dvdbackup"
 main() {
     # Root-Check
     check_root
+    
+    # Installiere dialog für Wizard-UI (falls noch nicht vorhanden)
+    if ! command -v dialog >/dev/null 2>&1; then
+        apt-get update -qq
+        apt-get install -y -qq dialog >/dev/null 2>&1
+    fi
     
     # Wizard Seite 1: Warnung
     if ! wizard_page_warning; then
