@@ -43,13 +43,13 @@ integrity_check_dependencies() {
     load_module_language "integrity"
     
     # Integrity-Modul benötigt:
-    # - libsettings.sh (get_ini_value, get_ini_array)
+    # - libsettings.sh (settings_get_value_ini, settings_get_array_ini)
     # - liblogging.sh (log_*, load_module_language)
     # - libfolders.sh (folders_ensure_subfolder)
     # - libfiles.sh (files_get_*_path)
     
     # Prüfe ob benötigte Funktionen verfügbar sind
-    if ! declare -f get_ini_value >/dev/null 2>&1; then
+    if ! declare -f settings_get_value_ini >/dev/null 2>&1; then
         echo "$MSG_ERROR_GET_INI_VALUE_MISSING" >&2
         return 1
     fi
@@ -132,7 +132,7 @@ check_module_dependencies() {
     for file_type in "${file_types[@]}"; do
         # Lese Dateiname aus Manifest
         local filename
-        filename=$(config_get_value_ini "${module_name}" "modulefiles" "$file_type")
+        filename=$(settings_get_value_ini "${module_name}" "modulefiles" "$file_type")
         
         # Nur prüfen wenn Eintrag existiert
         if [[ -n "$filename" ]]; then
@@ -169,7 +169,6 @@ check_module_dependencies() {
                     continue
                     ;;
             esac
-            fi
             
             # Prüfe Existenz (mit Wildcard-Support für Sprachdateien)
             if [[ "$file_type" == "lang" ]] && [[ "$file_path" == *\** ]]; then
@@ -212,7 +211,7 @@ check_module_dependencies() {
         for folder_type in "${folder_types[@]}"; do
             # Lese Ordner-Namen aus Manifest
             local folder_name
-            folder_name=$(config_get_value_ini "${module_name}" "folders" "$folder_type")
+            folder_name=$(settings_get_value_ini "${module_name}" "folders" "$folder_type")
             
             # Nur prüfen wenn Eintrag existiert
             if [[ -n "$folder_name" ]]; then

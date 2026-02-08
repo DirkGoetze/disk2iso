@@ -16,16 +16,16 @@ from typing import Dict, Optional
 
 def read_config_language() -> str:
     """
-    Liest die LANGUAGE-Einstellung aus config.sh.
+    Liest die LANGUAGE-Einstellung aus disk2iso.conf.
     
     Returns:
         str: Sprachcode (de, en, es, fr), Fallback: 'de'
     """
-    # Pfad zur config.sh relativ zu diesem Modul
+    # Pfad zur disk2iso.conf relativ zu diesem Modul
     config_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),  # Gehe von www/ zu disk2iso/
-        'lib',
-        'config.sh'
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),  # Von disk2iso-web/ zu disk2iso/
+        'conf',
+        'disk2iso.conf'
     )
     
     try:
@@ -96,19 +96,19 @@ def load_web_translations(lang: str) -> Dict[str, str]:
     
     # Basis-Pfad zum lang/-Ordner
     lang_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),  # Gehe von www/ zu disk2iso/
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),  # Von disk2iso-web/ zu disk2iso/
         'lang'
     )
     
     # 1. Lade Web-spezifische Texte (Priorität)
-    web_file = os.path.join(lang_dir, f'lib-web.{lang}')
+    web_file = os.path.join(lang_dir, f'libweb.{lang}')
     translations.update(_load_lang_file(web_file))
     
     # 2. Optional: Lade Backend-Dateien zur Wiederverwendung
     # Diese haben niedrigere Priorität (werden NICHT überschrieben)
     backend_files = [
-        f'lib-common.{lang}',      # MSG_ERROR, MSG_SUCCESS etc.
-        f'lib-systeminfo.{lang}',  # MSG_VERSION, MSG_UPTIME etc.
+        f'libcommon.{lang}',      # MSG_ERROR, MSG_SUCCESS etc.
+        f'libsysteminfo.{lang}',  # MSG_VERSION, MSG_UPTIME etc.
     ]
     
     for filename in backend_files:

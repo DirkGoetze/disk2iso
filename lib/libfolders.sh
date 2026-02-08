@@ -141,13 +141,13 @@ _MOUNT_DIR_CREATED=false                     # Mount-Verzeichnis erstellt
 # .........  Return-Code: 0 = Erfolg, 1 = Fehler (nicht erstellbar)
 # Hinweis..: Nutzt Lazy Initialization - wird nur einmal pro Session geprüft
 # .........  Erstellt Ordner automatisch wenn Parent-Dir existiert
-# .........  Verwendet config_get_output_dir() aus libsettings.sh für Pfad
+# .........  Verwendet settings_get_output_dir() aus libsettings.sh für Pfad
 # ===========================================================================
 folders_get_output_dir() {
     #-- Lazy Initialization: Ausgabe-Verzeichnis nur einmal prüfen ----------
     if [[ "$_OUTPUT_DIR_CREATED" == false ]]; then
         #-- Lese Ausgabe-Verzeichnis aus Konfiguration ----------------------
-        local output_dir=$(config_get_output_dir) || {
+        local output_dir=$(settings_get_output_dir) || {
             log_error "$MSG_ERROR_OUTPUT_DIR_READ_FAILED" >&2
             echo ""
             return 1

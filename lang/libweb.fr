@@ -5,8 +5,11 @@
 # Navigation
 readonly MSG_NAV_HOME="Accueil"
 readonly MSG_NAV_ARCHIVE="Archive"
+readonly MSG_NAV_STORE="Boutique"
 readonly MSG_NAV_LOGS="Journaux"
-readonly MSG_NAV_SYSTEM="Système"readonly MSG_NAV_CONFIG="Paramètres"readonly MSG_NAV_HELP="Aide"
+readonly MSG_NAV_SYSTEM="Système"
+readonly MSG_NAV_CONFIG="Paramètres"
+readonly MSG_NAV_HELP="Aide"
 
 # Page d'accueil (Statut du lecteur)
 readonly MSG_INDEX_TITLE="Statut du Lecteur"

@@ -27,7 +27,21 @@
     <div class="app-container">
         <!-- Header -->
         <div class="header">
-            <h1><img src="{{ url_for('static', filename='img/control.svg') }}" alt="" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;">disk2iso</h1>
+            <h1><img src="{{ url_for('static', filename='img/disk2iso.png') }}" alt="disk2iso" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;">disk2iso</h1>
+            <div class="language-switcher">
+                <a href="/set_language/de" class="lang-flag {% if g.language == 'de' %}active{% endif %}" title="Deutsch">
+                    <img src="{{ url_for('static', filename='img/flag-de.svg') }}" alt="DE">
+                </a>
+                <a href="/set_language/en" class="lang-flag {% if g.language == 'en' %}active{% endif %}" title="English">
+                    <img src="{{ url_for('static', filename='img/flag-uk.svg') }}" alt="EN">
+                </a>
+                <a href="/set_language/fr" class="lang-flag {% if g.language == 'fr' %}active{% endif %}" title="Français">
+                    <img src="{{ url_for('static', filename='img/flag-fr.svg') }}" alt="FR">
+                </a>
+                <a href="/set_language/es" class="lang-flag {% if g.language == 'es' %}active{% endif %}" title="Español">
+                    <img src="{{ url_for('static', filename='img/flag-es.svg') }}" alt="ES">
+                </a>
+            </div>
         </div>
 
         <div class="main-wrapper">

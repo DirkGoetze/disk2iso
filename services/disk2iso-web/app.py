@@ -5,7 +5,7 @@ Version: 1.3.0
 Description: Flask-basierte Web-OberflÃ¤che fÃ¼r disk2iso Monitoring
 """
 
-from flask import Flask, render_template, jsonify, request, Response, g, send_file
+from flask import Flask, render_template, jsonify, request, Response, g, send_file, redirect, url_for
 import os
 import sys
 import time
@@ -16,6 +16,8 @@ from pathlib import Path
 from i18n import get_translations
 
 app = Flask(__name__)
+
+# Kein Session-Secret mehr nötig - Sprache wird in Config gespeichert
 
 # Register Blueprints fÃ¼r modulare Routen
 # DEPRECATED: Core Config API removed - now using widget-specific endpoints
@@ -219,15 +221,38 @@ def get_settings():
     
     return settings
 
+def get_language_from_bash():
+    """Liest aktuelle Sprache aus Bash (libsettings.sh)"""
+    try:
+        result = subprocess.run(
+            ['/opt/disk2iso/lib/libweb.sh', 'get_language'],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            if data.get('status') == 'ok':
+                return data.get('language', 'de')
+    except Exception as e:
+        print(f"Error reading language: {e}", file=sys.stderr)
+    
+    return 'de'  # Fallback
+
 @app.before_request
 def before_request():
     """LÃ¤dt Ãœbersetzungen vor jedem Request"""
-    g.t = get_translations()
+    lang = get_language_from_bash()
+    g.language = lang
+    g.t = get_translations(lang)
 
 @app.context_processor
 def inject_translations():
     """Macht Ãœbersetzungen in allen Templates verfÃ¼gbar"""
-    return {'t': g.get('t', {})}
+    return {
+        't': g.get('t', {}),
+        'g': g
+    }
 
 def get_service_status_detailed(service_name):
     """PrÃ¼ft detaillierten Status eines systemd Service
@@ -565,13 +590,13 @@ def index():
     
     # MQTT-Status wird nicht mehr hier Ã¼bergeben - Widget lÃ¤dt dynamisch via /api/mqtt/widget
     
-    disk_space = get_disk_space(config['output_dir'])
-    iso_count = count_iso_files(config['output_dir'])
+    disk_space = get_disk_space(settings['output_dir'])
+    iso_count = count_iso_files(settings['output_dir'])
     live_status = get_live_status()
     status_text = get_status_text(live_status, service_running)
     
     # Archive nach Typen
-    archives = get_iso_files_by_type(config['output_dir'])
+    archives = get_iso_files_by_type(settings['output_dir'])
     archive_counts = {
         'data': len(archives['data']),
         'audio': len(archives['audio']),
@@ -584,7 +609,7 @@ def index():
         service_running=service_running,
         disk2iso_status=disk2iso_status,
         webui_status=webui_status,
-        config=config,
+        config=settings,
         disk_space=disk_space,
         iso_count=iso_count,
         archive_counts=archive_counts,
@@ -608,7 +633,7 @@ def settings_page():
     
     return render_template('settings.html',
         version=version,
-        config=config,
+        config=settings,
         active_page='settings',
         page_title='SETTINGS_TITLE'
     )
@@ -634,6 +659,26 @@ def store_page():
         active_page='store',
         page_title='STORE_TITLE'
     )
+
+@app.route('/set_language/<lang>')
+def set_language(lang):
+    """Setzt die Sprache (via Bash libweb.sh)"""
+    try:
+        result = subprocess.run(
+            ['/opt/disk2iso/lib/libweb.sh', 'set_language', lang],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            if data.get('status') != 'ok':
+                print(f"Language set failed: {data.get('message')}", file=sys.stderr)
+    except Exception as e:
+        print(f"Error setting language: {e}", file=sys.stderr)
+    
+    # Redirect zurÃ¼ck zur vorherigen Seite
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/logs')
 def logs_page():
@@ -715,7 +760,7 @@ def api_modules():
     def get_module_enabled(module_name, default=True):
         try:
             result = subprocess.run(
-                ['bash', '-c', f'source {INSTALL_DIR}/lib/libsettings.sh && config_get_value_ini "{module_name}" "module" "enabled" "{str(default).lower()}"'],
+                ['bash', '-c', f'source {INSTALL_DIR}/lib/libsettings.sh && settings_get_value_ini "{module_name}" "module" "enabled" "{str(default).lower()}"'],
                 capture_output=True, text=True, timeout=2
             )
             if result.returncode == 0:
@@ -985,7 +1030,7 @@ def api_status():
     live_status = get_live_status()
     
     # Archive-Counts ermitteln
-    all_files = get_iso_files_by_type(config['output_dir'])
+    all_files = get_iso_files_by_type(settings['output_dir'])
     archive_counts = {
         'data': len(all_files.get('data', [])),
         'audio': len(all_files.get('audio', [])),
@@ -997,9 +1042,9 @@ def api_status():
     result = {
         'version': get_version(),
         'service_running': get_service_status(),
-        'output_dir': config['output_dir'],
-        'disk_space': get_disk_space(config['output_dir']),
-        'iso_count': count_iso_files(config['output_dir']),
+        'output_dir': settings['output_dir'],
+        'disk_space': get_disk_space(settings['output_dir']),
+        'iso_count': count_iso_files(settings['output_dir']),
         'archive_counts': archive_counts,
         'live_status': live_status,
         'timestamp': datetime.now().isoformat()
@@ -1186,26 +1231,12 @@ def api_tmdb_select():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/api/archive')
-def api_archive():
-    """API-Endpoint fÃ¼r Archiv-Daten gruppiert nach Typ"""
-    settings = get_settings()
-    archives = get_iso_files_by_type(config['output_dir'])
-    
-    total = sum(len(files) for files in archives.values())
-    
-    return jsonify({
-        'total': total,
-        'by_type': archives,
-        'timestamp': datetime.now().isoformat()
-    })
-
 @app.route('/api/archive/thumbnail/<path:filename>')
 def api_archive_thumbnail(filename):
     """API-Endpoint zum Abrufen von ISO-Thumbnails"""
     try:
         settings = get_settings()
-        output_dir = Path(config['output_dir'])
+        output_dir = Path(settings['output_dir'])
         
         # Suche Thumbnail in allen Unterverzeichnissen
         for root, dirs, files in os.walk(output_dir):
@@ -1493,7 +1524,7 @@ def api_logs_current():
     """API-Endpoint fÃ¼r aktuelles Log"""
     try:
         settings = get_settings()
-        output_dir = Path(config['output_dir'])
+        output_dir = Path(settings['output_dir'])
         log_dir = output_dir / '.log'
         
         # Finde die neueste Log-Datei
@@ -1575,7 +1606,7 @@ def api_logs_archived():
     """API-Endpoint fÃ¼r Liste der archivierten Log-Dateien"""
     try:
         settings = get_settings()
-        output_dir = Path(config['output_dir'])
+        output_dir = Path(settings['output_dir'])
         log_dir = output_dir / '.log'
         
         if not log_dir.exists():
@@ -1619,7 +1650,7 @@ def api_logs_archived_file(filename):
             }), 400
         
         settings = get_settings()
-        output_dir = Path(config['output_dir'])
+        output_dir = Path(settings['output_dir'])
         log_dir = output_dir / '.log'
         log_file = log_dir / filename
         
@@ -2019,45 +2050,6 @@ def get_software_list_from_system_json(software_data):
         })
     
     return software_list
-
-@app.route('/api/system')
-def api_system():
-    """API-Endpoint fÃ¼r System-Informationen"""
-    try:
-        # Versuche zuerst system.json zu lesen (von disk2iso Service generiert)
-        system_data = read_api_json('system.json')
-        
-        if system_data:
-            # Nutze cached Daten und ergÃ¤nze sie
-            return jsonify({
-                'success': True,
-                'os': system_data.get('os', {}),
-                'disk2iso': {
-                    'version': get_version(),
-                    'service_status': 'active' if get_service_status() else 'inactive',
-                    'install_path': str(INSTALL_DIR),
-                    'python_version': sys.version.split()[0],
-                    'container': system_data.get('container', {})
-                },
-                'hardware': system_data.get('hardware', {}),
-                'storage': system_data.get('storage', {}),
-                'software': get_software_list_from_system_json(system_data.get('software', {})),
-                'timestamp': system_data.get('timestamp', datetime.now().isoformat())
-            })
-        else:
-            # Fallback: Sammle Daten live (wenn system.json nicht existiert)
-            return jsonify({
-                'success': True,
-                'os': get_os_info(),
-                'disk2iso': get_disk2iso_info(),
-                'software': check_software_versions(),
-                'timestamp': datetime.now().isoformat()
-            })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Fehler beim Sammeln der Systeminformationen: {str(e)}'
-        }), 500
 
 @app.route('/api/metadata/tmdb/search', methods=['POST'])
 def api_tmdb_search():

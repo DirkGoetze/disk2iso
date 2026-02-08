@@ -63,6 +63,9 @@ _SETTINGS_DEPENDENCIES_VALIDATED=false         # Dependencies geprüft (get_modu
 _SETTINGS_SAVE_DEFAULT_CONF=false              # Flag für rekursiven Default-Write (verhindert Endlosschleife)
 _SETTINGS_SAVE_DEFAULT_INI=false               # Flag für rekursiven Default-Write (verhindert Endlosschleife)
 
+# Globaler Pfad zur Konfigurations-Datei
+CONFIG_FILE="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+
 # ===========================================================================
 # settings_validate_file
 # ---------------------------------------------------------------------------
@@ -159,6 +162,85 @@ settings_get_output_dir() {
     #-- Entferne trailing slash und gebe zurück ---------------------------
     echo "${output_dir%/}"
     return 0
+}
+
+# ===========================================================================
+# settings_get_language
+# ---------------------------------------------------------------------------
+# Funktion.: Lese Web-Interface Sprache aus disk2iso.conf
+# Parameter: keine
+# Rückgabe.: Sprachcode (de, en, fr, es) auf stdout
+# .........  Return-Code: 0 = Erfolg, 1 = Fehler (nutzt "de" als Fallback)
+# Beispiel.: lang=$(settings_get_language)
+# Hinweis..: Liest WEB_LANGUAGE aus conf/disk2iso.conf, Fallback auf "de"
+# ===========================================================================
+settings_get_language() {
+    local language=""
+    
+    #-- Stelle sicher dass Settings-Datei validiert wurde --------------------
+    settings_validate_file || return 1
+    
+    #-- Lese WEB_LANGUAGE aus Settings ---------------------------------------
+    language=$(/usr/bin/grep -E '^WEB_LANGUAGE=' "$CONFIG_FILE" 2>/dev/null | /usr/bin/sed 's/^WEB_LANGUAGE=//;s/^"\(.*\)"$/\1/')
+    
+    #-- Fallback auf "de" wenn nicht gesetzt ---------------------------------
+    if [[ -z "$language" ]]; then
+        language="de"
+        # Self-Healing: Schreibe Default
+        settings_set_language "$language" 2>/dev/null
+    fi
+    
+    #-- Validiere Sprache (muss de, en, fr oder es sein) --------------------
+    case "$language" in
+        de|en|fr|es)
+            echo "$language"
+            return 0
+            ;;
+        *)
+            # Ungültige Sprache - Fallback
+            echo "de"
+            return 0
+            ;;
+    esac
+}
+
+# ===========================================================================
+# settings_set_language
+# ---------------------------------------------------------------------------
+# Funktion.: Setze Web-Interface Sprache in disk2iso.conf
+# Parameter: $1 = language (de, en, fr, es)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beispiel.: settings_set_language "en"
+# Hinweis..: Schreibt WEB_LANGUAGE in conf/disk2iso.conf
+# .........  Validiert Eingabe (nur de, en, fr, es erlaubt)
+# ===========================================================================
+settings_set_language() {
+    local language="$1"
+    
+    #-- Stelle sicher dass Settings-Datei validiert wurde --------------------
+    settings_validate_file || return 1
+    
+    #-- Validiere Sprache -----------------------------------------------------
+    case "$language" in
+        de|en|fr|es)
+            # OK
+            ;;
+        *)
+            log_error "Invalid language: $language (must be de, en, fr, or es)" 2>/dev/null
+            return 1
+            ;;
+    esac
+    
+    #-- Prüfe ob WEB_LANGUAGE bereits existiert -------------------------------
+    if /usr/bin/grep -q '^WEB_LANGUAGE=' "$CONFIG_FILE" 2>/dev/null; then
+        # Update existing value
+        /usr/bin/sed -i "s|^WEB_LANGUAGE=.*|WEB_LANGUAGE=\"${language}\"|" "$CONFIG_FILE"
+    else
+        # Add new value nach LANGUAGE Zeile
+        /usr/bin/sed -i "/^readonly LANGUAGE=/a WEB_LANGUAGE=\"${language}\"" "$CONFIG_FILE"
+    fi
+    
+    return $?
 }
 
 # ============================================================================

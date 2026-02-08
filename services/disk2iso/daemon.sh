@@ -80,11 +80,11 @@ SCRIPT_SERVICE_DIR="$(dirname "$SCRIPT_PATH")"
 # Hauptverzeichnis ist zwei Ebenen höher (von services/disk2iso/ nach root)
 SCRIPT_DIR="$(dirname "$(dirname "$SCRIPT_SERVICE_DIR")")"
 
+# Setze INSTALL_DIR für Library-Module (wird von libsettings.sh benötigt)
+export INSTALL_DIR="$SCRIPT_DIR"
+
 # Lade Basis-Module
 source "${SCRIPT_DIR}/conf/disk2iso.conf"
-
-# Lade Sprachdateien für Hauptskript
-load_module_language "disk2iso"
 
 # ============================================================================
 # PRÜFE KERN-ABHÄNGIGKEITEN (kritisch - Abbruch bei Fehler)
@@ -164,6 +164,9 @@ if ! common_check_dependencies; then
     log_error "$MSG_ABORT_CRITICAL_DEPENDENCIES"
     exit 1
 fi
+
+# Lade Sprachdateien für Hauptskript (nach libcommon.sh)
+load_module_language "disk2iso"
 
 log_info "$MSG_CORE_MODULES_LOADED"
 
