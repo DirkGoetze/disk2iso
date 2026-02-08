@@ -314,6 +314,42 @@ main() {
     # Root-Check
     check_root
     
+    # Prüfe ob disk2iso überhaupt installiert ist
+    local installation_found=false
+    if [[ -d "$INSTALL_DIR" ]] || [[ -f "$SERVICE_FILE" ]] || [[ -f "$WEB_SERVICE_FILE" ]] || [[ -L "$BIN_LINK" ]]; then
+        installation_found=true
+    fi
+    
+    if [[ "$installation_found" == "false" ]]; then
+        # Installiere dialog für Nachricht (falls noch nicht vorhanden)
+        if ! command -v dialog >/dev/null 2>&1; then
+            apt-get update -qq >/dev/null 2>&1
+            apt-get install -y -qq dialog >/dev/null 2>&1
+        fi
+        
+        if use_dialog; then
+            dialog --title "Keine Installation gefunden" \
+                --msgbox "disk2iso ist nicht auf diesem System installiert.\n\nEs wurden keine Installationsreste gefunden:\n• Kein Verzeichnis: $INSTALL_DIR\n• Kein Service: disk2iso.service\n• Kein Symlink: $BIN_LINK\n\nDeinstallation wird abgebrochen." \
+                14 70
+        else
+            echo "========================================="
+            echo "Keine Installation gefunden"
+            echo "========================================="
+            echo ""
+            echo "disk2iso ist nicht auf diesem System installiert."
+            echo ""
+            echo "Es wurden keine Installationsreste gefunden:"
+            echo "• Kein Verzeichnis: $INSTALL_DIR"
+            echo "• Kein Service: disk2iso.service"
+            echo "• Kein Symlink: $BIN_LINK"
+            echo ""
+            echo "Deinstallation wird abgebrochen."
+            echo ""
+        fi
+        clear
+        exit 0
+    fi
+    
     # Installiere dialog für Wizard-UI (falls noch nicht vorhanden)
     if ! command -v dialog >/dev/null 2>&1; then
         apt-get update -qq
@@ -323,6 +359,7 @@ main() {
     # Wizard Seite 1: Warnung
     if ! wizard_page_warning; then
         echo "Deinstallation abgebrochen."
+        clear
         exit 0
     fi
     
@@ -334,6 +371,9 @@ main() {
     
     # Wizard Seite 4: Abschluss
     wizard_page_complete
+    
+    # Bildschirm säubern
+    clear
 }
 
 # Script ausführen

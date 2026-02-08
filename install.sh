@@ -320,6 +320,7 @@ Neue Version: ${NEW_VERSION}
                 return 0  # Fortfahren mit kompletter Installation
             else
                 print_info "Installation abgebrochen"
+                clear
                 exit 0
             fi
         fi
@@ -355,10 +356,12 @@ Neue Version: ${NEW_VERSION}
                     fi
                     return 0  # NEUINSTALLATION
                 else
+                    clear
                     exit 0
                 fi
                 ;;
             *)
+                clear
                 exit 0
                 ;;
         esac
@@ -403,38 +406,39 @@ perform_repair() {
         
         echo "50" ; sleep 0.3
         echo "# Kopiere Bibliotheken..."
-        cp -rf "$SCRIPT_DIR/lib" "$INSTALL_DIR/"
-        chmod +x "$INSTALL_DIR"/lib/*.sh
+        cp -rf "$SCRIPT_DIR/lib" "$INSTALL_DIR/" 2>/dev/null
+        chmod +x "$INSTALL_DIR"/lib/*.sh 2>/dev/null
         
         echo "60" ; sleep 0.3
         echo "# Kopiere Konfiguration..."
-        mkdir -p "$INSTALL_DIR/conf"
-        cp -f "$SCRIPT_DIR/conf/disk2iso.conf" "$INSTALL_DIR/conf/"
+        mkdir -p "$INSTALL_DIR/conf" 2>/dev/null
+        cp -f "$SCRIPT_DIR/conf/disk2iso.conf" "$INSTALL_DIR/conf/" 2>/dev/null
         cp -f "$SCRIPT_DIR/conf/"*.ini "$INSTALL_DIR/conf/" 2>/dev/null || true
         
         echo "70" ; sleep 0.3
         echo "# Merge Konfigurationen..."
         if [[ -f "$config_backup" ]]; then
-            merge_config "$config_backup" "$INSTALL_DIR/conf/disk2iso.conf"
-            rm -f "$config_backup"
+            merge_config "$config_backup" "$INSTALL_DIR/conf/disk2iso.conf" >/dev/null 2>&1
+            rm -f "$config_backup" 2>/dev/null
         fi
         
         echo "85" ; sleep 0.3
         echo "# Kopiere Dokumentation..."
         if [[ -d "$SCRIPT_DIR/doc" ]]; then
-            cp -rf "$SCRIPT_DIR/doc" "$INSTALL_DIR/"
+            cp -rf "$SCRIPT_DIR/doc" "$INSTALL_DIR/" 2>/dev/null
         fi
         if [[ -d "$SCRIPT_DIR/lang" ]]; then
-            cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/"
+            cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/" 2>/dev/null
         fi
         if [[ -f "$SCRIPT_DIR/LICENSE" ]]; then
-            cp -f "$SCRIPT_DIR/LICENSE" "$INSTALL_DIR/"
+            cp -f "$SCRIPT_DIR/LICENSE" "$INSTALL_DIR/" 2>/dev/null
         fi
         
         echo "90" ; sleep 0.3
         echo "# Erstelle Dokumentations-Symlink..."
         if [[ -d "$INSTALL_DIR/doc" ]]; then
-            mkdir -p "$INSTALL_DIR/services/disk2iso-web/static"`r`n            ln -sf "../../../doc" "$INSTALL_DIR/services/disk2iso-web/static/docs" 2>/dev/null || true
+            mkdir -p "$INSTALL_DIR/services/disk2iso-web/static" 2>/dev/null
+            ln -sf "../../../doc" "$INSTALL_DIR/services/disk2iso-web/static/docs" 2>/dev/null || true
         fi
         
         echo "100"
@@ -638,6 +642,7 @@ EOFREQ
         echo ""
     fi
     
+    clear
     exit 0
 }
 
@@ -704,56 +709,56 @@ perform_update() {
         
         echo "30" ; sleep 0.3
         echo "# Aktualisiere Bibliotheken..."
-        cp -rf "$SCRIPT_DIR/lib" "$INSTALL_DIR/"
-        chmod +x "$INSTALL_DIR"/lib/*.sh
+        cp -rf "$SCRIPT_DIR/lib" "$INSTALL_DIR/" 2>/dev/null
+        chmod +x "$INSTALL_DIR"/lib/*.sh 2>/dev/null
         
         echo "40" ; sleep 0.3
         echo "# Kopiere neue Konfiguration..."
-        mkdir -p "$INSTALL_DIR/conf"
-        cp -f "$SCRIPT_DIR/conf/disk2iso.conf" "$INSTALL_DIR/conf/"
+        mkdir -p "$INSTALL_DIR/conf" 2>/dev/null
+        cp -f "$SCRIPT_DIR/conf/disk2iso.conf" "$INSTALL_DIR/conf/" 2>/dev/null
         cp -f "$SCRIPT_DIR/conf/"*.ini "$INSTALL_DIR/conf/" 2>/dev/null || true
         
         echo "50" ; sleep 0.3
         echo "# Merge Konfigurationen..."
         if [[ -f "$config_backup" ]]; then
-            merge_config "$config_backup" "$INSTALL_DIR/conf/disk2iso.conf"
+            merge_config "$config_backup" "$INSTALL_DIR/conf/disk2iso.conf" >/dev/null 2>&1
         fi
         
         echo "65" ; sleep 0.3
         echo "# Aktualisiere Dokumentation..."
         if [[ -d "$SCRIPT_DIR/doc" ]]; then
-            cp -rf "$SCRIPT_DIR/doc" "$INSTALL_DIR/"
+            cp -rf "$SCRIPT_DIR/doc" "$INSTALL_DIR/" 2>/dev/null
         fi
         
         echo "75" ; sleep 0.3
         echo "# Aktualisiere Sprachdateien..."
         if [[ -d "$SCRIPT_DIR/lang" ]]; then
-            cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/"
+            cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/" 2>/dev/null
         fi
         if [[ -f "$SCRIPT_DIR/LICENSE" ]]; then
-            cp -f "$SCRIPT_DIR/LICENSE" "$INSTALL_DIR/"
+            cp -f "$SCRIPT_DIR/LICENSE" "$INSTALL_DIR/" 2>/dev/null
         fi
         
         echo "80" ; sleep 0.3
         echo "# Erstelle Dokumentations-Symlink..."
         if [[ -d "$INSTALL_DIR/doc" ]]; then
-            mkdir -p "$INSTALL_DIR/services/disk2iso-web/static"
+            mkdir -p "$INSTALL_DIR/services/disk2iso-web/static" 2>/dev/null
             ln -sf "../../../doc" "$INSTALL_DIR/services/disk2iso-web/static/docs" 2>/dev/null || true
         fi
         
         echo "85" ; sleep 0.3
         echo "# Aktualisiere Service-Dateien..."
         if [[ -d "$SCRIPT_DIR/services" ]]; then
-            cp -rf "$SCRIPT_DIR/services" "$INSTALL_DIR/"
+            cp -rf "$SCRIPT_DIR/services" "$INSTALL_DIR/" 2>/dev/null
         fi
         
         echo "90" ; sleep 0.3
         echo "# Kopiere Update-Skripte..."
-        cp -f "$SCRIPT_DIR/install.sh" "$INSTALL_DIR/"
-        chmod +x "$INSTALL_DIR/install.sh"
+        cp -f "$SCRIPT_DIR/install.sh" "$INSTALL_DIR/" 2>/dev/null
+        chmod +x "$INSTALL_DIR/install.sh" 2>/dev/null
         if [[ -f "$SCRIPT_DIR/uninstall.sh" ]]; then
-            cp -f "$SCRIPT_DIR/uninstall.sh" "$INSTALL_DIR/"
-            chmod +x "$INSTALL_DIR/uninstall.sh"
+            cp -f "$SCRIPT_DIR/uninstall.sh" "$INSTALL_DIR/" 2>/dev/null
+            chmod +x "$INSTALL_DIR/uninstall.sh" 2>/dev/null
         fi
         
         echo "95"
@@ -999,6 +1004,7 @@ Hinweis: Überprüfen Sie die Dokumentation für neue Features!"
         echo ""
     fi
     
+    clear
     exit 0
 }
 
@@ -1026,16 +1032,13 @@ install_package() {
 wizard_page_welcome() {
     local info="Willkommen zur disk2iso Installation!
 
-disk2iso ist ein Tool zur automatischen Erstellung von ISO-Images von optischen Medien.
+disk2iso ist ein Tool zur automatischen Erstellung von ISO-Images optischer Medien.
 
 Basis-Funktionen:
 • Automatische Erkennung eingelegter Discs
-• Kopieren als ISO-Image
-• MD5-Checksummen für Datenintegrität
+• Kopieren als ISO-Image (MD5-Checksummen für Datenintegrität)
 • Web-Interface zur Überwachung
 • Optionale Autostart-Funktion
-
-Der Wizard führt Sie durch die Installation in einfachen Schritten.
 
 Möchten Sie fortfahren?"
 
@@ -1056,11 +1059,11 @@ Möchten Sie fortfahren?"
 wizard_page_base_packages() {
     local packages=(
         "coreutils:Basis-Utilities"
-        "util-linux:System-Utilities"
+        "util-linux:Linux System-Utilities"
         "eject:Disc-Auswurf"
         "mount:Mount-Tools"
         "genisoimage:ISO-Erstellung"
-        "gddrescue:ddrescue (robust)"
+        "gddrescue:ddrescue"
     )
     
     local total=${#packages[@]}
@@ -1379,6 +1382,7 @@ main() {
     # Wizard Seite 1: Willkommen
     if ! wizard_page_welcome; then
         echo "Installation abgebrochen."
+        clear
         exit 0
     fi
     
@@ -1394,6 +1398,9 @@ main() {
     
     # Wizard Seite 4: Abschluss
     wizard_page_complete
+    
+    # Bildschirm säubern
+    clear
 }
 
 # Script ausführen
