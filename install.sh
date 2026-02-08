@@ -410,6 +410,7 @@ perform_repair() {
         echo "# Kopiere Konfiguration..."
         mkdir -p "$INSTALL_DIR/conf"
         cp -f "$SCRIPT_DIR/conf/disk2iso.conf" "$INSTALL_DIR/conf/"
+        cp -f "$SCRIPT_DIR/conf/"*.ini "$INSTALL_DIR/conf/" 2>/dev/null || true
         
         echo "70" ; sleep 0.3
         echo "# Merge Konfigurationen..."
@@ -425,6 +426,9 @@ perform_repair() {
         fi
         if [[ -d "$SCRIPT_DIR/lang" ]]; then
             cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/"
+        fi
+        if [[ -f "$SCRIPT_DIR/LICENSE" ]]; then
+            cp -f "$SCRIPT_DIR/LICENSE" "$INSTALL_DIR/"
         fi
         
         echo "90" ; sleep 0.3
@@ -707,6 +711,7 @@ perform_update() {
         echo "# Kopiere neue Konfiguration..."
         mkdir -p "$INSTALL_DIR/conf"
         cp -f "$SCRIPT_DIR/conf/disk2iso.conf" "$INSTALL_DIR/conf/"
+        cp -f "$SCRIPT_DIR/conf/"*.ini "$INSTALL_DIR/conf/" 2>/dev/null || true
         
         echo "50" ; sleep 0.3
         echo "# Merge Konfigurationen..."
@@ -724,6 +729,9 @@ perform_update() {
         echo "# Aktualisiere Sprachdateien..."
         if [[ -d "$SCRIPT_DIR/lang" ]]; then
             cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/"
+        fi
+        if [[ -f "$SCRIPT_DIR/LICENSE" ]]; then
+            cp -f "$SCRIPT_DIR/LICENSE" "$INSTALL_DIR/"
         fi
         
         echo "80" ; sleep 0.3
@@ -1152,6 +1160,7 @@ install_disk2iso_files() {
     # Kopiere Konfiguration
     mkdir -p "$INSTALL_DIR/conf"
     cp -f "$SCRIPT_DIR/conf/disk2iso.conf" "$INSTALL_DIR/conf/"
+    cp -f "$SCRIPT_DIR/conf/"*.ini "$INSTALL_DIR/conf/" 2>/dev/null || true
     
     # Kopiere Dokumentation (falls vorhanden)
     if [[ -d "$SCRIPT_DIR/doc" ]]; then
@@ -1161,6 +1170,11 @@ install_disk2iso_files() {
     # Kopiere Sprachdateien (falls vorhanden)
     if [[ -d "$SCRIPT_DIR/lang" ]]; then
         cp -rf "$SCRIPT_DIR/lang" "$INSTALL_DIR/"
+    fi
+    
+    # Kopiere LICENSE (falls vorhanden)
+    if [[ -f "$SCRIPT_DIR/LICENSE" ]]; then
+        cp -f "$SCRIPT_DIR/LICENSE" "$INSTALL_DIR/"
     fi
     
     # Kopiere Service-Dateien (falls vorhanden)
