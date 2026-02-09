@@ -79,14 +79,87 @@ Hinweis: In app.py sind mehrere Funktionen doppelt definiert (z.B. get_os_info).
 
 ## Deprecated (keine aktuellen Aufrufe im Web-Frontend/Code gefunden)
 
-- api_musicbrainz_select: Schreibt Selection-JSON fuer MusicBrainz. Business-Logik: Ja (Status-Workflow).
-- api_musicbrainz_manual: Schreibt manuelle Metadata JSON. Business-Logik: Ja (Status-Workflow).
-- api_tmdb_select: Schreibt TMDB Selection JSON. Business-Logik: Ja (Status-Workflow).
-- api_metadata_pending: Sucht .mbquery/.tmdbquery Dateien, berechnet Timeout und liefert Pending-Info. Business-Logik: Ja (Workflow + Timeout).
-- api_metadata_select: Schreibt .mbselect/.tmdbselect Dateien auf Basis der Auswahl. Business-Logik: Ja (Workflow).
-- get_command_version: Fuehrt Kommando aus und extrahiert Versionsstring via Regex. Business-Logik: Ja (Version-Parsing).
-- get_package_version: Liest dpkg Status und parst Version. Business-Logik: Ja (Version-Parsing).
-- get_available_package_version: Liest apt-cache policy und parst Candidate Version. Business-Logik: Ja (Version-Parsing).
-- check_software_versions: Aggregiert Softwareliste, kombiniert installierte/available Versionen und Update-Status. Business-Logik: Ja (Abhaengigkeits-Analyse).
-- get_disk2iso_info: Sammelt Service-Status, Install-Pfad und Python-Version. Business-Logik: Ja (Status-Entscheidung).
-- get_software_list_from_system_json: Mappt system.json-Dict auf Frontend-Liste. Business-Logik: Ja (Mapping-Logik).
+- api_musicbrainz_select: Schreibt Selection-JSON fuer MusicBrainz. Business-Logik: Ja (Status-Workflow). **VERALTET - Nicht verwendet.**
+- get_command_version: Fuehrt Kommando aus und extrahiert Versionsstring via Regex. Business-Logik: Ja (Version-Parsing). **VERALTET - Nicht verwendet.**
+- get_package_version: Liest dpkg Status und parst Version. Business-Logik: Ja (Version-Parsing). **VERALTET - Nicht verwendet.**
+- get_available_package_version: Liest apt-cache policy und parst Candidate Version. Business-Logik: Ja (Version-Parsing). **VERALTET - Nicht verwendet.**
+- check_software_versions: Aggregiert Softwareliste, kombiniert installierte/available Versionen und Update-Status. Business-Logik: Ja (Abhaengigkeits-Analyse). **VERALTET - Nicht verwendet.**
+- get_disk2iso_info: Sammelt Service-Status, Install-Pfad und Python-Version. Business-Logik: Ja (Status-Entscheidung). **VERALTET - Nicht verwendet.**
+- get_software_list_from_system_json: Mappt system.json-Dict auf Frontend-Liste. Business-Logik: Ja (Mapping-Logik). **VERALTET - Nicht verwendet.**
+
+## In Module verschoben (Modulare Architektur)
+
+- api_metadata_pending: **VERSCHOBEN** zu modulspezifischen Endpoints:
+  - `/api/metadata/musicbrainz/pending` in disk2iso-musicbrainz/www/routes/api_musicbrainz.py
+  - `/api/metadata/tmdb/pending` in disk2iso-tmdb/www/routes/api_tmdb.py
+  - Rufen Bash-Funktionen auf: `musicbrainz_get_cached_queries()` und `tmdb_get_cached_queries()`
+  
+- api_metadata_select: **ENTFERNT UND ERSETZT** durch modulspezifische Endpoints:
+  - `/api/metadata/musicbrainz/select` in disk2iso-musicbrainz/www/routes/api_musicbrainz.py
+  - `/api/metadata/tmdb/select` in disk2iso-tmdb/www/routes/api_tmdb.py
+  - Neue Implementierung: Ruft direkt `musicbrainz_parse_selection()` bzw. `tmdb_parse_selection()` auf
+  - Diese Bash-Funktionen schreiben Metadaten via `metadata_set_data()` und `metadata_set_info()` direkt in DISC_INFO/DISC_DATA Arrays
+  - Eliminiert .mbselect/.tmdbselect Dateien - Daten fließen direkt in zentrale Arrays
+
+- api_musicbrainz_manual: Schreibt manuelle Metadata JSON. Business-Logik: Ja (Status-Workflow). **AKTIV - Wird von MusicBrainz-Modul verwendet.**
+
+- api_tmdb_select: Schreibt TMDB Selection JSON. Business-Logik: Ja (Status-Workflow). **AKTIV - Wird von TMDB-Modul verwendet.**
+
+---
+
+## TMDB Workflow-Analyse (Aktuelle Codebasis)
+
+### Workflow-Übersicht: Service-Zeit (Disc eingelegt → Kopieren → .nfo)
+
+| # | Workflow-Schritt | libdvd/libbluray | libmetadata | libtmdb | api_tmdb.py | tmdb-modal.js | Status |
+|---|------------------|------------------|-------------|---------|-------------|---------------|--------|
+| 1 | **Disc erkannt** | `dvd_detect_disc()`<br/>`bluray_detect_disc()` | - | - | - | - | ✅ |
+| 2 | **Metadata Provider registriert** | - | Provider-Arrays<br/>`METADATA_QUERY_FUNCS[]` | `init_tmdb_provider()`<br/>registriert `tmdb_query` | - | - | ✅ |
+| 3 | **Query starten** | - | `metadata_query_before_copy()`<br/>→ ruft Provider-Funktion | - | - | - | ✅ |
+| 4 | **.tmdbquery erstellen** | - | - | `tmdb_query()`<br/>schreibt `.tmdbquery` | - | - | ✅ |
+| 5 | **Pending prüfen** | - | - | `tmdb_get_cached_queries()` | `/api/metadata/tmdb/pending`<br/>ruft Bash-Funktion | - | ⚠️ STUB |
+| 6 | **Modal laden** | - | - | - | - | Pollt `/pending`<br/>Zeigt Modal | ✅ |
+| 7 | **User wählt aus** | - | - | - | - | POST `/select` | ✅ |
+| 8 | **Auswahl speichern** | - | `metadata_set_data()`<br/>`metadata_set_info()` | `tmdb_parse_selection()`<br/>→ DISC_INFO/DISC_DATA | `/api/metadata/tmdb/select`<br/>ruft Bash-Funktion | - | ✅ |
+| 9 | **Warte auf Auswahl (alt)** | - | `metadata_wait_for_selection()`<br/>Loop + `.tmdbselect` | - | - | - | ❌ DEPRECATED |
+| 10 | **Kopiervorgang** | `dvd_copy_disco()`<br/>`bluray_copy()` | - | - | - | - | ✅ |
+| 11 | **.nfo erstellen** | - | `metadata_export_nfo()`<br/>→ `_metadata_export_video_nfo()` | - | - | - | ✅ |
+
+### Workflow-Übersicht: Archiv-Nachbearbeitung (Optional, ISO bereits vorhanden)
+
+| # | Workflow-Schritt | libmetadata | libtmdb | app.py (alt) | Frontend (alt) | Status |
+|---|------------------|-------------|---------|--------------|----------------|--------|
+| 12 | **ISO aus Archiv wählen** | - | - | - | archive.html | ✅ |
+| 13 | **Metadata laden** | - | `.tmdbquery` existiert noch | `api_tmdb_search()`<br/>→ `search_and_cache_tmdb()` | `tmdb.js` | ❌ NICHT EXISTIERT |
+| 14 | **Modal anzeigen** | - | - | - | `tmdb.js` | ❌ DISABLED |
+| 15 | **User wählt** | - | - | `api_tmdb_select()`<br/>→ `tmdb_selection.json` | `tmdb.js` | ❌ UNGENUTZT |
+| 16 | **.nfo überschreiben** | - | - | `api_tmdb_apply()`<br/>→ `add_metadata_to_existing_iso()` | - | ❌ NICHT EXISTIERT |
+
+### Status-Legende
+
+- ✅ **Implementiert** - Funktion existiert und ist funktionsfähig
+- ⚠️ **STUB** - Funktions-Stub existiert, muss noch implementiert werden
+- ❌ **FEHLT** - Funktion existiert nicht oder ruft nicht-existierende Abhängigkeiten auf
+- ❌ **DEPRECATED** - Alte Implementierung, wird ersetzt
+- ❌ **DISABLED** - Im Code vorhanden aber deaktiviert
+
+### Handlungsbedarf
+
+**Fehlende Implementierungen (Service-Zeit):**
+1. `tmdb_get_cached_queries()` - aktuell nur Stub in [libtmdb.sh](l:/clouds/onedrive/Dirk/projects/disk2iso-tmdb/lib/tmdb_get_cached_queries.sh.stub)
+
+**Zu entfernender Code (Archiv-Nachbearbeitung defekt):**
+1. ❌ `api_tmdb_search()` in app.py:1919 - ruft nicht-existierende `search_and_cache_tmdb()`
+2. ❌ `api_tmdb_select()` in app.py:1211 - schreibt ungenutztes `tmdb_selection.json`
+3. ❌ `api_tmdb_apply()` in app.py:2074 - ruft nicht-existierende `add_metadata_to_existing_iso()`
+4. ❌ `tmdb.js` - bereits disabled, kann entfernt werden
+
+**Fehlende Archiv-Nachbearbeitung (falls gewünscht):**
+- Endpoint: `/api/metadata/tmdb/reload?iso_path=...` - lädt vorhandene `.tmdbquery` und zeigt Modal
+- Endpoint: `/api/metadata/tmdb/apply` - ruft `metadata_export_nfo()` für bestehendes ISO
+- Wiederverwendung von tmdb-modal.js (bereits vorhanden)
+
+**Empfehlung:**
+1. Implementiere `tmdb_get_cached_queries()` für Service-Zeit-Workflow
+2. Entferne defekten Archiv-Code (api_tmdb_search, api_tmdb_select, api_tmdb_apply, tmdb.js)
+3. Später: Neue Archiv-Nachbearbeitung auf Basis der `.tmdbquery` Dateien implementieren (wiederverwendet bestehende Komponenten)
