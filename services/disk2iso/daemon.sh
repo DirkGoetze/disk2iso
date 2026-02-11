@@ -22,7 +22,7 @@
 # ============================================================================
 # STATE MACHINE CONSTANTS
 # ============================================================================
-
+# Definiere alle möglichen States der State Machine als Konstanten -----------
 readonly STATE_INITIALIZING="initializing"
 readonly STATE_WAITING_FOR_DRIVE="waiting_for_drive"
 readonly STATE_DRIVE_DETECTED="drive_detected"
@@ -36,12 +36,12 @@ readonly STATE_ERROR="error"
 readonly STATE_WAITING_FOR_REMOVAL="waiting_for_removal"
 readonly STATE_IDLE="idle"
 
-# Polling-Intervalle (Sekunden)
+# Polling-Intervalle (Sekunden) ---------------------------------------------
 readonly POLL_DRIVE_INTERVAL=20
 readonly POLL_MEDIA_INTERVAL=2
 readonly POLL_REMOVAL_INTERVAL=5
 
-# Globale State-Variable
+# Globale State Status-Variable (initialisiert mit INITIALIZING) -------------
 CURRENT_STATE="$STATE_INITIALIZING"
 
 # ============================================================================
@@ -64,13 +64,8 @@ if [[ "${STRICT:-0}" == "1" ]]; then
     set -euo pipefail  # Beende bei Fehlern, undefined vars, pipe failures
 fi
 
-# Logging: Caller-Info (Datei:Funktion:Zeile) in Log-Meldungen
-# Standard: 0 (Standard-Format wie Apache/nginx/PostgreSQL)
-# Debug:    1 (Zeigt [datei.sh:funktion:zeile] für Fehlersuche)
-LOG_CALLER_INFO="${LOG_CALLER_INFO:-0}"
-
 # ============================================================================
-# MODUL-LOADING (Service-sicher)
+# MODUL-LOADING 
 # ============================================================================
 
 # Ermittle Script-Verzeichnis (funktioniert auch bei Symlinks und Service)
@@ -80,158 +75,100 @@ SCRIPT_SERVICE_DIR="$(dirname "$SCRIPT_PATH")"
 # Hauptverzeichnis ist zwei Ebenen höher (von services/disk2iso/ nach root)
 SCRIPT_DIR="$(dirname "$(dirname "$SCRIPT_SERVICE_DIR")")"
 
-# Setze INSTALL_DIR für Library-Module (wird von libsettings.sh benötigt)
-export INSTALL_DIR="$SCRIPT_DIR"
-
-# Lade Basis-Module
+# ============================================================================
+# LOAD-CORE-SETTINGS
+# ============================================================================
+# Lade Einstellungen für den Deamon und die Core-Module ---------------------
 source "${SCRIPT_DIR}/conf/disk2iso.conf"
 
-# ============================================================================
+# ===========================================================================
 # PRÜFE KERN-ABHÄNGIGKEITEN (kritisch - Abbruch bei Fehler)
-# ============================================================================
+# ===========================================================================
 # Alle Core-Module werden nacheinander geladen und müssen ihre Abhängigkeiten 
 # erfüllen, sonst kann disk2iso nicht funktionieren. 
 # 
 # Lade-Reihenfolge (dependency-optimiert):
-# 1. liblogging.sh    - Logging (nur Bash-Built-ins) - MUSS ZUERST!
-# 2. libsettings.sh   - Settings-Management (nutzt liblogging)
-# 3. libfolders.sh    - Ordner-Management (nutzt liblogging)
-# 4. libfiles.sh      - Datei-Management (nutzt libfolders + liblogging)
-# 5. libintegrity.sh  - Integrity-Checks (nutzt libsettings, liblogging, libfolders)
-#                       WICHTIG: Früh laden! Wird von optionalen Modulen benötigt
-# 6. libapi.sh        - API-Interface (nutzt liblogging, libfolders)
-# 7. libsysteminfo.sh - System-Infos (nutzt liblogging, libfolders)
-# 8. libdrivestat.sh  - Drive-Status (nutzt liblogging)
-# 9. libdiskinfos.sh  - Disk-Informationen (nutzt liblogging, libfolders)
-# 10. libcommon.sh    - Gemeinsame Funktionen (nutzt liblogging, libfolders)
-
-source "${SCRIPT_DIR}/lib/liblogging.sh"
-if ! logging_check_dependencies; then
-    echo "FEHLER: Logging-Modul Abhängigkeiten nicht erfüllt" >&2
+# 1. liblogging.sh - Logging (nur Bash-Built-ins) ---------------------------
+# 1.1. Prüfe ob Datei ladbar ist --------------------------------------------
+if ! source "${SCRIPT_DIR}/lib/liblogging.sh"; then
+    echo "FEHLER: liblogging.sh konnte nicht geladen werden" >&2
     exit 1
 fi
+# 1.2. Prüfe ob Dependencies erfüllt sind -----------------------------------
+if ! logging_check_dependencies; then
+    log_error "Logging-Modul Abhängigkeiten nicht erfüllt" >&2
+    exit 1
+fi
+# 1.3. Ab hier können die Sprachdateien genutzt werden ----------------------
+liblogging_load_language_file "disk2iso"
 
-source "${SCRIPT_DIR}/lib/libsettings.sh"
+# 2. libsettings.sh - Settings-Management (nutzt liblogging) ----------------
+# 2.1. Prüfe ob Datei ladbar ist --------------------------------------------
+if ! source "${SCRIPT_DIR}/lib/libsettings.sh"; then
+    log_error "libsettings.sh konnte nicht geladen werden" >&2
+    exit 1
+fi
+# 2.2. Prüfe ob Dependencies erfüllt sind -----------------------------------
 if ! settings_check_dependencies; then
     log_error "Config-Modul Abhängigkeiten nicht erfüllt"
     exit 1
 fi
 
-source "${SCRIPT_DIR}/lib/libfolders.sh"
+# 3. libfolders.sh - Ordner-Management (nutzt liblogging) -------------------
+# 3.1. Prüfe ob Datei ladbar ist --------------------------------------------
+if ! source "${SCRIPT_DIR}/lib/libfolders.sh"; then
+    log_error "libfolders.sh konnte nicht geladen werden" >&2
+    exit 1
+fi
+# 3.2. Prüfe ob Dependencies erfüllt sind -----------------------------------
 if ! folders_check_dependencies; then
     log_error "Folders-Modul Abhängigkeiten nicht erfüllt"
     exit 1
 fi
 
-source "${SCRIPT_DIR}/lib/libfiles.sh"
+# 4. libfiles.sh - Datei-Management (nutzt libfolders + liblogging) ---------
+# 4.1. Prüfe ob Datei ladbar ist --------------------------------------------
+if ! source "${SCRIPT_DIR}/lib/libfiles.sh"; then
+    log_error "libfiles.sh konnte nicht geladen werden" >&2
+    exit 1
+fi
+# 4.2. Prüfe ob Dependencies erfüllt sind -----------------------------------
 if ! files_check_dependencies; then
     log_error "Files-Modul Abhängigkeiten nicht erfüllt"
     exit 1
 fi
 
-source "${SCRIPT_DIR}/lib/libintegrity.sh"
+# 5. libintegrity.sh - Integritäts-Checks -----------------------------------
+# 5.1. Prüfe ob Datei ladbar ist --------------------------------------------
+if ! source "${SCRIPT_DIR}/lib/libintegrity.sh"; then
+    log_error "libintegrity.sh konnte nicht geladen werden" >&2
+    exit 1
+fi
+# 5.2. Prüfe ob Dependencies erfüllt sind -----------------------------------
 if ! integrity_check_dependencies; then
     log_error "Integrity-Modul Abhängigkeiten nicht erfüllt"
     exit 1
 fi
 
-source "${SCRIPT_DIR}/lib/libapi.sh"
-if ! api_check_dependencies; then
-    log_error "API-Modul Abhängigkeiten nicht erfüllt"
+# ===========================================================================
+# LADE WEITERE CORE-MODULE (automatisch via INI-Discovery)
+# ===========================================================================
+# Ab hier übernimmt integrity_load_modules() das automatische Laden aller
+# optionalen Core-Module (api, systeminfo, drivestat, diskinfos, common).
+# Module mit fehlenden Dependencies werden übersprungen (return 0).
+# Bei kritischen Fehlern (z.B. zirkuläre Dependencies) → return 1 → exit 1
+
+if ! integrity_load_modules; then
+    log_error "Kritischer Fehler beim Laden der Core-Module"
+    log_error "Service kann nicht gestartet werden"
     exit 1
 fi
-
-source "${SCRIPT_DIR}/lib/libsysteminfo.sh"
-if ! systeminfo_check_dependencies; then
-    log_error "$MSG_ABORT_SYSTEMINFO_DEPENDENCIES"
-    exit 1
-fi
-
-source "${SCRIPT_DIR}/lib/libdrivestat.sh"
-if ! drivestat_check_dependencies; then
-    log_error "Drive-Status-Modul Abhängigkeiten nicht erfüllt"
-    exit 1
-fi
-
-source "${SCRIPT_DIR}/lib/libdiskinfos.sh"
-if ! diskinfos_check_dependencies; then
-    log_error "Disk-Information-Modul Abhängigkeiten nicht erfüllt"
-    exit 1
-fi
-
-source "${SCRIPT_DIR}/lib/libcommon.sh"
-if ! common_check_dependencies; then
-    log_error "$MSG_ABORT_CRITICAL_DEPENDENCIES"
-    exit 1
-fi
-
-# Lade Sprachdateien für Hauptskript (nach libcommon.sh)
-load_module_language "disk2iso"
 
 log_info "$MSG_CORE_MODULES_LOADED"
 
 # ============================================================================
-# OPTIONALE MODULE MIT DEPENDENCY-CHECKS
-# ============================================================================
-# Audio-CD Support (optional)
-if [[ -f "${SCRIPT_DIR}/lib/libaudio.sh" ]]; then
-    source "${SCRIPT_DIR}/lib/libaudio.sh"
-    audio_check_dependencies  # Setzt SUPPORT_AUDIO=true bei Erfolg
-fi
-
-# Video-DVD Support (optional)
-if [[ -f "${SCRIPT_DIR}/lib/libdvd.sh" ]]; then
-    source "${SCRIPT_DIR}/lib/libdvd.sh"
-    dvd_check_dependencies  # Setzt SUPPORT_DVD=true bei Erfolg
-fi
-
-# Video-Bluray Support (optional)
-if [[ -f "${SCRIPT_DIR}/lib/libbluray.sh" ]]; then
-    source "${SCRIPT_DIR}/lib/libbluray.sh"
-    bluray_check_dependencies  # Setzt SUPPORT_BLURAY=true bei Erfolg
-fi
-
-# Metadata Framework nur laden wenn mindestens ein Disc-Type unterstützt wird
-if is_audio_ready || is_dvd_ready || is_bluray_ready; then
-    
-    if [[ -f "${SCRIPT_DIR}/lib/libmetadata.sh" ]]; then
-        source "${SCRIPT_DIR}/lib/libmetadata.sh"
-        metadata_check_dependencies  # Setzt SUPPORT_METADATA=true bei Erfolg
-        
-        # Lade Provider nur wenn Framework verfügbar
-        if [[ "$SUPPORT_METADATA" == "true" ]]; then
-            # MusicBrainz Provider nur wenn Audio-CD Support vorhanden
-            if is_audio_ready && 
-               [[ -f "${SCRIPT_DIR}/lib/libmusicbrainz.sh" ]]; then
-                source "${SCRIPT_DIR}/lib/libmusicbrainz.sh"
-                musicbrainz_check_dependencies  # Setzt SUPPORT_MUSICBRAINZ=true bei Erfolg
-            fi
-            
-            # TMDB Provider nur wenn DVD/BD Support vorhanden
-            if { is_dvd_ready || is_bluray_ready; } && 
-               [[ -f "${SCRIPT_DIR}/lib/libtmdb.sh" ]]; then
-                source "${SCRIPT_DIR}/lib/libtmdb.sh"
-                tmdb_check_dependencies  # Setzt SUPPORT_TMDB=true bei Erfolg
-            fi
-        fi
-    fi
-fi
-
-# MQTT Support (externes Plugin - siehe: https://github.com/DirkGoetze/disk2iso-mqtt)
-if [[ -f "${SCRIPT_DIR}/lib/libmqtt.sh" ]]; then
-    source "${SCRIPT_DIR}/lib/libmqtt.sh"
-    mqtt_check_dependencies  # Setzt SUPPORT_MQTT=true bei Erfolg
-    
-    # mqtt_init_connection prüft selbst ob MQTT bereit ist (Support + Aktiviert + Initialisiert)
-    if is_mqtt_ready; then
-        mqtt_init_connection  # Sendet Initial-Messages wenn Broker erreichbar
-    fi
-fi
-
-# ============================================================================
 # HAUPTLOGIK - DELEGIERT AN KOPIER-MODULE
 # ============================================================================
-
 # ===========================================================================
 # copy_disc_to_iso()
 # ---------------------------------------------------------------------------
@@ -558,7 +495,7 @@ main() {
     #   - Beispiele: liblogging, libapi, libdiskinfos, libdrivestat
     # 
     # Optionale Module (Zeile 148-184):
-    #   - INI-Manifest-basierte Prüfung via check_module_dependencies()
+    #   - INI-Manifest-basierte Prüfung via integrity_check_module_dependencies()
     #   - Return 1 → Feature deaktiviert (Script läuft weiter)
     #   - Setzen Feature-Flag (*_SUPPORT=true)
     #   - Beispiele: libcd, libdvd, libbluray

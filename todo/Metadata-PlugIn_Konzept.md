@@ -162,7 +162,7 @@ if [[ "${<NAME>_ENABLED:-true}" == "true" ]]; then
         
         if check_dependencies_<name>; then
             <NAME>_SUPPORT=true
-            load_module_language "<name>"  # ← NACH erfolgreichem Check!
+            liblogging_load_language_file "<name>"  # ← NACH erfolgreichem Check!
             log_info "Modul '<Name>' aktiviert"
         else
             log_info "Modul '<Name>' deaktiviert (Dependencies fehlen)"
@@ -1570,11 +1570,11 @@ check_dependencies_<name>() {
 ### **Regel 3: Kein Code außerhalb von Funktionen**
 ```bash
 # ❌ FALSCH
-load_module_language "<name>"  # Global ausgeführt beim Source!
+liblogging_load_language_file "<name>"  # Global ausgeführt beim Source!
 
 # ✅ RICHTIG (in disk2iso.sh NACH Check)
 if check_dependencies_<name>; then
-    load_module_language "<name>"
+    liblogging_load_language_file "<name>"
 fi
 ```
 

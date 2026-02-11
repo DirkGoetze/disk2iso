@@ -41,7 +41,7 @@
 # ===========================================================================
 settings_check_dependencies() {
     # Lade Sprachdatei für dieses Modul (libsettings)
-    load_module_language "settings"
+    liblogging_load_language_file "settings"
     
     # Prüfe kritische Abhängigkeit: Existenz der Settings-Datei
     settings_validate_file || return 1
@@ -64,7 +64,7 @@ _SETTINGS_SAVE_DEFAULT_CONF=false              # Flag für rekursiven Default-Wr
 _SETTINGS_SAVE_DEFAULT_INI=false               # Flag für rekursiven Default-Write (verhindert Endlosschleife)
 
 # Globaler Pfad zur Konfigurations-Datei
-CONFIG_FILE="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
+CONFIG_FILE="${SCRIPT_DIR}/conf/disk2iso.conf"
 
 # ===========================================================================
 # settings_validate_file
@@ -77,12 +77,9 @@ CONFIG_FILE="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
 # .........  Wird automatisch von settings_check_dependencies() aufgerufen
 # ===========================================================================
 settings_validate_file() {
-    #-- Setze Pfad zur Settings-Datei --------------------------------------
-    local settings_file="${INSTALL_DIR:-/opt/disk2iso}/conf/disk2iso.conf"
-
     #-- Lazy Initialization: Nur einmal pro Session prüfen ------------------
     if [[ "$_SETTINGS_FILE_VALIDATED" == false ]]; then
-        if [[ ! -f "$settings_file" ]]; then
+        if [[ ! -f "$CONFIG_FILE" ]]; then
             log_error "$MSG_SETTINGS_CONFIG_FILE_NOT_FOUND: $settings_file"
             return 1
         fi
@@ -1049,7 +1046,7 @@ settings_get_value_json() {
     fi
     
     # Pfad-Resolution: api/${json_file}.json
-    local filepath="${INSTALL_DIR:-/opt/disk2iso}/api/${json_file}.json"
+    local filepath="${SCRIPT_DIR}/api/${json_file}.json"
     
     # Prüfe ob Datei existiert
     if [[ ! -f "$filepath" ]]; then
@@ -1112,7 +1109,7 @@ settings_set_value_json() {
     fi
     
     # Pfad-Resolution: api/${json_file}.json
-    local filepath="${INSTALL_DIR:-/opt/disk2iso}/api/${json_file}.json"
+    local filepath="$${SCRIPT_DIR}/api/${json_file}.json"
     
     # Prüfe ob jq verfügbar ist
     if ! command -v jq &>/dev/null; then
@@ -1168,7 +1165,7 @@ settings_del_value_json() {
     fi
     
     # Pfad-Resolution: api/${json_file}.json
-    local filepath="${INSTALL_DIR:-/opt/disk2iso}/api/${json_file}.json"
+    local filepath="${SCRIPT_DIR}/api/${json_file}.json"
     
     # Prüfe ob Datei existiert
     if [[ ! -f "$filepath" ]]; then

@@ -40,7 +40,7 @@
 # ===========================================================================
 drivestat_check_dependencies() {
     # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner)
-    check_module_dependencies "drivestat" || return 1
+    integrity_check_module_dependencies "drivestat" || return 1
     
     # Keine modul-spezifische Initialisierung nötig
     

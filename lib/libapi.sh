@@ -40,7 +40,7 @@
 # ===========================================================================
 api_check_dependencies() {
     # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner)
-    check_module_dependencies "api" || return 1
+    integrity_check_module_dependencies "api" || return 1
     
     # Modul-spezifische Initialisierung
     # Initialisiere API-Infrastruktur (leere JSONs)

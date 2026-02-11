@@ -40,7 +40,7 @@
 # ===========================================================================
 files_check_dependencies() {
     # Lade Sprachdatei für dieses Modul
-    load_module_language "files"
+    liblogging_load_language_file "files"
     
     # Files-Modul benötigt keine externen Tools
     # Verwendet nur Bash-Funktionen (basename, sed)

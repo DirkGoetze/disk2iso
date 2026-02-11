@@ -118,7 +118,7 @@ readonly API_TIMEOUT=30
 Alle Module müssen die Sprachdatei laden:
 ```bash
 # Lade Sprachdatei für dieses Modul
-load_module_language "modulname"
+liblogging_load_language_file "modulname"
 
 # Verwende MSG_* Variablen
 log_info "$MSG_PROVIDER_REGISTERED"

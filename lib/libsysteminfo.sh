@@ -40,7 +40,7 @@
 # ===========================================================================
 systeminfo_check_dependencies() {
     # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner)
-    check_module_dependencies "systeminfo" || return 1
+    integrity_check_module_dependencies "systeminfo" || return 1
     
     # Modul-spezifische Initialisierung
     # Erkenne Container-Umgebung

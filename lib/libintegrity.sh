@@ -6,7 +6,7 @@
 #
 # Beschreibung:
 #   Zentrale Verwaltung von Modul-Abhängigkeiten und System-Integrität
-#   - check_module_dependencies() - Manifest-basierte Dependency-Prüfung
+#   - integrity_check_module_dependencies() - Manifest-basierte Dependency-Prüfung
 #   - Validierung von Modul-Dateien, Ordnern und externen Tools
 #   - Basis für zukünftige Features (Auto-Update, Repair, Diagnostics)
 #   - Verwendet INI-Manifeste (conf/lib<module>.ini)
@@ -40,11 +40,11 @@
 # ===========================================================================
 integrity_check_dependencies() {
     # Lade Modul-Sprachdatei
-    load_module_language "integrity"
+    liblogging_load_language_file "integrity"
     
     # Integrity-Modul benötigt:
     # - libsettings.sh (settings_get_value_ini, settings_get_array_ini)
-    # - liblogging.sh (log_*, load_module_language)
+    # - liblogging.sh (log_*, liblogging_load_language_file)
     # - libfolders.sh (folders_ensure_subfolder)
     # - libfiles.sh (files_get_*_path)
     
@@ -67,7 +67,7 @@ integrity_check_dependencies() {
 # ===========================================================================
 
 # ===========================================================================
-# check_module_dependencies
+# integrity_check_module_dependencies
 # ---------------------------------------------------------------------------
 # Funktion.: Standard Dependency-Check aus INI-Manifest
 # Parameter: $1 = module_name (z.B. "audio", "dvd", "metadata")
@@ -80,10 +80,9 @@ integrity_check_dependencies() {
 # TODO.....: Interne Modul-Abhängigkeiten prüfen (z.B. [moduledependencies] required=liblogging,libconfig)
 #            Implementierung: declare -f Prüfung für benötigte Funktionen aus anderen lib*.sh Modulen
 # ===========================================================================
-check_module_dependencies() {
+integrity_check_module_dependencies() {
     local module_name="$1"
-    local conf_dir
-    conf_dir=$(folders_get_conf_dir) || conf_dir="${INSTALL_DIR}/conf"
+    local conf_dir=$(folders_get_conf_dir) || conf_dir="${INSTALL_DIR}/conf"
     local manifest_file="${conf_dir}/lib${module_name}.ini"
     
     # Debug: Start der Abhängigkeitsprüfung
@@ -91,7 +90,7 @@ check_module_dependencies() {
     
     # Sprachdatei laden (vor Manifest-Check!)
     log_message "Prüfe Abhängigkeiten für Modul: ${module_name}"
-    load_module_language "$module_name"
+    liblogging_load_language_file "$module_name"
     
     # Prüfe ob Manifest existiert
     if [[ ! -f "$manifest_file" ]]; then
@@ -313,5 +312,275 @@ check_module_dependencies() {
     log_debug "$MSG_DEBUG_CHECK_COMPLETE '${module_name}' ($MSG_DEBUG_ALL_DEPS_MET)"
     
     log_info "${module_name}: $MSG_INFO_ALL_DEPENDENCIES_OK"
+    return 0
+}
+
+# ===========================================================================
+# _integrity_collect_modules
+# ---------------------------------------------------------------------------
+# Funktion.: Sammelt alle ladbaren Module aus den INI-Manifesten
+# Parameter: $1 = result_array (Referenz auf das Ergebnis-Array)
+# Rückgabe.: 0 = Module gefunden (Array wurde befüllt)
+# .........  1 = Keine Module gefunden (Array bleibt leer)
+# Extras...: Hilfsfunktion für integrity_load_modules()
+# .........  Überspringt Core-Module und Module ohne .sh-Datei
+# ===========================================================================
+_integrity_collect_modules() {
+    local -n result_array=$1  # Array per Reference 
+    local conf_dir=$(folders_get_conf_dir)
+    
+    #-- Log: Start der Modulsammlung ----------------------------------------
+    log_info "$MSG_SCANNING_MODULES: ${conf_dir}"
+
+    #-- Alle gefundenen *.ini Dateien durchgehen (lib*.ini) -----------------
+    for ini_file in "${conf_dir}"/lib*.ini; do
+        [[ -f "$ini_file" ]] || continue
+        
+        #-- Extrahiere Modul-Name (lib<modulname>.ini → modulname) ----------
+        local module_name=$(basename "$ini_file" .ini | sed 's/^lib//')
+
+        # -------------------------------------------------------------------
+        # Überspringe Core-Module (werden im Deamon explizit geladen) 
+        # Sicherheitsfunktion, eigentlich haben diese Core-Module keine ini
+        # Dateien, aber falls doch, sollen sie nicht als optionale Module 
+        # erkannt werden. 
+        # -------------------------------------------------------------------
+        case "$module_name" in
+            logging|settings|folders|files|integrity)
+                log_debug "$MSG_SKIP_CORE_MODULE: ${module_name}"
+                continue
+                ;;
+        esac
+        
+        #-- Lese notwendige Info's aus INI ----------------------------------
+        local module_lib=$(settings_get_value_ini "${module_name}" "modulefiles" "lib")
+        local requires=$(settings_get_value_ini "${module_name}" "dependencies" "internal")
+
+        #-- Prüfe ob zur *.ini eine *.sh existiert --------------------------
+        if [[ ! -f "$module_lib" ]]; then
+            log_warning "$MSG_MODULE_LIB_MISSING: ${module_name} (${module_lib})"
+            continue
+        fi
+                
+        #-- Füge zu Ergebnis-Array hinzu (Format: module_name|requires) -----
+        result_array[$module_name]="${internal_deps:-}"
+        log_debug "$MSG_MODULE_FOUND: ${module_name} (deps: ${internal_deps:-KEINE})"
+    done
+    
+    #-- Rückgabe: Erfolg wenn Module gefunden, sonst Fehler -----------------
+    if [[ ${#result_array[@]} -gt 0 ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# ===========================================================================
+# integrity_load_modules
+# ---------------------------------------------------------------------------
+# Funktion.: Auto-Discovery und Laden aller optionalen Module aus INI-Manifesten
+# Parameter: keine
+# Rückgabe.: 0 = Mindestens ein Modul geladen
+#            1 = Keine Module gefunden oder Fehler
+# Ablauf...: 1. Scanne conf/ nach lib*.ini Dateien
+#            2. Parse [module] Sektion (priority, requires_modules)
+#            3. Sortiere nach Priority (niedrig = zuerst)
+#            4. Lade Module in korrekter Reihenfolge
+#            5. Rufe {module}_check_dependencies() auf
+# Extras...: Überspringt Module deren .sh fehlt (z.B. nur Config vorhanden)
+#            Loggt fehlende Dependencies als Warnung (nicht kritisch)
+# ===========================================================================
+integrity_load_modules() {
+    #-- Config-Verzeichnis ermitteln (via libfolders.sh) --------------------
+    local conf_dir=$(folders_get_conf_dir) 
+    
+    #-- Erfasse alle Module durch die zugehörige INI-Datei ------------------
+    declare -a modules_to_load=() # Assoziatives Array -> einfaches Entfernen
+    if ! _integrity_collect_modules modules_to_load; then
+        # Keine Module gefunden → Kein Laden nötig, aber auch kein Fehler ---
+        log_info "$MSG_NO_OPTIONAL_MODULES"
+        return 0
+    fi
+    # Module gefunden → Laden kann beginnen ---------------------------------
+    log_info "Gefundene Module: ${!modules_pending[*]}"
+   
+    # Initialisiere Tracking-Variablen für den Ladeprozess ------------------
+    local iteration=0                                   # aktueller Durchlauf
+    local max_iterations=15      # Sicherheitslimit, Endlosschleife vermeiden
+    local loaded_count=0                # Anzahl erfolgreich geladener Module
+    local failed_count=0                      # Anzahl nicht geladener Module
+    declare -A failed_modules=()
+    
+    #-- Phase 3: Iteratives Laden --------------------------------------------
+    while [[ ${#modules_to_load[@]} -gt 0 ]] && [[ $iteration -lt $max_iterations ]]; do
+        ((iteration++))
+        log_debug "Iteration ${iteration}: ${#modules_to_load[@]} Module ausstehend (${!modules_to_load[*]})"
+        
+        #-- Array für erfolgreich verarbeitete Module in dieser Iteration ---
+        declare -a processed_in_iteration=()
+        
+        #-- Durchlaufe alle ausstehenden Module -----------------------------
+        for module_name in "${!modules_to_load[@]}"; do
+            
+            #-- Prüfe ob bereits geladen ------------------------------------
+            if declare -f "${module_name}_check_dependencies" >/dev/null 2>&1; then
+                log_debug "${module_name}: Bereits geladen (überspringe)"
+                processed_in_iteration+=("$module_name")
+                ((loaded_count++))
+                continue
+            fi
+            
+            #-- Lese interne Dependencies aus Array (modules_to_load) -------
+            local internal_deps="${modules_to_load[$module_name]}"
+            
+            #-- Prüfe Dependencies DIREKT via declare -f --------------------
+            local dependencies_met=true
+            if [[ -n "$internal_deps" ]]; then
+                IFS=',' read -ra DEPS <<< "$internal_deps"
+                local missing_deps=()
+                
+                for dep in "${DEPS[@]}"; do
+                    dep=$(echo "$dep" | xargs)  # Trim whitespace
+                    
+                    #-- Ist die check_dependencies Funktion verfügbar -------
+                    if ! declare -f "${dep}_check_dependencies" >/dev/null 2>&1; then
+                        dependencies_met=false
+                        missing_deps+=("$dep")
+                    fi
+                done
+                
+                #-- Logge fehlende Dependencies ------------------------------
+                if [[ ${#missing_deps[@]} -gt 0 ]]; then
+                    log_debug "${module_name}: Warte auf: ${missing_deps[*]}"
+                fi
+            fi
+            
+            #-- Dependencies nicht erfüllt → nächste Iteration --------------
+            if ! $dependencies_met; then
+                continue
+            fi
+            
+            #-- Dependencies erfüllt → Versuche Modul zu laden --------------
+            log_info "$MSG_LOADING_MODULE: ${module_name}"
+            local module_lib="${INSTALL_DIR}/lib/lib${module_name}.sh"
+            
+            #-- Schritt 1: source Modul-Library -----------------------------
+            if ! source "$module_lib" 2>/dev/null; then
+                log_error "${module_name}: $MSG_MODULE_LOAD_FAILED"
+                failed_modules[$module_name]="source_failed"
+                processed_in_iteration+=("$module_name")
+                ((failed_count++))
+                continue
+            fi
+            
+            #-- Schritt 2: Prüfe ob check_dependencies Funktion existiert ---
+            if ! declare -f "${module_name}_check_dependencies" >/dev/null 2>&1; then
+                log_warning "${module_name}: $MSG_MODULE_CHECK_FUNC_MISSING"
+                failed_modules[$module_name]="no_check_func"
+                processed_in_iteration+=("$module_name")
+                ((failed_count++))
+                continue
+            fi
+            
+            #-- Schritt 3: Rufe check_dependencies auf ----------------------
+            if "${module_name}_check_dependencies"; then
+                log_info "${module_name}: $MSG_MODULE_LOADED"
+                processed_in_iteration+=("$module_name")
+                ((loaded_count++))
+            else
+                log_warning "${module_name}: $MSG_MODULE_DEPS_NOT_MET"
+                failed_modules[$module_name]="deps_not_met"
+                processed_in_iteration+=("$module_name")
+                ((failed_count++))
+            fi
+        done
+        
+        #-- Entferne verarbeitete Module aus modules_to_load ----------------
+        for module_name in "${processed_in_iteration[@]}"; do
+            unset modules_to_load[$module_name]
+        done
+        
+        #-- Stagnations-Check: Wurden Fortschritte gemacht ------------------
+        if [[ ${#processed_in_iteration[@]} -eq 0 ]]; then
+            #-- Keine Fortschritte → Zirkuläre Dependencies/fehlende Module 
+            log_error "Stagnation erkannt: Keine Module in Iteration ${iteration} verarbeitet"
+            break
+        fi
+        
+        log_debug "Iteration ${iteration}: ${#processed_in_iteration[@]} Module verarbeitet"
+    done
+    
+    #-- Phase 4: Fehleranalyse & Diagnose ------------------------------------
+    if [[ ${#modules_to_load[@]} -gt 0 ]]; then
+        log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_error "KRITISCHER FEHLER: Unauflösbare Modul-Abhängigkeiten!"
+        log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        log_error "Betroffene Module: ${!modules_to_load[*]}"
+        log_error ""
+        
+        # Detaillierte Diagnose für jedes ungeladene Modul
+        for module_name in "${!modules_to_load[@]}"; do
+            local internal_deps="${modules_to_load[$module_name]}"  # ← Aus Array!
+            
+            log_error "┌─ Modul: ${module_name}"
+            
+            if [[ -n "$internal_deps" ]]; then
+                log_error "│  Benötigt: ${internal_deps}"
+                log_error "│  Dependency-Status:"
+                
+                IFS=',' read -ra DEPS <<< "$internal_deps"
+                for dep in "${DEPS[@]}"; do
+                    dep=$(echo "$dep" | xargs)
+                    
+                    if ! declare -f "${dep}_check_dependencies" >/dev/null 2>&1; then
+                        log_error "│    ✗ ${dep} (nicht verfügbar)"
+                    else
+                        log_error "│    ✓ ${dep} (verfügbar - sollte nicht passieren!)"
+                    fi
+                done
+            else
+                log_error "│  Keine Dependencies definiert, aber trotzdem nicht ladbar"
+                log_error "│  Mögliche Ursache: Syntaxfehler in lib${module_name}.sh"
+            fi
+            
+            log_error "└─────────────────────────────────────────────────────────────"
+        done
+        
+        log_error ""
+        log_error "SERVICE NICHT STARTBAR - Bitte Dependencies auflösen!"
+        log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        
+        return 1
+    fi
+    
+    #-- Phase 5: Zusammenfassung ---------------------------------------------
+    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_info "$MSG_MODULE_SUMMARY: ${loaded_count} $MSG_LOADED, ${failed_count} $MSG_FAILED"
+    log_info "Iterationen benötigt: ${iteration}/${max_iterations}"
+    
+    if [[ $failed_count -gt 0 ]]; then
+        log_warning ""
+        log_warning "Fehlgeschlagene Module (Service läuft trotzdem):"
+        for module_name in "${!failed_modules[@]}"; do
+            local reason="${failed_modules[$module_name]}"
+            case "$reason" in
+                source_failed)
+                    log_warning "  ✗ ${module_name}: Modul konnte nicht geladen werden (Syntaxfehler?)"
+                    ;;
+                no_check_func)
+                    log_warning "  ✗ ${module_name}: check_dependencies() Funktion fehlt"
+                    ;;
+                deps_not_met)
+                    log_warning "  ✗ ${module_name}: Externe Abhängigkeiten nicht erfüllt"
+                    ;;
+                *)
+                    log_warning "  ✗ ${module_name}: ${reason}"
+                    ;;
+            esac
+        done
+    fi
+    
+    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
     return 0
 }

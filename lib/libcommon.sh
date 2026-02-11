@@ -42,7 +42,7 @@
 # ===========================================================================
 common_check_dependencies() {
     # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner)
-    check_module_dependencies "common" || return 1
+    integrity_check_module_dependencies "common" || return 1
     
     # Modul-spezifische Initialisierung
     # Prüfe/Erstelle Ausgabe-Ordner für Daten-Discs

@@ -40,7 +40,7 @@
 # ===========================================================================
 folders_check_dependencies() {
     # Lade Sprachdatei für dieses Modul
-    load_module_language "folders"
+    liblogging_load_language_file "folders"
     
     # Prüfe/Erstelle OUTPUT_DIR (kritisch für alle Folder-Operationen)
     folders_get_output_dir || return 1

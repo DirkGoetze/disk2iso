@@ -7,7 +7,7 @@
 # Beschreibung:
 #   Zentrale Logging-Funktionen für alle Module
 #   - Timestamped Logging mit optionaler Datei-Ausgabe
-#   - Modulares Sprachsystem (load_module_language)
+#   - Modulares Sprachsystem (liblogging_load_language_file)
 #   - log_error(), log_info(), log_warning(), log_debug()
 #   - Wird von allen anderen Modulen verwendet
 #
@@ -40,12 +40,17 @@
 # ===========================================================================
 logging_check_dependencies() {
     # Lade Sprachdatei für dieses Modul
-    load_module_language "logging"
+    liblogging_load_language_file "logging"
     
     # Logging-Modul benötigt keine externen Tools
     # Verwendet nur Bash-Funktionen (echo, printf, date)
     # Log-Verzeichnisse werden von anderen Modulen erstellt (libfiles, etc.)
     
+    # Logging: Caller-Info (Datei:Funktion:Zeile) in Log-Meldungen
+    # Standard: 0 (Standard-Format wie Apache/nginx/PostgreSQL)
+    # Debug:    1 (Zeigt [datei.sh:funktion:zeile] für Fehlersuche)
+    LOG_CALLER_INFO="${LOG_CALLER_INFO:-0}"
+
     return 0
 }
 
@@ -70,8 +75,8 @@ readonly MSG_WARNING_NO_LANG_FILE="WARNUNG: Keine Sprachdatei gefunden für:"
 # Funktion: Lade modul-spezifische Sprachdatei
 # Parameter: $1 = Modul-Name (z.B. "common", "cd", "dvd", "bluray")
 # Lädt: lang/lib[modul].[LANGUAGE]
-# Beispiel: load_module_language "cd" lädt lang/libcd.de
-load_module_language() {
+# Beispiel: liblogging_load_language_file "cd" lädt lang/libcd.de
+liblogging_load_language_file() {
     local module_name="$1"
     
     # Für Hauptskript (disk2iso) ohne lib Präfix suchen

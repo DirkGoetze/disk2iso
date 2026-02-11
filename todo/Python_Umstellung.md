@@ -114,7 +114,7 @@ Hinweis: In app.py sind mehrere Funktionen doppelt definiert (z.B. get_os_info).
 | # | Workflow-Schritt | libdvd/libbluray | libmetadata | libtmdb | api_tmdb.py | tmdb-modal.js | Status |
 |---|------------------|------------------|-------------|---------|-------------|---------------|--------|
 | 1 | **Disc erkannt** | `dvd_detect_disc()`<br/>`bluray_detect_disc()` | - | - | - | - | ✅ |
-| 2 | **Metadata Provider registriert** | - | Provider-Arrays<br/>`METADATA_QUERY_FUNCS[]` | `init_tmdb_provider()`<br/>registriert `tmdb_query` | - | - | ✅ |
+| 2 | **Metadata Provider registriert** | - | Provider-Arrays<br/>`METADATA_QUERY_FUNCS[]` | `tmdb_init_provider()`<br/>registriert `tmdb_query` | - | - | ✅ |
 | 3 | **Query starten** | - | `metadata_query_before_copy()`<br/>→ ruft Provider-Funktion | - | - | - | ✅ |
 | 4 | **.tmdbquery erstellen** | - | - | `tmdb_query()`<br/>schreibt `.tmdbquery` | - | - | ✅ |
 | 5 | **Pending prüfen** | - | - | `tmdb_get_cached_queries()` | `/api/metadata/tmdb/pending`<br/>ruft Bash-Funktion | - | ⚠️ STUB |
