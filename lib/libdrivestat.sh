@@ -262,8 +262,80 @@ drivestat_collect_drive_info() {
 }
 
 # ===========================================================================
+# drivestat_collect_software_info
+# ---------------------------------------------------------------------------
+# Funktion.: Sammelt Informationen über installierte Drive-Software
+# Parameter: keine
+# Rückgabe.: Schreibt JSON-Datei mit Software-Informationen
+# ===========================================================================
+drivestat_collect_software_info() {
+    log_debug "DRIVESTAT: Sammle Software-Informationen..."
+    
+    local ini_file="${INSTALL_DIR}/conf/libdrivestat.ini"
+    if [[ ! -f "$ini_file" ]]; then
+        log_error "DRIVESTAT: INI-Datei nicht gefunden: $ini_file"
+        return 1
+    fi
+    
+    local dependencies
+    dependencies=$(grep -A 10 "^\[dependencies\]" "$ini_file" | grep -E "^(external|optional)=" | cut -d'=' -f2 | tr '\n' ',' | sed 's/,$//')
+    
+    if [[ -z "$dependencies" ]]; then
+        log_debug "DRIVESTAT: Keine Dependencies in INI definiert"
+        return 0
+    fi
+    
+    if type -t systeminfo_check_software_list &>/dev/null; then
+        local json_result
+        json_result=$(systeminfo_check_software_list "$dependencies")
+        
+        local output_file
+        output_file="$(folders_get_api_dir)/drivestat_software_info.json"
+        echo "$json_result" > "$output_file"
+        
+        log_debug "DRIVESTAT: Software-Informationen gespeichert in $output_file"
+        return 0
+    else
+        log_error "DRIVESTAT: systeminfo_check_software_list nicht verfügbar"
+        return 1
+    fi
+}
+
+# ===========================================================================
+# drivestat_get_software_info
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt Software-Informationen als JSON zurück
+# Parameter: keine
+# Rückgabe.: JSON-String mit Software-Informationen
+# ===========================================================================
+drivestat_get_software_info() {
+    local cache_file
+    cache_file="$(folders_get_api_dir)/drivestat_software_info.json"
+    
+    if [[ -f "$cache_file" ]]; then
+        local cache_age
+        cache_age=$(($(date +%s) - $(stat -c %Y "$cache_file" 2>/dev/null || echo 0)))
+        if [[ $cache_age -lt 3600 ]]; then
+            cat "$cache_file"
+            return 0
+        fi
+    fi
+    
+    drivestat_collect_software_info
+    
+    if [[ -f "$cache_file" ]]; then
+        cat "$cache_file"
+    else
+        echo '{"software":[],"error":"Cache-Datei nicht gefunden"}'
+    fi
+}
+
+# ===========================================================================
 # TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 # ===========================================================================
+
+
+
 
 
 # Funktion: Prüfe ob Laufwerk-Schublade geschlossen ist
@@ -531,73 +603,4 @@ wait_for_medium_change_lxc_safe() {
     disc_label="$original_disc_label"
     log_info "$MSG_TIMEOUT_WAITING_FOR_MEDIUM"
     return 1
-}
-
-# ===========================================================================
-# drivestat_collect_software_info
-# ---------------------------------------------------------------------------
-# Funktion.: Sammelt Informationen über installierte Drive-Software
-# Parameter: keine
-# Rückgabe.: Schreibt JSON-Datei mit Software-Informationen
-# ===========================================================================
-drivestat_collect_software_info() {
-    log_debug "DRIVESTAT: Sammle Software-Informationen..."
-    
-    local ini_file="${INSTALL_DIR}/conf/libdrivestat.ini"
-    if [[ ! -f "$ini_file" ]]; then
-        log_error "DRIVESTAT: INI-Datei nicht gefunden: $ini_file"
-        return 1
-    fi
-    
-    local dependencies
-    dependencies=$(grep -A 10 "^\[dependencies\]" "$ini_file" | grep -E "^(external|optional)=" | cut -d'=' -f2 | tr '\n' ',' | sed 's/,$//')
-    
-    if [[ -z "$dependencies" ]]; then
-        log_debug "DRIVESTAT: Keine Dependencies in INI definiert"
-        return 0
-    fi
-    
-    if type -t systeminfo_check_software_list &>/dev/null; then
-        local json_result
-        json_result=$(systeminfo_check_software_list "$dependencies")
-        
-        local output_file
-        output_file="$(folders_get_api_dir)/drivestat_software_info.json"
-        echo "$json_result" > "$output_file"
-        
-        log_debug "DRIVESTAT: Software-Informationen gespeichert in $output_file"
-        return 0
-    else
-        log_error "DRIVESTAT: systeminfo_check_software_list nicht verfügbar"
-        return 1
-    fi
-}
-
-# ===========================================================================
-# drivestat_get_software_info
-# ---------------------------------------------------------------------------
-# Funktion.: Gibt Software-Informationen als JSON zurück
-# Parameter: keine
-# Rückgabe.: JSON-String mit Software-Informationen
-# ===========================================================================
-drivestat_get_software_info() {
-    local cache_file
-    cache_file="$(folders_get_api_dir)/drivestat_software_info.json"
-    
-    if [[ -f "$cache_file" ]]; then
-        local cache_age
-        cache_age=$(($(date +%s) - $(stat -c %Y "$cache_file" 2>/dev/null || echo 0)))
-        if [[ $cache_age -lt 3600 ]]; then
-            cat "$cache_file"
-            return 0
-        fi
-    fi
-    
-    drivestat_collect_software_info
-    
-    if [[ -f "$cache_file" ]]; then
-        cat "$cache_file"
-    else
-        echo '{"software":[],"error":"Cache-Datei nicht gefunden"}'
-    fi
 }
