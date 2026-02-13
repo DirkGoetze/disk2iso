@@ -41,7 +41,7 @@
 # ===========================================================================
 settings_check_dependencies() {
     # Lade Sprachdatei für dieses Modul (libsettings)
-    liblogging_load_language_file "settings"
+    logging_load_language_file "settings"
     
     # Prüfe kritische Abhängigkeit: Existenz der Settings-Datei
     settings_validate_file || return 1

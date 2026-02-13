@@ -6,7 +6,7 @@
 #
 # Beschreibung:
 #   Überwacht den Status des optischen Laufwerks (Schublade, Medium)
-#   - detect_device() - Findet erstes optisches Laufwerk
+#   - drivestat_get_drive() - Findet erstes optisches Laufwerk
 #   - is_drive_closed(), is_disc_inserted()
 #   - wait_for_disc_change(), wait_for_disc_ready()
 #   - Erkennt Änderungen im Drive-Status für automatisches Disc-Handling
@@ -39,11 +39,10 @@
 # .........  Laden der libcommon.sh.
 # ===========================================================================
 drivestat_check_dependencies() {
-    # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner)
+    # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner) -------
     integrity_check_module_dependencies "drivestat" || return 1
     
-    # Keine modul-spezifische Initialisierung nötig
-    
+    # Keine modul-spezifische Initialisierung nötig -------------------------
     return 0
 }
 
@@ -57,55 +56,7 @@ CD_DEVICE=""            # Standard CD/DVD-Laufwerk (wird dynamisch ermittelt)
 # ============================================================================
 
 # ===========================================================================
-# drivestat_collect_drive_info
-# ---------------------------------------------------------------------------
-# Funktion.: Sammle Laufwerk-Informationen und schreibe in drive_info.json
-# Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Hinweis..: STATISCH - einmal beim Start ausführen
-# Schreibt.: api/drive_info.json
-# ===========================================================================
-drivestat_collect_drive_info() {
-    local optical_drive="none"
-    local optical_drive_model="Unknown"
-    
-    if [[ -b "$CD_DEVICE" ]]; then
-        optical_drive="$CD_DEVICE"
-        # Versuche Modell zu ermitteln
-        if [[ -f "/sys/block/$(basename $CD_DEVICE)/device/model" ]]; then
-            optical_drive_model=$(cat "/sys/block/$(basename $CD_DEVICE)/device/model" 2>/dev/null | xargs)
-        fi
-    fi
-    
-    # Schreibe in JSON
-    settings_set_value_json "drive_info" ".optical_drive" "$optical_drive" || return 1
-    settings_set_value_json "drive_info" ".drive_model" "$optical_drive_model" || return 1
-    
-    return 0
-}
-
-# ===========================================================================
-# drivestat_get_drive_info
-# ---------------------------------------------------------------------------
-# Funktion.: Lese Laufwerk-Informationen aus JSON
-# Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Ausgabe..: JSON-String (stdout)
-# ===========================================================================
-drivestat_get_drive_info() {
-    local api_dir=$(folders_get_api_dir) || return 1
-    local json_file="${api_dir}/drive_info.json"
-    
-    if [[ ! -f "$json_file" ]]; then
-        # Fallback: Sammle Daten wenn JSON nicht existiert
-        drivestat_collect_drive_info || return 1
-    fi
-    
-    cat "$json_file"
-}
-
-# ===========================================================================
-# detect_device()
+# drivestat_get_drive()
 # ---------------------------------------------------------------------------
 # Description: Suchen des ersten optischen Laufwerkes. Die Prüfungen erfolgen
 # ............ in folgender Reihenfolge:
@@ -118,7 +69,10 @@ drivestat_get_drive_info() {
 # Parameter..: Keine
 # Return.....: 0 = Device gefunden, 1 = Kein Device gefunden
 # ===========================================================================
-detect_device() {
+drivestat_get_drive() {
+    # Phase 1: ERMITTLUNG DES LAUFWERKS
+    # Versuche verschiedene Methoden, um das optische Laufwerk zu finden
+
     # Methode 1: lsblk mit TYPE=rom
     if [[ -z "$CD_DEVICE" ]] && command -v lsblk >/dev/null 2>&1; then
         CD_DEVICE=$(lsblk -ndo NAME,TYPE 2>/dev/null | awk '$2=="rom" {print "/dev/" $1; exit}')
@@ -147,71 +101,170 @@ detect_device() {
         CD_DEVICE=$(readlink -f "/dev/cdrom")
     fi
     
-    # Prüfe ob das Device erkannt wurde 
+    # Phase 2: VALIDIERUNG & BEREITMACHEN
     if [[ -n "$CD_DEVICE" ]]; then
-        return 0
-    else
-        return 1
+        # sr_mod Kernel-Modul laden (wichtig für USB-Laufwerke!)
+        if [[ "$CD_DEVICE" =~ ^/dev/sr[0-9]+$ ]]; then
+            if ! lsmod | grep -q "^sr_mod "; then
+                modprobe sr_mod 2>/dev/null && sleep 2
+            fi
+        fi
+        
+        # Warte auf udev (kritisch für USB!)
+        if [[ ! -b "$CD_DEVICE" ]]; then
+            if command -v udevadm >/dev/null 2>&1; then
+                udevadm settle --timeout=3 2>/dev/null
+                
+                # Trigger udev für sr* Devices
+                if [[ "$CD_DEVICE" =~ ^/dev/sr[0-9]+$ ]]; then
+                    local device_name=$(basename "$CD_DEVICE")
+                    if [[ -e "/sys/class/block/$device_name" ]]; then
+                        udevadm trigger --action=add "/sys/class/block/$device_name" 2>/dev/null
+                        sleep 1
+                    fi
+                fi
+            fi
+            
+            # Retry-Loop: Warte bis zu 5 Sekunden
+            local timeout=5
+            while [[ $timeout -gt 0 ]] && [[ ! -b "$CD_DEVICE" ]]; do
+                sleep 1
+                ((timeout--))
+            done
+        fi
+        
+        # FINALE Prüfung: Block Device vorhanden?
+        if [[ -b "$CD_DEVICE" ]]; then
+            drivestat_collect_drive_info  # Schreibe drive_info.json
+            return 0  # Erfolgreich: Device gefunden UND bereit
+        else
+            CD_DEVICE=""  # Reset bei Fehler
+            return 1
+        fi
     fi
+    
+    return 1  # Kein Device gefunden
+}
+
+# ===========================================================================
+# drivestat_get_drive_info
+# ---------------------------------------------------------------------------
+# Funktion.: Lese Laufwerk-Informationen aus JSON
+# Parameter: keine
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Ausgabe..: JSON-String (stdout)
+# ===========================================================================
+drivestat_get_drive_info() {
+    local api_dir=$(folders_get_api_dir) || return 1
+    local json_file="${api_dir}/drive_info.json"
+    
+    if [[ ! -f "$json_file" ]]; then
+        # Fallback: Sammle Daten wenn JSON nicht existiert
+        drivestat_collect_drive_info || return 1
+    fi
+    
+    cat "$json_file"
+}
+
+# ===========================================================================
+# drivestat_collect_drive_info
+# ---------------------------------------------------------------------------
+# Funktion.: Sammle Laufwerk-Informationen und schreibe in drive_info.json
+# Parameter: keine
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Hinweis..: STATISCH - einmal beim Start ausführen
+# Schreibt.: api/drive_info.json
+# ===========================================================================
+drivestat_collect_drive_info() {
+    local optical_drive="none"
+    local drive_vendor="Unknown"
+    local drive_model="Unknown"
+    local drive_firmware="Unknown"
+    local drive_bus_type="unknown"
+    local drive_capabilities=""
+    
+    if [[ -b "$CD_DEVICE" ]]; then
+        optical_drive="$CD_DEVICE"
+        local device_basename=$(basename "$CD_DEVICE")
+        local sysfs_path="/sys/block/${device_basename}/device"
+        
+        # 1. Vendor (Hersteller)
+        if [[ -f "${sysfs_path}/vendor" ]]; then
+            drive_vendor=$(cat "${sysfs_path}/vendor" 2>/dev/null | xargs)
+        fi
+        
+        # 2. Model
+        if [[ -f "${sysfs_path}/model" ]]; then
+            drive_model=$(cat "${sysfs_path}/model" 2>/dev/null | xargs)
+        fi
+        
+        # 3. Firmware Version
+        if [[ -f "${sysfs_path}/rev" ]]; then
+            drive_firmware=$(cat "${sysfs_path}/rev" 2>/dev/null | xargs)
+        fi
+        
+        # 4. Bus Type (USB vs. SATA/ATA)
+        if command -v udevadm >/dev/null 2>&1; then
+            drive_bus_type=$(udevadm info --query=property --name="$CD_DEVICE" 2>/dev/null | grep "^ID_BUS=" | cut -d'=' -f2)
+        fi
+        # Fallback: Prüfe sysfs Pfad
+        if [[ -z "$drive_bus_type" || "$drive_bus_type" == "unknown" ]]; then
+            local device_path=$(readlink -f "/sys/block/${device_basename}" 2>/dev/null)
+            if [[ "$device_path" =~ usb ]]; then
+                drive_bus_type="usb"
+            elif [[ "$device_path" =~ ata ]]; then
+                drive_bus_type="sata"
+            fi
+        fi
+        
+        # 5. Capabilities (aus /proc/sys/dev/cdrom/info)
+        if [[ -f "/proc/sys/dev/cdrom/info" ]]; then
+            local cdrom_info=$(cat /proc/sys/dev/cdrom/info 2>/dev/null)
+            local caps=()
+            
+            # Prüfe ob unser Device in der Liste ist
+            if echo "$cdrom_info" | grep -q "$device_basename"; then
+                # Extrahiere Capabilities für unser Device
+                local can_read_dvd=$(echo "$cdrom_info" | grep "^Can read DVD:" | awk '{print $NF}')
+                local can_write_cd=$(echo "$cdrom_info" | grep "^Can write CD-R:" | awk '{print $NF}')
+                local can_write_dvd=$(echo "$cdrom_info" | grep "^Can write DVD-R:" | awk '{print $NF}')
+                local can_play_audio=$(echo "$cdrom_info" | grep "^Can play audio:" | awk '{print $NF}')
+                
+                [[ "$can_read_dvd" == "1" ]] && caps+=("DVD")
+                [[ "$can_write_cd" == "1" ]] && caps+=("CD-R")
+                [[ "$can_write_dvd" == "1" ]] && caps+=("DVD±R")
+                [[ "$can_play_audio" == "1" ]] && caps+=("Audio")
+                
+                # Fallback wenn keine spezifischen Caps gefunden
+                if [[ ${#caps[@]} -eq 0 ]]; then
+                    caps+=("CD/DVD")
+                fi
+            else
+                # Device nicht in /proc - Standard-Annahme
+                caps+=("CD/DVD")
+            fi
+            
+            drive_capabilities=$(IFS=', '; echo "${caps[*]}")
+        else
+            drive_capabilities="CD/DVD"
+        fi
+    fi
+    
+    # Schreibe alle Informationen in JSON
+    settings_set_value_json "drive_info" ".optical_drive" "$optical_drive" || return 1
+    settings_set_value_json "drive_info" ".vendor" "$drive_vendor" || return 1
+    settings_set_value_json "drive_info" ".model" "$drive_model" || return 1
+    settings_set_value_json "drive_info" ".firmware" "$drive_firmware" || return 1
+    settings_set_value_json "drive_info" ".bus_type" "$drive_bus_type" || return 1
+    settings_set_value_json "drive_info" ".capabilities" "$drive_capabilities" || return 1
+    
+    return 0
 }
 
 # ===========================================================================
 # TODO: Ab hier ist das Modul noch nicht fertig implementiert!
 # ===========================================================================
 
-
-# Funktion: Stelle sicher dass Device bereit ist
-# Lädt sr_mod Kernel-Modul falls nötig und wartet auf Device-Node-Erstellung
-# Parameter: $1 = Device-Pfad (z.B. /dev/sr0)
-# Rückgabe: 0 = Device bereit, 1 = Device nicht verfügbar
-ensure_device_ready() {
-    local device="$1"
-    
-    # Prüfe ob Device-Parameter gesetzt ist
-    if [[ -z "$device" ]]; then
-        return 1
-    fi
-    
-    # Prüfe und lade sr_mod Kernel-Modul für sr* Devices
-    if [[ "$device" =~ ^/dev/sr[0-9]+$ ]]; then
-        if ! lsmod | grep -q "^sr_mod "; then
-            if modprobe sr_mod 2>/dev/null; then
-                # Nach Modul-Laden 2 Sekunden warten
-                sleep 2
-            fi
-        fi
-    fi
-    
-    # Warte auf Device-Node-Erstellung (wichtig für USB-Laufwerke und sr_mod)
-    if [[ ! -b "$device" ]]; then
-        # Warte auf udev
-        if command -v udevadm >/dev/null 2>&1; then
-            udevadm settle --timeout=3 2>/dev/null
-            # Trigger udev für sr* Devices
-            if [[ "$device" =~ ^/dev/sr[0-9]+$ ]]; then
-                local device_name=$(basename "$device")
-                if [[ -e "/sys/class/block/$device_name" ]]; then
-                    udevadm trigger --action=add "/sys/class/block/$device_name" 2>/dev/null
-                    sleep 1
-                fi
-            fi
-        fi
-        
-        # Retry-Loop: Warte bis zu 5 Sekunden
-        local timeout=5
-        while [[ $timeout -gt 0 ]] && [[ ! -b "$device" ]]; do
-            sleep 1
-            ((timeout--))
-        done
-    fi
-    
-    # Prüfe ob Device verfügbar ist
-    if [[ ! -b "$device" ]]; then
-        return 1
-    fi
-    
-    return 0
-}
 
 # Funktion: Prüfe ob Laufwerk-Schublade geschlossen ist
 # Vereinfacht: Nutze nur dd-Test (robuster für USB-Laufwerke)

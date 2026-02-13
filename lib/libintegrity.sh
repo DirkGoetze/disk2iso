@@ -40,11 +40,11 @@
 # ===========================================================================
 integrity_check_dependencies() {
     # Lade Modul-Sprachdatei
-    liblogging_load_language_file "integrity"
+    logging_load_language_file "integrity"
     
     # Integrity-Modul benötigt:
     # - libsettings.sh (settings_get_value_ini, settings_get_array_ini)
-    # - liblogging.sh (log_*, liblogging_load_language_file)
+    # - liblogging.sh (log_*, logging_load_language_file)
     # - libfolders.sh (folders_ensure_subfolder)
     # - libfiles.sh (files_get_*_path)
     
@@ -90,7 +90,7 @@ integrity_check_module_dependencies() {
     
     # Sprachdatei laden (vor Manifest-Check!)
     log_message "Prüfe Abhängigkeiten für Modul: ${module_name}"
-    liblogging_load_language_file "$module_name"
+    logging_load_language_file "$module_name"
     
     # Prüfe ob Manifest existiert
     if [[ ! -f "$manifest_file" ]]; then

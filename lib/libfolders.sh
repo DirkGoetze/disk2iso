@@ -40,7 +40,7 @@
 # ===========================================================================
 folders_check_dependencies() {
     # Lade Sprachdatei für dieses Modul
-    liblogging_load_language_file "folders"
+    logging_load_language_file "folders"
     
     # Prüfe/Erstelle OUTPUT_DIR (kritisch für alle Folder-Operationen)
     folders_get_output_dir || return 1
@@ -175,13 +175,21 @@ folders_get_output_dir() {
             #-- Setze Berechtigungen ----------------------------------------
             chmod $DIR_PERMISSIONS_PUBLIC "$output_dir" 2>/dev/null
             log_info "$MSG_INFO_OUTPUT_DIR_CREATED $output_dir" >&2
-
-            #-- Flag setzen -----------------------------------------------------
-            _OUTPUT_DIR_CREATED=true
         fi
+        
+        #-- Flag setzen (unabhängig ob erstellt oder bereits vorhanden) ----
+        _OUTPUT_DIR_CREATED=true
+    else
+        #-- Ausgabe-Verzeichnis wurde bereits geprüft ----------------------
+        output_dir=$(settings_get_output_dir) || {
+            log_error "$MSG_ERROR_OUTPUT_DIR_READ_FAILED" >&2
+            echo ""
+            return 1
+        }
     fi
 
     #-- Gebe Ausgabe-Verzeichnis zurück -------------------------------------
+    log_info "$MSG_OUTPUT_DIRECTORY $output_dir"
     echo "${output_dir%/}"
     return 0
 }

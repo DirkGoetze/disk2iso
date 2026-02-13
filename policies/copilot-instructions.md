@@ -117,8 +117,16 @@ readonly API_TIMEOUT=30
 
 Alle Module müssen die Sprachdatei laden:
 ```bash
-# Lade Sprachdatei für dieses Modul
-liblogging_load_language_file "modulname"
+# Lade Sprachdatei für dieses Modul (einfach)
+logging_load_language_file "modulname"
+
+# Optional: Mit Return-Code Prüfung
+logging_load_language_file "modulname"
+case $? in
+    0) log_debug "Sprache geladen" ;;
+    2) log_debug "Fallback EN verwendet" ;;
+    1) log_error "Keine Sprachdatei gefunden!"; return 1 ;;
+esac
 
 # Verwende MSG_* Variablen
 log_info "$MSG_PROVIDER_REGISTERED"

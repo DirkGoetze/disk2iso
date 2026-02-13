@@ -68,107 +68,126 @@ fi
 # MODUL-LOADING 
 # ============================================================================
 
-# Ermittle Script-Verzeichnis (funktioniert auch bei Symlinks und Service)
-# Löse Symlinks auf, um den echten Pfad zu bekommen
-SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-SCRIPT_SERVICE_DIR="$(dirname "$SCRIPT_PATH")"
-# Hauptverzeichnis ist zwei Ebenen höher (von services/disk2iso/ nach root)
-SCRIPT_DIR="$(dirname "$(dirname "$SCRIPT_SERVICE_DIR")")"
+# ===========================================================================
+# daemon_load_modules()
+# ---------------------------------------------------------------------------
+# Funktion.: Lädt alle Core-Module in optimierter Reihenfolge (abhängigkeits-
+# .........  basierte Reihenfolge) und prüft deren Abhängigkeiten. Beendet 
+# .........  Script bei kritischen Fehlern (fehlende Kern-Module oder 
+# .........  zirkuläre Abhängikeiten).
+# Parameter: keine
+# Rückgabe.: keine (beendet Script bei Fehlern)
+# Extras...: 1. Ermittle Script-Verzeichnis (funktioniert auch bei Symlinks)
+# .........  2. Lade Core-Module in optimierter Reihenfolge
+# .........  3. Prüfe Abhängigkeiten jedes Moduls (return 1 → exit 1)
+# .........  4. Lade optionale Module automatisch via integrity_load_modules()
+# .........  5. Logge Erfolg oder Fehler beim Laden der Module
+# ===========================================================================
+daemon_load_modules() {
 
-# ============================================================================
-# LOAD-CORE-SETTINGS
-# ============================================================================
-# Lade Einstellungen für den Deamon und die Core-Module ---------------------
-source "${SCRIPT_DIR}/conf/disk2iso.conf"
+    # Ermittle Script-Verzeichnis (funktioniert auch bei Symlinks und Service)
+    # Löse Symlinks auf, um den echten Pfad zu bekommen
+    SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+    SCRIPT_SERVICE_DIR="$(dirname "$SCRIPT_PATH")"
+    # Hauptverzeichnis ist zwei Ebenen höher (von services/disk2iso/ nach root)
+    SCRIPT_DIR="$(dirname "$(dirname "$SCRIPT_SERVICE_DIR")")"
+
+    # =======================================================================
+    # LOAD-CORE-SETTINGS
+    # =======================================================================
+    # Lade Einstellungen für den Deamon und die Core-Module -----------------
+    source "${SCRIPT_DIR}/conf/disk2iso.conf"
+
+    # =======================================================================
+    # CHECK_DEPENDENCIES & LOAD MODULES
+    # =======================================================================
+    # Alle Core-Module werden nacheinander geladen und müssen ihre Abhängig-keiten 
+    # keiten erfüllen, sonst kann disk2iso nicht funktionieren. 
+    # 
+    # Lade-Reihenfolge (abhängikeits-optimiert): ----------------------------
+    # 1. liblogging.sh - Logging (nur Bash-Built-ins) -----------------------
+    # 1.1. Prüfe ob Datei ladbar ist ----------------------------------------
+    if ! source "${SCRIPT_DIR}/lib/liblogging.sh"; then
+        echo "FEHLER: liblogging.sh konnte nicht geladen werden" >&2
+        exit 1
+    fi
+    # 1.2. Prüfe ob Dependencies erfüllt sind -------------------------------
+    if ! logging_check_dependencies; then
+        log_error "Logging-Modul Abhängigkeiten nicht erfüllt" >&2
+        exit 1
+    fi
+    # 1.3. Ab hier können die Sprachdateien genutzt werden ------------------
+    logging_load_language_file "disk2iso"
+
+    # 2. libsettings.sh - Settings-Management (nutzt liblogging) ------------
+    # 2.1. Prüfe ob Datei ladbar ist ----------------------------------------
+    if ! source "${SCRIPT_DIR}/lib/libsettings.sh"; then
+        log_error "libsettings.sh konnte nicht geladen werden" >&2
+        exit 1
+    fi
+    # 2.2. Prüfe ob Dependencies erfüllt sind -------------------------------
+    if ! settings_check_dependencies; then
+        log_error "Config-Modul Abhängigkeiten nicht erfüllt"
+        exit 1
+    fi
+
+    # 3. libfolders.sh - Ordner-Management (nutzt liblogging) ---------------
+    # 3.1. Prüfe ob Datei ladbar ist ----------------------------------------
+    if ! source "${SCRIPT_DIR}/lib/libfolders.sh"; then
+        log_error "libfolders.sh konnte nicht geladen werden" >&2
+        exit 1
+    fi
+    # 3.2. Prüfe ob Dependencies erfüllt sind -------------------------------
+    if ! folders_check_dependencies; then
+        log_error "Folders-Modul Abhängigkeiten nicht erfüllt"
+        exit 1
+    fi
+
+    # 4. libfiles.sh - Datei-Management (nutzt libfolders + liblogging) -----
+    # 4.1. Prüfe ob Datei ladbar ist ----------------------------------------
+    if ! source "${SCRIPT_DIR}/lib/libfiles.sh"; then
+        log_error "libfiles.sh konnte nicht geladen werden" >&2
+        exit 1
+    fi
+    # 4.2. Prüfe ob Dependencies erfüllt sind -------------------------------
+    if ! files_check_dependencies; then
+        log_error "Files-Modul Abhängigkeiten nicht erfüllt"
+        exit 1
+    fi
+
+    # 5. libintegrity.sh - Integritäts-Checks -------------------------------
+    # 5.1. Prüfe ob Datei ladbar ist ----------------------------------------
+    if ! source "${SCRIPT_DIR}/lib/libintegrity.sh"; then
+        log_error "libintegrity.sh konnte nicht geladen werden" >&2
+        exit 1
+    fi
+    # 5.2. Prüfe ob Dependencies erfüllt sind -------------------------------
+    if ! integrity_check_dependencies; then
+        log_error "Integrity-Modul Abhängigkeiten nicht erfüllt"
+        exit 1
+    fi
+
+    # =======================================================================
+    # LADE WEITERE CORE-MODULE (automatisch via INI-Discovery)
+    # =======================================================================
+    # Ab hier übernimmt integrity_load_modules() das automatische Laden aller
+    # optionalen Core-Module (api, systeminfo, drivestat, diskinfos, common).
+    # Module mit fehlenden Dependencies werden übersprungen (return 0).
+    # Bei kritischen Fehlern (z.B. zirkuläre Dependencies) → return 1 → exit 1
+
+    if ! integrity_load_modules; then
+        log_error "Kritischer Fehler beim Laden der Core-Module"
+        log_error "Service kann nicht gestartet werden"
+        exit 1
+    fi
+
+    log_info "$MSG_CORE_MODULES_LOADED"
+}
 
 # ===========================================================================
-# PRÜFE KERN-ABHÄNGIGKEITEN (kritisch - Abbruch bei Fehler)
-# ===========================================================================
-# Alle Core-Module werden nacheinander geladen und müssen ihre Abhängigkeiten 
-# erfüllen, sonst kann disk2iso nicht funktionieren. 
-# 
-# Lade-Reihenfolge (dependency-optimiert):
-# 1. liblogging.sh - Logging (nur Bash-Built-ins) ---------------------------
-# 1.1. Prüfe ob Datei ladbar ist --------------------------------------------
-if ! source "${SCRIPT_DIR}/lib/liblogging.sh"; then
-    echo "FEHLER: liblogging.sh konnte nicht geladen werden" >&2
-    exit 1
-fi
-# 1.2. Prüfe ob Dependencies erfüllt sind -----------------------------------
-if ! logging_check_dependencies; then
-    log_error "Logging-Modul Abhängigkeiten nicht erfüllt" >&2
-    exit 1
-fi
-# 1.3. Ab hier können die Sprachdateien genutzt werden ----------------------
-liblogging_load_language_file "disk2iso"
-
-# 2. libsettings.sh - Settings-Management (nutzt liblogging) ----------------
-# 2.1. Prüfe ob Datei ladbar ist --------------------------------------------
-if ! source "${SCRIPT_DIR}/lib/libsettings.sh"; then
-    log_error "libsettings.sh konnte nicht geladen werden" >&2
-    exit 1
-fi
-# 2.2. Prüfe ob Dependencies erfüllt sind -----------------------------------
-if ! settings_check_dependencies; then
-    log_error "Config-Modul Abhängigkeiten nicht erfüllt"
-    exit 1
-fi
-
-# 3. libfolders.sh - Ordner-Management (nutzt liblogging) -------------------
-# 3.1. Prüfe ob Datei ladbar ist --------------------------------------------
-if ! source "${SCRIPT_DIR}/lib/libfolders.sh"; then
-    log_error "libfolders.sh konnte nicht geladen werden" >&2
-    exit 1
-fi
-# 3.2. Prüfe ob Dependencies erfüllt sind -----------------------------------
-if ! folders_check_dependencies; then
-    log_error "Folders-Modul Abhängigkeiten nicht erfüllt"
-    exit 1
-fi
-
-# 4. libfiles.sh - Datei-Management (nutzt libfolders + liblogging) ---------
-# 4.1. Prüfe ob Datei ladbar ist --------------------------------------------
-if ! source "${SCRIPT_DIR}/lib/libfiles.sh"; then
-    log_error "libfiles.sh konnte nicht geladen werden" >&2
-    exit 1
-fi
-# 4.2. Prüfe ob Dependencies erfüllt sind -----------------------------------
-if ! files_check_dependencies; then
-    log_error "Files-Modul Abhängigkeiten nicht erfüllt"
-    exit 1
-fi
-
-# 5. libintegrity.sh - Integritäts-Checks -----------------------------------
-# 5.1. Prüfe ob Datei ladbar ist --------------------------------------------
-if ! source "${SCRIPT_DIR}/lib/libintegrity.sh"; then
-    log_error "libintegrity.sh konnte nicht geladen werden" >&2
-    exit 1
-fi
-# 5.2. Prüfe ob Dependencies erfüllt sind -----------------------------------
-if ! integrity_check_dependencies; then
-    log_error "Integrity-Modul Abhängigkeiten nicht erfüllt"
-    exit 1
-fi
-
-# ===========================================================================
-# LADE WEITERE CORE-MODULE (automatisch via INI-Discovery)
-# ===========================================================================
-# Ab hier übernimmt integrity_load_modules() das automatische Laden aller
-# optionalen Core-Module (api, systeminfo, drivestat, diskinfos, common).
-# Module mit fehlenden Dependencies werden übersprungen (return 0).
-# Bei kritischen Fehlern (z.B. zirkuläre Dependencies) → return 1 → exit 1
-
-if ! integrity_load_modules; then
-    log_error "Kritischer Fehler beim Laden der Core-Module"
-    log_error "Service kann nicht gestartet werden"
-    exit 1
-fi
-
-log_info "$MSG_CORE_MODULES_LOADED"
-
-# ============================================================================
 # HAUPTLOGIK - DELEGIERT AN KOPIER-MODULE
-# ============================================================================
+# ===========================================================================
+
 # ===========================================================================
 # copy_disc_to_iso()
 # ---------------------------------------------------------------------------
@@ -268,40 +287,21 @@ run_state_machine() {
     
     transition_to_state "$STATE_INITIALIZING" "Initialisiere Service..."
     
-    # Sammle initiale System-Informationen
-    if declare -f collect_system_information >/dev/null 2>&1; then
-        collect_system_information
-    fi
-    
     # Hauptschleife - läuft endlos
     while true; do
         case "$CURRENT_STATE" in
             "$STATE_INITIALIZING")
+                daemon_load_modules
                 # Initialisierung abgeschlossen, suche nach Laufwerk
                 transition_to_state "$STATE_WAITING_FOR_DRIVE" "Suche nach optischem Laufwerk..."
                 ;;
                 
             "$STATE_WAITING_FOR_DRIVE")
                 # Prüfe ob Laufwerk verfügbar ist
-                if detect_device; then
-                    transition_to_state "$STATE_DRIVE_DETECTED" "$MSG_DRIVE_DETECTED $CD_DEVICE"
+                if drivestat_get_drive; then
+                    transition_to_state "$STATE_WAITING_FOR_MEDIA" "$MSG_DRIVE_DETECTED $CD_DEVICE"
                 else
                     # Kein Laufwerk gefunden - warte und versuche erneut
-                    sleep "$POLL_DRIVE_INTERVAL"
-                fi
-                ;;
-                
-            "$STATE_DRIVE_DETECTED")
-                # Laufwerk gefunden - stelle sicher dass es bereit ist
-                if ensure_device_ready "$CD_DEVICE"; then
-                    # Aktualisiere System-Info mit Laufwerk-Informationen
-                    if declare -f collect_system_information >/dev/null 2>&1; then
-                        collect_system_information
-                    fi
-                    transition_to_state "$STATE_WAITING_FOR_MEDIA" "$MSG_DRIVE_MONITORING_STARTED"
-                else
-                    # Device nicht bereit - zurück zum Suchen
-                    transition_to_state "$STATE_WAITING_FOR_DRIVE" "$MSG_DRIVE_NOT_AVAILABLE $CD_DEVICE"
                     sleep "$POLL_DRIVE_INTERVAL"
                 fi
                 ;;
@@ -312,7 +312,7 @@ run_state_machine() {
                     transition_to_state "$STATE_MEDIA_DETECTED" "$MSG_MEDIUM_DETECTED"
                 else
                     # Prüfe ob Laufwerk noch da ist
-                    if ! detect_device; then
+                    if ! drivestat_get_drive; then
                         transition_to_state "$STATE_WAITING_FOR_DRIVE" "Laufwerk nicht mehr verfügbar"
                     fi
                     sleep "$POLL_MEDIA_INTERVAL"
@@ -483,55 +483,7 @@ main() {
     fi
     
     # Ab hier: Nur noch Service-Modus
-    
-    # ========================================================================
-    # DEPENDENCY-CHECK ARCHITEKTUR
-    # ========================================================================
-    # Alle Module (Core + Optional) implementieren check_dependencies_<modul>()
-    # 
-    # Core-Module (Zeile 100-144):
-    #   - Hardcodierte Prüfung (kein INI-Manifest)
-    #   - Return 1 → Script-Abbruch (exit 1)
-    #   - Beispiele: liblogging, libapi, libdiskinfos, libdrivestat
-    # 
-    # Optionale Module (Zeile 148-184):
-    #   - INI-Manifest-basierte Prüfung via integrity_check_module_dependencies()
-    #   - Return 1 → Feature deaktiviert (Script läuft weiter)
-    #   - Setzen Feature-Flag (*_SUPPORT=true)
-    #   - Beispiele: libcd, libdvd, libbluray
-    #   - Externe Plugins: libmqtt (https://github.com/DirkGoetze/disk2iso-mqtt)
-    # ========================================================================
-    
-    # Lese OUTPUT_DIR aus Konfiguration
-    OUTPUT_DIR=$(folders_get_output_dir)
-    if [[ $? -ne 0 ]]; then
-        log_info "$MSG_ERROR_OUTPUT_DIR_NOT_EXIST_MAIN"
-        log_info "$MSG_CONFIG_OUTPUT_DIR"
-        exit 1
-    fi
-    
-    # Prüfe ob OUTPUT_DIR existiert
-    if [[ ! -d "$OUTPUT_DIR" ]]; then
-        log_info "$MSG_ERROR_OUTPUT_DIR_NOT_EXIST_MAIN $OUTPUT_DIR"
-        log_info "$MSG_CONFIG_OUTPUT_DIR"
-        exit 1
-    fi
-    
-    # Prüfe Schreibrechte
-    if [[ ! -w "$OUTPUT_DIR" ]]; then
-        log_info "$MSG_ERROR_NO_WRITE_PERMISSION $OUTPUT_DIR"
-        log_info "$MSG_FIX_PERMISSIONS $OUTPUT_DIR"
-        exit 1
-    fi
-    
-    log_info "$MSG_DISK2ISO_STARTED"
-    log_info "$MSG_OUTPUT_DIRECTORY $OUTPUT_DIR"
-    
-    # Abhängigkeiten wurden bereits beim Modul-Loading geprüft
-    # Kern-Abhängigkeiten: common_check_dependencies()
-    # Audio-CD: audio_check_dependencies() (optional)
-    # Video-DVD/BD: dvd_check_dependencies(), bluray_check_dependencies() (optional)
-    
+
     # Starte State Machine (läuft endlos)
     # Die State Machine kümmert sich selbst um Laufwerk-Erkennung und Retry-Logik
     run_state_machine

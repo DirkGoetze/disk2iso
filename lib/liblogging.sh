@@ -7,7 +7,7 @@
 # Beschreibung:
 #   Zentrale Logging-Funktionen für alle Module
 #   - Timestamped Logging mit optionaler Datei-Ausgabe
-#   - Modulares Sprachsystem (liblogging_load_language_file)
+#   - Modulares Sprachsystem (logging_load_language_file)
 #   - log_error(), log_info(), log_warning(), log_debug()
 #   - Wird von allen anderen Modulen verwendet
 #
@@ -39,9 +39,9 @@
 # .........  Laden der libcommon.sh.
 # ===========================================================================
 logging_check_dependencies() {
-    # Lade Sprachdatei für dieses Modul
-    liblogging_load_language_file "logging"
-    
+    # Lade Sprachdatei für dieses Modul (0=OK, 2=Fallback EN OK, 1=Fehler)
+    logging_load_language_file "logging"; [[ $? -eq 1 ]] && return 1
+
     # Logging-Modul benötigt keine externen Tools
     # Verwendet nur Bash-Funktionen (echo, printf, date)
     # Log-Verzeichnisse werden von anderen Modulen erstellt (libfiles, etc.)
@@ -72,11 +72,18 @@ readonly MSG_WARNING_NO_LANG_FILE="WARNUNG: Keine Sprachdatei gefunden für:"
 # LANGUAGE FILE LOADING
 # ============================================================================
 
-# Funktion: Lade modul-spezifische Sprachdatei
+# ===========================================================================
+# logging_load_language_file
+# ---------------------------------------------------------------------------
+# Funktion.: Lade modul-spezifische Sprachdatei
 # Parameter: $1 = Modul-Name (z.B. "common", "cd", "dvd", "bluray")
-# Lädt: lang/lib[modul].[LANGUAGE]
-# Beispiel: liblogging_load_language_file "cd" lädt lang/libcd.de
-liblogging_load_language_file() {
+# Lädt.....: lang/lib[modul].[LANGUAGE] oder lang/[modul].[LANGUAGE]
+# Rückgabe.: 0 = Geforderte Sprache erfolgreich geladen
+# .........  1 = FEHLER: Keine Sprachdatei gefunden (weder Sprache noch EN)
+# .........  2 = Fallback auf Englisch (EN) verwendet
+# Beispiel.: logging_load_language_file "cd" lädt lang/libcd.de
+# ===========================================================================
+logging_load_language_file() {
     local module_name="$1"
     
     # Für Hauptskript (disk2iso) ohne lib Präfix suchen
@@ -94,6 +101,7 @@ liblogging_load_language_file() {
         if declare -f log_message >/dev/null 2>&1; then
             log_info "$MSG_LANG_FILE_LOADED $(basename "$lang_file")" >&2
         fi
+        return 0  # Geforderte Sprache erfolgreich geladen
     else
         # Fallback auf Englisch
         local fallback_file
@@ -108,23 +116,16 @@ liblogging_load_language_file() {
             if declare -f log_message >/dev/null 2>&1; then
                 log_info "$MSG_LANG_FALLBACK_LOADED $(basename "$fallback_file")" >&2
             fi
+            return 2  # Fallback auf Englisch verwendet
         else
-            # Keine Sprachdatei gefunden - Module funktionieren trotzdem
+            # Keine Sprachdatei gefunden - Kritischer Fehler
             if declare -f log_message >/dev/null 2>&1; then
                 log_warning "$MSG_WARNING_NO_LANG_FILE ${module_name}.${LANGUAGE}" >&2
             fi
+            return 1  # FEHLER: Keine Sprachdatei gefunden
         fi
     fi
 }
-
-# Lade Debug-Messages (immer Englisch - Entwicklersprache)
-# Diese werden nur benötigt wenn DEBUG=1 gesetzt ist
-if [[ "${DEBUG:-0}" == "1" ]] || [[ "${VERBOSE:-0}" == "1" ]]; then
-    DEBUG_LANG_FILE="${SCRIPT_DIR}/../lang/debugmsg.en"
-    if [[ -f "$DEBUG_LANG_FILE" ]]; then
-        source "$DEBUG_LANG_FILE"
-    fi
-fi
 
 # ============================================================================
 # LOGGING FUNCTIONS
