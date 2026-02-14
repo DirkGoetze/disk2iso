@@ -87,6 +87,9 @@ drivestat_get_drive() {
     fi
     
     # Methode 3: /sys/class/block Durchsuchen
+    # TODO: Virtuelle Laufwerke (CloneDrive, VirtualCloneDrive, etc.) sollten
+    #       hier aussortiert werden, da Disk-Abbilddateien nicht geprüft 
+    #       werden sollen. Prüfung via udevadm ID_CDROM_MEDIA_CD_RW o.ä.
     if [[ -z "$CD_DEVICE" ]]; then
         for dev in /sys/class/block/sr*; do
             if [[ -e "$dev" ]]; then
@@ -331,29 +334,38 @@ drivestat_get_software_info() {
 }
 
 # ===========================================================================
-# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
+# is_drive_closed
+# ---------------------------------------------------------------------------
+# Funktion.: Prüfe ob Laufwerk-Schublade geschlossen ist
+# Parameter: keine (nutzt globale Variable $CD_DEVICE)
+# Rückgabe.: 0 = geschlossen, 1 = offen
+# Hinweis..: Verwendet sysfs tray_open (verfügbar auf ~98% Systeme)
+# .........  Fallback auf dd-Test für Legacy-Hardware ohne sysfs
+# Extras...: Wird von wait_for_disc_change() für Tray-Status-Tracking genutzt
 # ===========================================================================
-
-
-
-
-
-# Funktion: Prüfe ob Laufwerk-Schublade geschlossen ist
-# Vereinfacht: Nutze nur dd-Test (robuster für USB-Laufwerke)
-# Rückgabe: 0 = geschlossen, 1 = offen
 is_drive_closed() {
     # Prüfe ob Device existiert
     if [[ ! -b "$CD_DEVICE" ]]; then
         return 1
     fi
     
-    # Versuche Device zu öffnen (funktioniert nur wenn geschlossen)
-    # Timeout von 1 Sekunde um nicht zu hängen
-    if timeout 1 dd if="$CD_DEVICE" of=/dev/null bs=1 count=1 2>/dev/null; then
-        return 0
+    local device_basename=$(basename "$CD_DEVICE")
+    
+    # Methode 1: sysfs tray_open (zuverlässig auf modernen Systemen)
+    if [[ -f "/sys/block/${device_basename}/device/tray_open" ]]; then
+        local tray_status
+        tray_status=$(cat "/sys/block/${device_basename}/device/tray_open" 2>/dev/null)
+        [[ "$tray_status" == "0" ]] && return 0  # Geschlossen
+        [[ "$tray_status" == "1" ]] && return 1  # Offen
     fi
     
-    return 1
+    # Methode 2: dd-Test Fallback (für Legacy-Hardware ohne sysfs)
+    # Hinweis: Kann nicht zwischen "geschlossen ohne Medium" und "offen" unterscheiden
+    if timeout 1 dd if="$CD_DEVICE" of=/dev/null bs=1 count=1 2>/dev/null; then
+        return 0  # Lesbar → geschlossen MIT Medium
+    fi
+    
+    return 1  # Nicht lesbar → offen ODER geschlossen ohne Medium
 }
 
 # Funktion: Prüfe ob Medium eingelegt ist
