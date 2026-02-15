@@ -262,11 +262,8 @@ transition_to_state() {
         log_info "$msg"
     fi
     
-    # Update API status via helper function (delegiert State→Status Mapping)
-    # Observer Pattern: api_update_from_state() triggert automatisch MQTT-Updates
-    local disc_label="$(discinfo_get_label 2>/dev/null || echo '')"
-    local disc_type="$(discinfo_get_type 2>/dev/null || echo '')"
-    api_update_from_state "$new_state" "$disc_label" "$disc_type" "${msg:-}"
+    # Update API status via helper function 
+    api_update_from_state "$new_state" "${msg:-}"
 }
 
 # ===========================================================================
@@ -308,7 +305,7 @@ run_state_machine() {
                 
             "$STATE_WAITING_FOR_MEDIA")
                 # Prüfe ob Medium eingelegt ist
-                if is_disc_inserted; then
+                if drivestat_disc_insert; then
                     transition_to_state "$STATE_MEDIA_DETECTED" "$MSG_MEDIUM_DETECTED"
                 else
                     # Prüfe ob Laufwerk noch da ist
@@ -373,7 +370,7 @@ run_state_machine() {
                 
             "$STATE_WAITING_FOR_REMOVAL")
                 # Warte bis Medium entfernt wurde
-                if ! is_disc_inserted; then
+                if ! drivestat_disc_insert; then
                     # Medium entfernt - zurück zum Warten auf neues Medium
                     transition_to_state "$STATE_IDLE" "Medium entfernt"
                 else

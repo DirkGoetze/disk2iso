@@ -622,18 +622,16 @@ EOF
 # Funktion.: Aktualisiere API-Status basierend auf State Machine State
 # .........  Mappt Service Daemon States auf API-Status-Werte
 # Parameter: $1 = State Machine State (z.B. "waiting_for_drive", "analyzing")
-#            $2 = Disc-Label (optional)
-#            $3 = Disc-Type (optional)
-#            $4 = Error-Message (optional, nur bei state=error)
+# .........  $2 = Error-Message (optional, nur bei state=error)
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: api_update_from_state "analyzing" "My Disc" "dvd-video"
+# Beispiel.: api_update_from_state "analyzing"
 # ===========================================================================
 api_update_from_state() {
     local state="$1"
-    local disc_label="${2:-}"
-    local disc_type="${3:-}"
-    local error_msg="${4:-}"
-    
+    local error_msg="${2:-}"
+    local disc_label="$(discinfo_get_label 2>/dev/null || echo '')"
+    local disc_type="$(discinfo_get_type 2>/dev/null || echo '')"
+
     # Mappe State Machine States auf API-Status
     case "$state" in
         "initializing"|"waiting_for_drive"|"drive_detected"|"waiting_for_media"|"idle")
@@ -658,7 +656,7 @@ api_update_from_state() {
             api_update_status "error" "$disc_label" "$disc_type" "$error_msg"
             ;;
         "waiting_for_removal")
-            api_update_status "waiting" "$disc_label" "$disc_type"
+            api_update_status "waiting_for_removal" "$disc_label" "$disc_type"
             ;;
         *)
             # Unbekannter State - idle als Fallback

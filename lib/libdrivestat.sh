@@ -7,7 +7,7 @@
 # Beschreibung:
 #   Überwacht den Status des optischen Laufwerks (Schublade, Medium)
 #   - drivestat_get_drive() - Findet erstes optisches Laufwerk
-#   - is_drive_closed(), is_disc_inserted()
+#   - drivestat_drive_closed(), drivestat_disc_insert()
 #   - wait_for_disc_change(), wait_for_disc_ready()
 #   - Erkennt Änderungen im Drive-Status für automatisches Disc-Handling
 #
@@ -412,16 +412,16 @@ drivestat_collect_software_info() {
 }
 
 # ===========================================================================
-# is_drive_closed
+# drivestat_drive_closed
 # ---------------------------------------------------------------------------
-# Funktion.: Prüfe ob Laufwerk-Schublade geschlossen ist
-# Parameter: keine (nutzt globale Variable $CD_DEVICE)
+# Funktion.: Prüft ob die Laufwerk-Schublade geschlossen ist
+# Parameter: Keine (nutzt globale Variable $CD_DEVICE)
 # Rückgabe.: 0 = geschlossen, 1 = offen
 # Hinweis..: Verwendet sysfs tray_open (verfügbar auf ~98% Systeme)
 # .........  Fallback auf dd-Test für Legacy-Hardware ohne sysfs
 # Extras...: Wird von wait_for_disc_change() für Tray-Status-Tracking genutzt
 # ===========================================================================
-is_drive_closed() {
+drivestat_drive_closed() {
     # Prüfe ob Device existiert
     if [[ ! -b "$CD_DEVICE" ]]; then
         return 1
@@ -446,18 +446,16 @@ is_drive_closed() {
     return 1  # Nicht lesbar → offen ODER geschlossen ohne Medium
 }
 
-
 # ===========================================================================
-# TODO: Ab hier ist das Modul noch nicht vollständig implementiert,
-#       diesen Eintrag nie automatisch löschen - wird nur vom User nach 
-#       Implementierung der Funktionen entfernt!
+# drivestat_disc_insert
+# ---------------------------------------------------------------------------
+# Funktion.: Prüft ob ein Medium im Laufwerk eingelegt ist
+# Parameter: Keine (nutzt globale Variable $CD_DEVICE)
+# Rückgabe.: 0 = Medium vorhanden, 1 = kein Medium
+# Hinweis..: Verwendet dd-Test für Daten-Medien und cdparanoia für Audio-CDs
+# .........  Robuste Erkennung auch für USB-Laufwerke (Timeout 2-3 Sek.)
 # ===========================================================================
-
-
-# Funktion: Prüfe ob Medium eingelegt ist
-# Vereinfacht: Nur dd-Test nutzen (robuster für USB-Laufwerke)
-# Rückgabe: 0 = Medium vorhanden, 1 = kein Medium
-is_disc_inserted() {
+drivestat_disc_insert() {
     # Versuche mit dd ein paar Bytes zu lesen
     # Timeout von 2 Sekunden für langsame USB-Laufwerke
     # Versuche zuerst mit bs=2048 (Daten-CDs/DVDs/Blu-ray)
@@ -476,6 +474,14 @@ is_disc_inserted() {
     return 1
 }
 
+
+# ===========================================================================
+# TODO: Ab hier ist das Modul noch nicht vollständig implementiert,
+#       diesen Eintrag nie automatisch löschen - wird nur vom User nach 
+#       Implementierung der Funktionen entfernt!
+# ===========================================================================
+
+
 # Funktion: Warte auf Änderung im Drive-Status (Schublade öffnen/schließen oder Medium einlegen/entfernen)
 # Parameter: $1 = Wartezeit in Sekunden zwischen Prüfungen (default: 2)
 # Rückgabe: 0 = Änderung erkannt, 1 = Timeout oder Fehler
@@ -488,8 +494,8 @@ wait_for_disc_change() {
     local initial_drive_closed=false
     local initial_disc_present=false
     
-    is_drive_closed && initial_drive_closed=true
-    is_disc_inserted && initial_disc_present=true
+    drivestat_drive_closed && initial_drive_closed=true
+    drivestat_disc_insert && initial_disc_present=true
     
     while true; do
         sleep "$check_interval"
@@ -499,8 +505,8 @@ wait_for_disc_change() {
         local current_drive_closed=false
         local current_disc_present=false
         
-        is_drive_closed && current_drive_closed=true
-        is_disc_inserted && current_disc_present=true
+        drivestat_drive_closed && current_drive_closed=true
+        drivestat_disc_insert && current_disc_present=true
         
         # Änderung erkannt?
         if [[ "$initial_drive_closed" != "$current_drive_closed" ]] || [[ "$initial_disc_present" != "$current_disc_present" ]]; then
@@ -521,7 +527,7 @@ wait_for_disc_ready() {
     sleep "$wait_time"
     
     # Verifiziere dass Medium immer noch da ist
-    if is_disc_inserted; then
+    if drivestat_disc_insert; then
         return 0
     else
         return 1
@@ -565,7 +571,7 @@ wait_for_medium_change() {
         elapsed=$((elapsed + poll_interval))
         
         # Prüfe auf neues Medium: Analysiere Disc neu
-        if is_disc_inserted; then
+        if drivestat_disc_insert; then
             init_disc_info 2>/dev/null  # Setzt disc_identifier
             new_identifier=$(discinfo_get_identifier 2>/dev/null || echo "::")
             
@@ -618,7 +624,7 @@ wait_for_medium_change_lxc_safe() {
         elapsed=$((elapsed + poll_interval))
         
         # Prüfe ob überhaupt eine Disk eingelegt ist
-        if ! is_disc_inserted; then
+        if ! drivestat_disc_insert; then
             # Keine Disk → weiter warten
             if (( elapsed % 30 == 0 )); then
                 log_info "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"

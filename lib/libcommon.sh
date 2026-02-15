@@ -5,7 +5,7 @@
 # Filepath: lib/libcommon.sh
 #
 # Beschreibung:
-#   Gemeinsame Kern-Funktionen f�r alle Module
+#   Gemeinsame Kern-Funktionen für alle Module
 #   - common_copy_data_disc(), common_copy_data_disc_ddrescue()
 #   - common_cleanup_disc_operation(), common_monitor_copy_progress()
 #   - Fehler-Tracking: common_register_disc_failure(), common_clear_disc_failures()
@@ -14,9 +14,9 @@
 #            init_copy_log(), finish_copy_log() sind in liblogging.sh
 #
 # -----------------------------------------------------------------------------
-# Dependencies: liblogging, libfolders (f�r Core-Funktionen)
+# Dependencies: liblogging, libfolders (für Core-Funktionen)
 # -----------------------------------------------------------------------------
-# Author: D.G�tze
+# Author: D.Gütze
 # Version: 1.3.0
 # Last Change: 2026-02-07
 # =============================================================================
@@ -28,12 +28,12 @@
 # ===========================================================================
 # common_check_dependencies
 # ---------------------------------------------------------------------------
-# Funktion.: Pr�fe alle Framework Abh�ngigkeiten (Modul-Dateien, die Modul
-# .........  Ausgabe Ordner, kritische und optionale Software f�r die
-# .........  Ausf�hrung des Tool), l�dt bei erfolgreicher Pr�fung die
-# .........  Sprachdatei f�r das Modul.
+# Funktion.: Prüfe alle Framework Abhängigkeiten (Modul-Dateien, die Modul
+# .........  Ausgabe Ordner, kritische und optionale Software für die
+# .........  Ausführung des Tool), lädt bei erfolgreicher Prüfung die
+# .........  Sprachdatei für das Modul.
 # Parameter: keine
-# Rückgabe.: 0 = Verfügbar (Framework nutzbar)
+# Rückgabe.: 0 = verfügbar (Framework nutzbar)
 # .........  1 = Nicht verfügbar (Framework deaktiviert)
 # Extras...: Sollte so früh wie möglich nach dem Start geprüft werden, da
 # .........  andere Module ggf. auf dieses Framework angewiesen sind. Am
@@ -64,15 +64,15 @@ common_check_dependencies() {
 # common_copy_data_disc
 # ---------------------------------------------------------------------------
 # Funktion.: Kopiert Daten-Discs oder alle anderen Disc-Tpen ohne eigenes 
-# .........  Kopiermodul (Audio-CD, DVD-Video, Blu-ray Video). W�hlt die 
-# .........  beste verf�gbare Methode basierend auf Fehler-Historie.
+# .........  Kopiermodul (Audio-CD, DVD-Video, Blu-ray Video). Wühlt die 
+# .........  beste verfügbare Methode basierend auf Fehler-Historie.
 # Parameter: keine (nutzt globale Variablen: disc_label, disc_type, iso_filename)
-# R�ckgabe.: 0 = Erfolg
+# Rückgabe.: 0 = Erfolg
 # .........  1 = Fehler
 # Extras...: Nutzt common_copy_data_disc_ddrescue() und common_copy_data_disc_dd()
 # ===========================================================================
 common_copy_data_disc() {
-    #-- Pr�fe Disc-Typ: Audio-CDs k�nnen nicht als ISO kopiert werden -------
+    #-- Prüfe Disc-Typ: Audio-CDs können nicht als ISO kopiert werden -------
     local disc_type="$(discinfo_get_type)"
     if [[ "$disc_type" == "audio-cd" ]]; then
         log_error "$MSG_ERROR_AUDIO_CD_AS_DATA"
@@ -81,10 +81,10 @@ common_copy_data_disc() {
         return 1
     fi
     
-    #-- Pr�fe ob diese Disc bereits fehlgeschlagen ist ----------------------
+    #-- Prüfe ob diese Disc bereits fehlgeschlagen ist ----------------------
     local failure_count=$(common_get_disc_failure_count)
     
-    #-- Pr�fe ob ddrescue vorhanden, es ist optional ------------------------
+    #-- Prüfe ob ddrescue vorhanden, es ist optional ------------------------
     if command -v ddrescue >/dev/null 2>&1 && [[ $failure_count -eq 0 ]]; then
         log_info "$MSG_INFO_COPY_WITH_DDRESCUE"
         #-- 1. Versuch: ddrescue verwenden ----------------------------------
@@ -100,7 +100,7 @@ common_copy_data_disc() {
     #-- 2. Versuch: dd verwenden --------------------------------------------
     log_info "$MSG_INFO_COPY_WITH_DD"
     if common_copy_data_disc_dd; then
-        #-- Erfolg - l�sche Fehler-Historie falls vorhanden -----------------
+        #-- Erfolg - lüsche Fehler-Historie falls vorhanden -----------------
         [[ $failure_count -gt 0 ]] && common_clear_disc_failures
         return 0
     else
@@ -118,10 +118,10 @@ common_copy_data_disc() {
 # .........  Nutzt vorberechnete DISC_INFO-Werte und zeitgesteuertes
 # .........  Fortschritts-Monitoring (alle 60 Sekunden).
 # Parameter: keine (nutzt DISC_INFO Array)
-# R�ckgabe.: 0 = Erfolg
+# Rückgabe.: 0 = Erfolg
 # .........  1 = Fehler (Speicherplatz, Kopiervorgang fehlgeschlagen)
 # Extras...: Schneller und robuster als dd, erfordert ddrescue-Installation
-# .........  Erstellt Map-Datei f�r Wiederherstellung bei Abbruch
+# .........  Erstellt Map-Datei für Wiederherstellung bei Abbruch
 # .........  Sendet Fortschritt via API, MQTT und systemd-notify
 # ===========================================================================
 common_copy_data_disc_ddrescue() {
@@ -132,7 +132,7 @@ common_copy_data_disc_ddrescue() {
     #-- Setze verwendete Kopiermethode --------------------------------------
     discinfo_set_copy_method "ddrescue"
     
-    #-- Lese aus DISC_INFO Array die ben�tigten Werte -----------------------
+    #-- Lese aus DISC_INFO Array die benütigten Werte -----------------------
     local iso_filename=$(discinfo_get_iso_filename)
     local temp_pathname=$(discinfo_get_temp_pathname)
     local copy_log_filename=$(discinfo_get_log_filename)
@@ -140,21 +140,21 @@ common_copy_data_disc_ddrescue() {
     local block_size=$(discinfo_get_block_size)
     local total_bytes=$((size_mb * 1024 * 1024))
     
-    #-- ddrescue ben�tigt Map-Datei (im .temp Ordner, wird auto-gel�scht) ---
+    #-- ddrescue benütigt Map-Datei (im .temp Ordner, wird auto-gelüscht) ---
     local mapfile="${temp_pathname}/$(basename "${iso_filename}").mapfile"
     
-    #-- Speicherplatz Pr�fung (falls Gr��e bekannt) -------------------------    
+    #-- Speicherplatz Prüfung (falls Größe bekannt) -------------------------    
     if [[ $size_mb -gt 0 ]]; then
-        #-- Logge erkannte Disc-Gr��e ---------------------------------------
+        #-- Logge erkannte Disc-Größe ---------------------------------------
         log_copying "$MSG_ISO_VOLUME_DETECTED $(discinfo_get_size_sectors) $MSG_ISO_BLOCKS_SIZE 2048 $MSG_ISO_BYTES (${size_mb} $MSG_PROGRESS_MB)"
         
-        #-- Pr�fe Speicherplatz mit vorberechneter Gr��e (inkl. Overhead) ---
+        #-- Prüfe Speicherplatz mit vorberechneter Größe (inkl. Overhead) ---
         if ! systeminfo_check_disk_space "$(discinfo_get_estimated_size_mb)"; then
             return 1
         fi
     fi
     
-    #-- Starte ddrescue im Hintergrund (mit oder ohne Gr��enbeschr�nkung) ---
+    #-- Starte ddrescue im Hintergrund (mit oder ohne Größenbeschränkung) ---
     if [[ $total_bytes -gt 0 ]]; then
         ddrescue -b "${block_size:-2048}" -r "$DDRESCUE_RETRIES" -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
     else
@@ -162,14 +162,14 @@ common_copy_data_disc_ddrescue() {
     fi
     local ddrescue_pid=$!
     
-    #-- �berwache Fortschritt (alle 60 Sekunden) ----------------------------
+    #-- überwache Fortschritt (alle 60 Sekunden) ----------------------------
     common_monitor_copy_progress "$ddrescue_pid" "$total_bytes" "$iso_filename"
     
     #-- Warte auf ddrescue Prozess-Ende und hole Exit-Code ------------------
     wait "$ddrescue_pid"
     local ddrescue_exit=$?
     
-    #-- Pr�fe Ergebnis ------------------------------------------------------
+    #-- Prüfe Ergebnis ------------------------------------------------------
     if [[ $ddrescue_exit -eq 0 ]]; then
         log_copying "$MSG_DATA_DISC_SUCCESS_DDRESCUE"
         finish_copy_log
@@ -184,14 +184,14 @@ common_copy_data_disc_ddrescue() {
 # ===========================================================================
 # common_copy_data_disc_dd
 # ---------------------------------------------------------------------------
-# Funktion.: Kopiert Daten-Discs mit dd (Fallback-Methode, immer verf�gbar)
+# Funktion.: Kopiert Daten-Discs mit dd (Fallback-Methode, immer verfügbar)
 # .........  Nutzt vorberechnete DISC_INFO-Werte und zeitgesteuertes
 # .........  Fortschritts-Monitoring (alle 60 Sekunden).
 # Parameter: keine (nutzt DISC_INFO Array)
-# R�ckgabe.: 0 = Erfolg
+# Rückgabe.: 0 = Erfolg
 # .........  1 = Fehler (Speicherplatz, Kopiervorgang fehlgeschlagen)
-# Extras...: Langsamste Methode, aber immer verf�gbar (keine Abh�ngigkeiten)
-# .........  Unterst�tzt Kopieren mit/ohne Gr��enangabe
+# Extras...: Langsamste Methode, aber immer verfügbar (keine Abhängigkeiten)
+# .........  Unterstützt Kopieren mit/ohne Größenangabe
 # .........  Sendet Fortschritt via API, MQTT und systemd-notify
 # ===========================================================================
 common_copy_data_disc_dd() {
@@ -202,7 +202,7 @@ common_copy_data_disc_dd() {
     #-- Setze verwendete Kopiermethode --------------------------------------
     discinfo_set_copy_method "dd"
 
-    #-- Lese aus DISC_INFO Array die ben�tigten Werte -----------------------
+    #-- Lese aus DISC_INFO Array die benütigten Werte -----------------------
     local iso_filename=$(discinfo_get_iso_filename)
     local copy_log_filename=$(discinfo_get_log_filename)
     local size_mb=$(discinfo_get_size_mb)
@@ -210,12 +210,12 @@ common_copy_data_disc_dd() {
     local block_size=$(discinfo_get_block_size)
     local total_bytes=$((size_mb * 1024 * 1024))
 
-    #-- Speicherplatz Pr�fung (falls Gr��e bekannt) -------------------------    
+    #-- Speicherplatz Prüfung (falls Größe bekannt) -------------------------    
     if [[ $size_mb -gt 0 ]]; then
-        #-- Logge erkannte Disc-Gr��e ---------------------------------------
+        #-- Logge erkannte Disc-Größe ---------------------------------------
         log_copying "$MSG_ISO_VOLUME_DETECTED $volume_size $MSG_ISO_BLOCKS_SIZE $block_size $MSG_ISO_BYTES (${size_mb} $MSG_PROGRESS_MB)"
         
-        #-- Pr�fe Speicherplatz mit vorberechneter Gr��e (inkl. Overhead) ---
+        #-- Prüfe Speicherplatz mit vorberechneter Größe (inkl. Overhead) ---
         if ! systeminfo_check_disk_space "$(discinfo_get_estimated_size_mb)"; then
             return 1
         fi
@@ -229,14 +229,14 @@ common_copy_data_disc_dd() {
     fi
     local dd_pid=$!
     
-    #-- �berwache Fortschritt (alle 60 Sekunden) ----------------------------
+    #-- überwache Fortschritt (alle 60 Sekunden) ----------------------------
     common_monitor_copy_progress "$dd_pid" "$total_bytes" "$iso_filename"
     
     #-- Warte auf dd Prozess-Ende und hole Exit-Code ------------------------
     wait "$dd_pid"
     local dd_exit=$?
     
-    #-- Pr�fe Ergebnis ------------------------------------------------------
+    #-- Prüfe Ergebnis ------------------------------------------------------
     if [[ $dd_exit -eq 0 ]]; then
         finish_copy_log
         return 0
@@ -248,18 +248,18 @@ common_copy_data_disc_dd() {
 
 
 # ============================================================================
-# FEHLER-TRACKING SYSTEM (f�r alle Disc-Typen)
+# FEHLER-TRACKING SYSTEM (für alle Disc-Typen)
 # ============================================================================
 
 # ===========================================================================
 # common_get_disc_failure_count
 # ---------------------------------------------------------------------------
-# Funktion.: Pr�ft ob Disc bereits fehlgeschlagen ist und gibt die Anzahl
-# .........  der bisherigen Fehlversuche zur�ck.
+# Funktion.: Prüft ob Disc bereits fehlgeschlagen ist und gibt die Anzahl
+# .........  der bisherigen Fehlversuche zurück.
 # Parameter: $1 = Disc-Identifier (deprecaded, nutzt discinfo_get_identifier())
-# R�ckgabe.: Anzahl der Fehlversuche (0-N) via echo
+# Rückgabe.: Anzahl der Fehlversuche (0-N) via echo
 # .........  Return-Code: 0 = Erfolg (Anzahl ermittelt)
-# .........  ............ 1 = Fehler (Datei nicht verf�gbar, Fallback auf 0)
+# .........  ............ 1 = Fehler (Datei nicht verfügbar, Fallback auf 0)
 # Extras...: Nutzt INI-Format mit disc_type als Section ([data], [audio], etc.)
 # .........  Format: UUID:LABEL:SIZE_MB=timestamp|method|retry_count
 # ===========================================================================
@@ -281,7 +281,7 @@ common_get_disc_failure_count() {
     #-- Lese Wert aus INI (Format: timestamp|method|retry_count) ------------
     local value=$(config_get_value_ini "failed_discs" "$disc_type" "$identifier")
     
-    #-- Pr�fe ob Eintrag vorhanden ist --------------------------------------
+    #-- Prüfe ob Eintrag vorhanden ist --------------------------------------
     if [[ -n "$value" ]]; then
         #-- Extrahiere retry_count (3. Feld) --------------------------------
         echo "$value" | cut -d'|' -f3
@@ -299,8 +299,8 @@ common_get_disc_failure_count() {
 # Funktion.: Registriert einen Disc-Fehlschlag im INI-basierten Error-
 # .........  Tracking-System und inkrementiert automatisch den retry_count.
 # Parameter: $1 = Disc-Identifier (deprecaded, nutzt discinfo_get_identifier())
-# R�ckgabe.: 0 = Erfolg (Fehler registriert)
-# .........  1 = Fehler (Datei nicht verf�gbar)
+# Rückgabe.: 0 = Erfolg (Fehler registriert)
+# .........  1 = Fehler (Datei nicht verfügbar)
 # Extras...: Format: UUID:LABEL:SIZE_MB=timestamp|method|retry_count
 # .........  Methode wird aus DISC_INFO[copy_method] gelesen
 # .........  Nutzt INI-Format mit disc_type als Section 
@@ -333,10 +333,10 @@ common_register_disc_failure() {
 # Funktion.: Entfernt Disc-Fehlschlag aus dem Error-Tracking-System nach
 # .........  erfolgreichem Kopieren.
 # Parameter: keine (nutzt DISC_INFO Array)
-# R�ckgabe.: 0 = Erfolg (Eintrag gel�scht oder nicht vorhanden)
-# .........  1 = Fehler (Datei nicht verf�gbar)
-# Extras...: Loggt nur wenn tats�chlich ein Eintrag gel�scht wurde
-# .........  Nutzt get_ini_value zur Existenzpr�fung vor dem L�schen
+# Rückgabe.: 0 = Erfolg (Eintrag gelüscht oder nicht vorhanden)
+# .........  1 = Fehler (Datei nicht verfügbar)
+# Extras...: Loggt nur wenn tatsüchlich ein Eintrag gelüscht wurde
+# .........  Nutzt get_ini_value zur Existenzprüfung vor dem löschen
 # ===========================================================================
 common_clear_disc_failures() {
     #-- Debug-Log Eintrag ---------------------------------------------------
@@ -349,11 +349,11 @@ common_clear_disc_failures() {
     local identifier=$(discinfo_get_identifier)
     local disc_type=$(discinfo_get_type)
     
-    #-- Pr�fe ob Eintrag existiert ------------------------------------------
+    #-- Prüfe ob Eintrag existiert ------------------------------------------
     local value=$(config_get_value_ini "failed_discs" "$disc_type" "$identifier")
     
     if [[ -n "$value" ]]; then
-        #-- L�sche existierenden Eintrag ------------------------------------
+        #-- Lüsche existierenden Eintrag ------------------------------------
         config_del_value_ini "failed_discs" "$disc_type" "$identifier"
         log_info "$MSG_INFO_FAILURE_HISTORY_CLEARED $identifier"
         return 0
@@ -371,13 +371,13 @@ common_clear_disc_failures() {
 # ===========================================================================
 # common_calculate_and_log_progress
 # ---------------------------------------------------------------------------
-# Funktion.: Berechnet und loggt Kopierfortschritt (zentral f�r alle Methoden)
+# Funktion.: Berechnet und loggt Kopierfortschritt (zentral für alle Methoden)
 # .........  Sendet Updates an API, MQTT und systemd-notify
 # Parameter: $1 = Aktuell kopierte Bytes
-# .........  $2 = Gesamtgr��e in Bytes (0 = unbekannt)
+# .........  $2 = GesamtGröße in Bytes (0 = unbekannt)
 # .........  $3 = Start-Zeit (Unix-Timestamp)
-# .........  $4 = Log-Pr�fix (z.B. "DATA", "DVD", "BLURAY")
-# R�ckgabe.: keine (setzt globale Variablen $percent und $eta)
+# .........  $4 = Log-Prüfix (z.B. "DATA", "DVD", "BLURAY")
+# Rückgabe.: keine (setzt globale Variablen $percent und $eta)
 # Extras...: Berechnet ETA basierend auf bisheriger Geschwindigkeit
 # .........  Loggt alle erforderlichen Informationen (Prozent, MB, ETA)
 # .........  API/MQTT/systemd Updates erfolgen automatisch
@@ -388,7 +388,7 @@ common_calculate_and_log_progress() {
     local start_time=$3
     local log_prefix=$4
     
-    # Konvertiere zu MB f�r Anzeige
+    # Konvertiere zu MB für Anzeige
     local current_mb=$((current_bytes / 1024 / 1024))
     local total_mb=$((total_bytes / 1024 / 1024))
     
@@ -396,12 +396,12 @@ common_calculate_and_log_progress() {
     percent=0
     eta="--:--:--"
     
-    # Berechne Prozent und ETA wenn m�glich
+    # Berechne Prozent und ETA wenn müglich
     if [[ $total_bytes -gt 0 ]] && [[ $current_bytes -gt 0 ]]; then
         percent=$((current_bytes * 100 / total_bytes))
         if [[ $percent -gt 100 ]]; then percent=100; fi
         
-        # Berechne gesch�tzte Restzeit
+        # Berechne geschützte Restzeit
         local current_time=$(date +%s)
         local total_elapsed=$((current_time - start_time))
         if [[ $percent -gt 0 ]]; then
@@ -413,7 +413,7 @@ common_calculate_and_log_progress() {
             eta=$(printf "%02d:%02d:%02d" $hours $minutes $seconds)
         fi
         
-        # Log-Nachricht mit Pr�fix
+        # Log-Nachricht mit Prüfix
         log_info "${log_prefix} $MSG_PROGRESS: ${current_mb} $MSG_PROGRESS_MB $MSG_PROGRESS_OF ${total_mb} $MSG_PROGRESS_MB (${percent}%) - $MSG_REMAINING: ${eta}"
         
         # API: Fortschritt senden (IMMER)
@@ -426,12 +426,12 @@ common_calculate_and_log_progress() {
             mqtt_publish_progress "$percent" "$current_mb" "$total_mb" "$eta"
         fi
         
-        # systemd-notify: Status aktualisieren (wenn verf�gbar)
+        # systemd-notify: Status aktualisieren (wenn verfügbar)
         if command -v systemd-notify >/dev/null 2>&1; then
             systemd-notify --status="${log_prefix}: ${current_mb} MB / ${total_mb} MB (${percent}%)" 2>/dev/null
         fi
     else
-        # Fallback: Nur kopierte Gr��e
+        # Fallback: Nur kopierte Größe
         log_info "${log_prefix} $MSG_PROGRESS: ${current_mb} $MSG_PROGRESS_MB $MSG_COPIED"
     fi
 }
@@ -439,15 +439,15 @@ common_calculate_and_log_progress() {
 # ===========================================================================
 # common_monitor_copy_progress
 # ---------------------------------------------------------------------------
-# Funktion.: �berwacht Kopierfortschritt f�r dd/ddrescue im Hintergrund
+# Funktion.: überwacht Kopierfortschritt für dd/ddrescue im Hintergrund
 # .........  Nutzt zeitgesteuertes Monitoring (alle 60 Sekunden)
 # Parameter: $1 = PID des Kopierprozesses
-# .........  $2 = Gesamtgr��e in Bytes (f�r Prozentberechnung)
-# .........  $3 = ISO-Dateiname (zur Gr��enermittlung via stat)
-# R�ckgabe.: keine (blockiert bis Prozess beendet ist)
-# Extras...: Nutzt common_calculate_and_log_progress() f�r Fortschrittsberechnung
+# .........  $2 = GesamtGröße in Bytes (für Prozentberechnung)
+# .........  $3 = ISO-Dateiname (zur Größenermittlung via stat)
+# Rückgabe.: keine (blockiert bis Prozess beendet ist)
+# Extras...: Nutzt common_calculate_and_log_progress() für Fortschrittsberechnung
 # .........  Konsistent mit Web-UI (60 Sekunden Intervall)
-# .........  Macht KEIN wait - aufrufende Funktion muss wait ausf�hren!
+# .........  Macht KEIN wait - aufrufende Funktion muss wait ausführen!
 # ===========================================================================
 common_monitor_copy_progress() {
     local copy_pid=$1
@@ -490,12 +490,12 @@ common_monitor_copy_progress() {
 # common_eject_and_wait
 # ---------------------------------------------------------------------------
 # Funktion.: Wirft Disc aus und wartet optional auf Medium-Wechsel
-# .........  (Container-aware mit LXC-Unterst�tzung)
+# .........  (Container-aware mit LXC-Unterstützung)
 # Parameter: $1 = wait_for_new_media (optional: "true"/"false", default: "false")
 # .........  Falls true, wartet Funktion auf neues Medium (nur bei Erfolg)
-# R�ckgabe.: 0 = Erfolg (Disc ausgeworfen)
-# .........  1 = Fehler (Device nicht verf�gbar oder Eject fehlgeschlagen)
-# Extras...: Nutzt wait_for_medium_change() f�r Container-Umgebungen
+# Rückgabe.: 0 = Erfolg (Disc ausgeworfen)
+# .........  1 = Fehler (Device nicht verfügbar oder Eject fehlgeschlagen)
+# Extras...: Nutzt wait_for_medium_change() für Container-Umgebungen
 # .........  Bei Success wartet Funktion bis neues Medium eingelegt wurde
 # ===========================================================================
 common_eject_and_wait() {
@@ -504,7 +504,7 @@ common_eject_and_wait() {
     
     device=$(discinfo_get_device)
     
-    # Pr�fe ob Device verf�gbar ist
+    # Prüfe ob Device verfügbar ist
     if [[ ! -b "$device" ]]; then
         log_debug "$MSG_DEBUG_NO_DEVICE_TO_EJECT $device"
         return 1
@@ -534,21 +534,21 @@ common_eject_and_wait() {
 # ===========================================================================
 # common_cleanup_disc_operation
 # ---------------------------------------------------------------------------
-# Funktion.: R�umt Ressourcen nach Disc-Operation auf (Temp-Verzeichnis,
-# .........  unvollst�ndige ISO-Dateien, DISC_INFO Reset)
+# Funktion.: Rüumt Ressourcen nach Disc-Operation auf (Temp-Verzeichnis,
+# .........  unvollständige ISO-Dateien, DISC_INFO Reset)
 # Parameter: $1 = Status (optional: "success", "failure", "unknown", "interrupted")
-# .........  Falls nicht �bergeben, wird Status aus Fehler-Tracking ermittelt
-# R�ckgabe.: keine
+# .........  Falls nicht übergeben, wird Status aus Fehler-Tracking ermittelt
+# Rückgabe.: keine
 # Extras...: Wirft Disc NICHT aus (siehe common_eject_and_wait)
 # .........  Unmountet Temp-Verzeichnisse automatisch
-# .........  L�scht ISO-Dateien nur bei Status "failure"
-# Hinweis..: ISO-Existenz ist KEIN Erfolgsindikator (unvollst�ndige Dateien!)
+# .........  Lüscht ISO-Dateien nur bei Status "failure"
+# Hinweis..: ISO-Existenz ist KEIN Erfolgsindikator (unvollständige Dateien!)
 # ===========================================================================
 common_cleanup_disc_operation() {
     local status="${1}"
     local temp_dir iso_file
     
-    # Ermittle Status automatisch wenn nicht �bergeben
+    # Ermittle Status automatisch wenn nicht übergeben
     if [[ -z "$status" ]]; then
         if [[ $(common_get_disc_failure_count) -gt 0 ]]; then
             status="failure"
@@ -559,7 +559,7 @@ common_cleanup_disc_operation() {
         fi
     fi
     
-    # 1. Temp-Verzeichnis aufr�umen (falls vorhanden)
+    # 1. Temp-Verzeichnis aufrüumen (falls vorhanden)
     temp_dir=$(discinfo_get_temp_pathname)
     if [[ -n "$temp_dir" ]] && [[ -d "$temp_dir" ]]; then
         # Unmount alle eventuellen Mountpoints im Temp-Verzeichnis
@@ -578,7 +578,7 @@ common_cleanup_disc_operation() {
         # Gib dem System kurz Zeit zum Unmounten
         sleep 1
         
-        # L�sche Temp-Verzeichnis (mit force)
+        # Lüsche Temp-Verzeichnis (mit force)
         rm -rf "$temp_dir" 2>/dev/null || {
             # Fallback: Versuche mit sudo falls Permission-Fehler
             log_error "$MSG_WARNING_TEMP_DIR_DELETE_FAILED"
@@ -586,22 +586,22 @@ common_cleanup_disc_operation() {
         }
     fi
     
-    # 2. Unvollst�ndige ISO-Datei l�schen (nur bei Fehler)
+    # 2. unvollständige ISO-Datei löschen (nur bei Fehler)
     if [[ "$status" == "failure" ]]; then
         iso_file=$(discinfo_get_iso_filename)
         [[ -n "$iso_file" ]] && [[ -f "$iso_file" ]] && rm -f "$iso_file"
     fi
     
-    # 3. Variablen zur�cksetzen (immer)
+    # 3. Variablen zurücksetzen (immer)
     discinfo_init
 }
 
 # ===========================================================================
 # common_collect_software_info
 # ---------------------------------------------------------------------------
-# Funktion.: Sammelt Informationen �ber installierte Core-Software
+# Funktion.: Sammelt Informationen über installierte Core-Software
 # Parameter: keine
-# R�ckgabe.: Schreibt JSON-Datei mit Software-Informationen
+# Rückgabe.: Schreibt JSON-Datei mit Software-Informationen
 # ===========================================================================
 common_collect_software_info() {
     log_debug "COMMON: Sammle Software-Informationen..."
@@ -635,7 +635,7 @@ common_collect_software_info() {
         log_debug "COMMON: Software-Informationen gespeichert in $output_file"
         return 0
     else
-        log_error "COMMON: systeminfo_check_software_list nicht verf�gbar"
+        log_error "COMMON: systeminfo_check_software_list nicht verfügbar"
         return 1
     fi
 }
@@ -643,9 +643,9 @@ common_collect_software_info() {
 # ===========================================================================
 # common_get_software_info
 # ---------------------------------------------------------------------------
-# Funktion.: Gibt Software-Informationen als JSON zur�ck
+# Funktion.: Gibt Software-Informationen als JSON zurück
 # Parameter: keine
-# R�ckgabe.: JSON-String mit Software-Informationen
+# Rückgabe.: JSON-String mit Software-Informationen
 # ===========================================================================
 common_get_software_info() {
     local cache_file
