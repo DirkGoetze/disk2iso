@@ -19,5 +19,5 @@ readonly MSG_INFO_REPAIR_INSTALLATION="Repare la instalación con: sudo"
 # LECTURA/ESCRITURA API
 # ============================================================================
 
-readonly MSG_DEBUG_API_FILE_NOT_FOUND="api_read_json: archivo no encontrado"
-readonly MSG_ERROR_API_READ_FAILED="api_read_json: Error al leer"
+readonly MSG_DEBUG_API_FILE_NOT_FOUND="api_get_section_json: archivo no encontrado"
+readonly MSG_ERROR_API_READ_FAILED="api_get_section_json: Error al leer"

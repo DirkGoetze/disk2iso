@@ -19,5 +19,5 @@ readonly MSG_INFO_REPAIR_INSTALLATION="Bitte reparieren Sie die Installation mit
 # API READ/WRITE
 # ============================================================================
 
-readonly MSG_DEBUG_API_FILE_NOT_FOUND="api_read_json: ${filename} nicht gefunden"
-readonly MSG_ERROR_API_READ_FAILED="api_read_json: Fehler beim Lesen von"
+readonly MSG_DEBUG_API_FILE_NOT_FOUND="api_get_section_json: ${filename} nicht gefunden"
+readonly MSG_ERROR_API_READ_FAILED="api_get_section_json: Fehler beim Lesen von"

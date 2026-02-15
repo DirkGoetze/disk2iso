@@ -19,5 +19,5 @@ readonly MSG_INFO_REPAIR_INSTALLATION="Veuillez réparer l'installation avec: su
 # LECTURE/ÉCRITURE API
 # ============================================================================
 
-readonly MSG_DEBUG_API_FILE_NOT_FOUND="api_read_json: fichier introuvable"
-readonly MSG_ERROR_API_READ_FAILED="api_read_json: Erreur de lecture de"
+readonly MSG_DEBUG_API_FILE_NOT_FOUND="api_get_section_json: fichier introuvable"
+readonly MSG_ERROR_API_READ_FAILED="api_get_section_json: Erreur de lecture de"

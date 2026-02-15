@@ -349,6 +349,59 @@ get_module_conf_path() {
     fi
 }
 
+# ===========================================================================
+# get_module_api_path
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt vollständigen Pfad zur Modul-API-Datei (Self-Healing)
+# Parameter: $1 = module_name (z.B. "tmdb", "audio", "metadata")
+# Rückgabe.: 0 = Datei existiert/wurde erstellt (Pfad in Install_DIR/api/)
+#            1 = Fehler (Parameter fehlt oder Erstellung fehlgeschlagen)
+# Beispiel.: local api_file
+#            api_file=$(get_module_api_path "tmdb") || return 1
+#            → "/opt/disk2iso/api/tmdb.json"
+# Extras...: Erstellt Datei automatisch falls nicht vorhanden (Heile dich selbst)
+# Nutzt....: folders_get_api_dir() aus libfolders.sh
+# ===========================================================================
+get_module_api_path() {
+    local module_name="$1"
+    
+    if [[ -z "$module_name" ]]; then
+        log_error "Module name missing" 2>/dev/null || echo "ERROR: Module name missing" >&2
+        return 1
+    fi
+    
+    local api_dir
+    api_dir=$(folders_get_api_dir) || {
+        log_error "folders_get_api_dir failed" 2>/dev/null || echo "ERROR: folders_get_api_dir failed" >&2
+        return 1
+    }
+    
+    local api_file="${api_dir}/${module_name}.json"
+    
+    # Prüfe ob Datei bereits existiert
+    if [[ -f "$api_file" ]]; then
+        echo "$api_file"
+        return 0
+    fi
+    
+    # Erstelle Datei mit JSON-Header (Self-Healing)
+    log_debug "Creating missing JSON file: $api_file" 2>/dev/null
+    {
+        echo "# Module API-File: ${module_name}.json"
+        echo "# Auto-generated on $(date '+%Y-%m-%d %H:%M:%S')"
+        echo ""
+    } > "$api_file"
+    
+    if [[ $? -eq 0 ]] && [[ -f "$api_file" ]]; then
+        log_debug "File created successfully: $api_file" 2>/dev/null
+        echo "$api_file"
+        return 0
+    else
+        log_error "File creation failed: $api_file" 2>/dev/null || echo "ERROR: File creation failed" >&2
+        return 1
+    fi
+}
+
 # ============================================================================
 # FILE PATH GETTER (INSTALL_DIR-BASED)
 # ============================================================================

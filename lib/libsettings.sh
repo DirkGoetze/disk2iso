@@ -9,7 +9,6 @@
 #   Verwaltet Settings in drei Formaten:
 #   - .conf Files (disk2iso.conf) - Core-Settings im bash Key=Value Format
 #   - .ini Files (Modul-Settings) - INI Format mit [sections]
-#   - .json Files (API-Daten) - JSON Format für status.json, progress.json
 #
 #
 # -----------------------------------------------------------------------------
@@ -440,9 +439,9 @@ settings_del_value_conf() {
 # ---------------------------------------------------------------------------
 # Funktion.: Lese einzelnen Wert aus .ini Datei (KERN-IMPLEMENTIERUNG)
 # Parameter: $1 = module (Modulname ohne Suffix, z.B. "audio")
-#            $2 = section (z.B. "dependencies")
-#            $3 = key (z.B. "optional")
-#            $4 = default (optional, Fallback wenn Key nicht gefunden)
+# .........  $2 = section (z.B. "dependencies")
+# .........  $3 = key (z.B. "optional")
+# .........  $4 = default (optional, Fallback wenn Key nicht gefunden)
 # Rückgabe.: 0 = Erfolg (Wert oder Default), 1 = Fehler (Key fehlt, kein Default)
 # Ausgabe..: Value (stdout)
 # Beispiel.: tools=$(settings_get_value_ini "audio" "dependencies" "optional" "")
@@ -1009,178 +1008,6 @@ settings_count_section_entries_ini() {
     ' "$filepath")
     
     echo "$count"
-}
-
-# ============================================================================
-# UNIFIED SETTINGS API - JSON OPERATIONS
-# ============================================================================
-# JSON-Dateien für API-Status und Metadaten (api/ Verzeichnis)
-# Beispiel: api/status.json, api/progress.json
-
-# ===========================================================================
-# settings_get_value_json
-# ---------------------------------------------------------------------------
-# Funktion.: Lese einzelnen Wert aus JSON-Datei
-# Parameter: $1 = json_file (Dateiname ohne Pfad, z.B. "status")
-#            $2 = json_path (jq-kompatibel, z.B. ".disc_type" oder ".metadata.title")
-#            $3 = default (optional, Fallback wenn Key nicht gefunden)
-# Rückgabe.: 0 = Erfolg (Wert oder Default), 1 = Fehler (Key fehlt, kein Default)
-# Ausgabe..: Value (stdout, als JSON-String)
-# Beispiel.: disc_type=$(settings_get_value_json "status" ".disc_type" "unknown")
-# Hinweis..: Benötigt jq (wird bei Dependency-Check validiert)
-# ===========================================================================
-settings_get_value_json() {
-    local json_file="$1"
-    local json_path="$2"
-    local default="${3:-}"
-    
-    # Validierung
-    if [[ -z "$json_file" ]]; then
-        log_error "$MSG_SETTINGS_JSON_FILENAME_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_FILENAME_MISSING" >&2
-        return 1
-    fi
-    
-    if [[ -z "$json_path" ]]; then
-        log_error "$MSG_SETTINGS_JSON_PATH_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_PATH_MISSING" >&2
-        return 1
-    fi
-    
-    # Pfad-Resolution: api/${json_file}.json
-    local filepath="${SCRIPT_DIR}/api/${json_file}.json"
-    
-    # Prüfe ob Datei existiert
-    if [[ ! -f "$filepath" ]]; then
-        if [[ -n "$default" ]]; then
-            echo "$default"
-            return 0
-        fi
-        log_error "$MSG_SETTINGS_JSON_FILE_NOT_FOUND: $filepath" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_FILE_NOT_FOUND" >&2
-        return 1
-    fi
-    
-    # Prüfe ob jq verfügbar ist
-    if ! command -v jq &>/dev/null; then
-        log_error "$MSG_SETTINGS_JQ_NOT_AVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JQ_NOT_AVAILABLE" >&2
-        return 1
-    fi
-    
-    # Lese Wert mit jq
-    local value
-    value=$(jq -r "${json_path}" "$filepath" 2>/dev/null)
-    
-    # Wert gefunden oder Default nutzen
-    if [[ -n "$value" ]] && [[ "$value" != "null" ]]; then
-        echo "$value"
-        return 0
-    elif [[ -n "$default" ]]; then
-        echo "$default"
-        return 0
-    else
-        return 1
-    fi
-}
-
-# ===========================================================================
-# settings_set_value_json
-# ---------------------------------------------------------------------------
-# Funktion.: Schreibe einzelnen Wert in JSON-Datei
-# Parameter: $1 = json_file (Dateiname ohne Pfad, z.B. "status")
-#            $2 = json_path (jq-kompatibel, z.B. ".disc_type" oder ".metadata.title")
-#            $3 = value (String, Number oder Boolean)
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: settings_set_value_json "status" ".disc_type" "audio-cd"
-#            settings_set_value_json "progress" ".percentage" "75"
-# Hinweis..: Erstellt Datei falls nicht vorhanden, erstellt verschachtelte Pfade
-# ===========================================================================
-settings_set_value_json() {
-    local json_file="$1"
-    local json_path="$2"
-    local value="$3"
-    
-    # Validierung
-    if [[ -z "$json_file" ]]; then
-        log_error "$MSG_SETTINGS_JSON_FILENAME_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_FILENAME_MISSING" >&2
-        return 1
-    fi
-    
-    if [[ -z "$json_path" ]]; then
-        log_error "$MSG_SETTINGS_JSON_PATH_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_PATH_MISSING" >&2
-        return 1
-    fi
-    
-    # Pfad-Resolution: api/${json_file}.json
-    local filepath="$${SCRIPT_DIR}/api/${json_file}.json"
-    
-    # Prüfe ob jq verfügbar ist
-    if ! command -v jq &>/dev/null; then
-        log_error "$MSG_SETTINGS_JQ_NOT_AVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JQ_NOT_AVAILABLE" >&2
-        return 1
-    fi
-    
-    # Erstelle Datei falls nicht vorhanden
-    if [[ ! -f "$filepath" ]]; then
-        echo '{}' > "$filepath"
-    fi
-    
-    # Type Detection für JSON
-    local json_value
-    if [[ "$value" =~ ^-?[0-9]+$ ]]; then
-        # Integer - ohne Quotes
-        json_value="$value"
-    elif [[ "$value" =~ ^(true|false)$ ]]; then
-        # Boolean - ohne Quotes
-        json_value="$value"
-    else
-        # String - mit Quotes (jq escaped automatisch)
-        json_value="\"$value\""
-    fi
-    
-    # Schreibe Wert mit jq (atomic write)
-    jq "${json_path} = ${json_value}" "$filepath" > "${filepath}.tmp" && mv "${filepath}.tmp" "$filepath"
-    return $?
-}
-
-# ===========================================================================
-# settings_del_value_json
-# ---------------------------------------------------------------------------
-# Funktion.: Lösche einzelnen Key aus JSON-Datei
-# Parameter: $1 = json_file (Dateiname ohne Pfad, z.B. "status")
-#            $2 = json_path (jq-kompatibel, z.B. ".disc_type" oder ".metadata.title")
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beispiel.: settings_del_value_json "status" ".disc_type"
-# ===========================================================================
-settings_del_value_json() {
-    local json_file="$1"
-    local json_path="$2"
-    
-    # Validierung
-    if [[ -z "$json_file" ]]; then
-        log_error "$MSG_SETTINGS_JSON_FILENAME_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_FILENAME_MISSING" >&2
-        return 1
-    fi
-    
-    if [[ -z "$json_path" ]]; then
-        log_error "$MSG_SETTINGS_JSON_PATH_MISSING" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JSON_PATH_MISSING" >&2
-        return 1
-    fi
-    
-    # Pfad-Resolution: api/${json_file}.json
-    local filepath="${SCRIPT_DIR}/api/${json_file}.json"
-    
-    # Prüfe ob Datei existiert
-    if [[ ! -f "$filepath" ]]; then
-        return 0
-    fi
-    
-    # Prüfe ob jq verfügbar ist
-    if ! command -v jq &>/dev/null; then
-        log_error "$MSG_SETTINGS_JQ_NOT_AVAILABLE" 2>/dev/null || echo "ERROR: $MSG_SETTINGS_JQ_NOT_AVAILABLE" >&2
-        return 1
-    fi
-    
-    # Lösche Key mit jq (atomic write)
-    jq "del(${json_path})" "$filepath" > "${filepath}.tmp" && mv "${filepath}.tmp" "$filepath"
-    return $?
 }
 
 # ============================================================================

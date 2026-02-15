@@ -138,7 +138,7 @@ drivestat_get_drive() {
         
         # FINALE Prüfung: Block Device vorhanden?
         if [[ -b "$CD_DEVICE" ]]; then
-            drivestat_collect_drive_info  # Schreibe drive_info.json
+            drivestat_set_drive_info  # Schreibe drive_info.json
             return 0  # Erfolgreich: Device gefunden UND bereit
         else
             CD_DEVICE=""  # Reset bei Fehler
@@ -155,18 +155,43 @@ drivestat_get_drive() {
 # Funktion.: Lese Laufwerk-Informationen aus JSON
 # Parameter: keine
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Ausgabe..: JSON-String (stdout)
+# Ausgabe..: JSON-String 
 # ===========================================================================
 drivestat_get_drive_info() {
-    local api_dir=$(folders_get_api_dir) || return 1
-    local json_file="${api_dir}/drive_info.json"
-    
-    if [[ ! -f "$json_file" ]]; then
-        # Fallback: Sammle Daten wenn JSON nicht existiert
-        drivestat_collect_drive_info || return 1
+    #-- Lese API-Datei (Hardware-Sektion) ----------------------------------
+    local drive_info_json
+    drive_info_json=$(api_get_section_json "drivestat" ".hardware" "{}")  || {
+        log_error "DRIVESTAT: Keine Drive-Informationen gefunden"
+        #-- Lese die Informationen direkt aus (Fallback) --------------------
+        drive_info_json=$(drivestat_collect_drive_info) || return 1
+        drivestat_set_drive_info "$drive_info_json" || return 1
+    }
+    #-- Rückgabewert --------------------------------------------------------
+    echo "$drive_info_json"
+    return 0
+}
+
+# ===========================================================================
+# drivestat_set_drive_info()
+# ---------------------------------------------------------------------------
+# Funktion.: Schreibe Laufwerk-Informationen in JSON
+# Parameter: keine
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+drivestat_set_drive_info() {
+    #-- Parameter einlesen --------------------------------------------------
+    local drive_info_json="$1"
+
+    #-- Parameter prüfen ----------------------------------------------------
+    if [[ -z "$drive_info_json" ]]; then
+        drive_info_json=$(drivestat_collect_drive_info) || return 1
     fi
-    
-    cat "$json_file"
+
+    #-- Speichern der Informationen in API-Datei ----------------------------
+    api_set_section_json "drivestat" ".hardware" "$drive_info_json" || return 1
+
+    #-- Rückgabewert --------------------------------------------------------
+    return 0
 }
 
 # ===========================================================================
@@ -179,38 +204,40 @@ drivestat_get_drive_info() {
 # Schreibt.: api/drive_info.json
 # ===========================================================================
 drivestat_collect_drive_info() {
-    local optical_drive="none"
-    local drive_vendor="Unknown"
-    local drive_model="Unknown"
-    local drive_firmware="Unknown"
-    local drive_bus_type="unknown"
-    local drive_capabilities=""
-    
+    #-- Prüfe ob CD_DEVICE gültig ist und sammle Informationen --------------
     if [[ -b "$CD_DEVICE" ]]; then
+        #-- Varialen vorbereiten --------------------------------------------
+        local optical_drive="none"
         optical_drive="$CD_DEVICE"
         local device_basename=$(basename "$CD_DEVICE")
         local sysfs_path="/sys/block/${device_basename}/device"
         
-        # 1. Vendor (Hersteller)
+        #-- Diverse Informationen aus sysfs und udev sammeln ----------------
+        #-- 1. Vendor (Hersteller) ------------------------------------------
+        local drive_vendor="Unknown"
         if [[ -f "${sysfs_path}/vendor" ]]; then
             drive_vendor=$(cat "${sysfs_path}/vendor" 2>/dev/null | xargs)
         fi
         
-        # 2. Model
+        #-- 2. Model (Modellbezeichnung) ------------------------------------
+        local drive_model="Unknown"
         if [[ -f "${sysfs_path}/model" ]]; then
             drive_model=$(cat "${sysfs_path}/model" 2>/dev/null | xargs)
         fi
         
-        # 3. Firmware Version
+        #-- 3. Firmware Version ---------------------------------------------
+        local drive_firmware="Unknown"
         if [[ -f "${sysfs_path}/rev" ]]; then
             drive_firmware=$(cat "${sysfs_path}/rev" 2>/dev/null | xargs)
         fi
         
-        # 4. Bus Type (USB vs. SATA/ATA)
+        #-- 4. Bus Type (USB vs. SATA/ATA) ----------------------------------
+        local drive_bus_type="unknown"
         if command -v udevadm >/dev/null 2>&1; then
             drive_bus_type=$(udevadm info --query=property --name="$CD_DEVICE" 2>/dev/null | grep "^ID_BUS=" | cut -d'=' -f2)
         fi
-        # Fallback: Prüfe sysfs Pfad
+
+        #-- Fallback: Prüfe sysfs Pfad --------------------------------------
         if [[ -z "$drive_bus_type" || "$drive_bus_type" == "unknown" ]]; then
             local device_path=$(readlink -f "/sys/block/${device_basename}" 2>/dev/null)
             if [[ "$device_path" =~ usb ]]; then
@@ -220,7 +247,8 @@ drivestat_collect_drive_info() {
             fi
         fi
         
-        # 5. Capabilities (aus /proc/sys/dev/cdrom/info)
+        #-- 5. Capabilities (aus /proc/sys/dev/cdrom/info) ------------------
+        local drive_capabilities=""
         if [[ -f "/proc/sys/dev/cdrom/info" ]]; then
             local cdrom_info=$(cat /proc/sys/dev/cdrom/info 2>/dev/null)
             local caps=()
@@ -251,55 +279,34 @@ drivestat_collect_drive_info() {
         else
             drive_capabilities="CD/DVD"
         fi
-    fi
-    
-    # Schreibe alle Informationen in JSON
-    settings_set_value_json "drive_info" ".optical_drive" "$optical_drive" || return 1
-    settings_set_value_json "drive_info" ".vendor" "$drive_vendor" || return 1
-    settings_set_value_json "drive_info" ".model" "$drive_model" || return 1
-    settings_set_value_json "drive_info" ".firmware" "$drive_firmware" || return 1
-    settings_set_value_json "drive_info" ".bus_type" "$drive_bus_type" || return 1
-    settings_set_value_json "drive_info" ".capabilities" "$drive_capabilities" || return 1
-    
-    return 0
-}
 
-# ===========================================================================
-# drivestat_collect_software_info
-# ---------------------------------------------------------------------------
-# Funktion.: Sammelt Informationen über installierte Drive-Software
-# Parameter: keine
-# Rückgabe.: Schreibt JSON-Datei mit Software-Informationen
-# ===========================================================================
-drivestat_collect_software_info() {
-    log_debug "DRIVESTAT: Sammle Software-Informationen..."
-    
-    local ini_file="${INSTALL_DIR}/conf/libdrivestat.ini"
-    if [[ ! -f "$ini_file" ]]; then
-        log_error "DRIVESTAT: INI-Datei nicht gefunden: $ini_file"
-        return 1
-    fi
-    
-    local dependencies
-    dependencies=$(grep -A 10 "^\[dependencies\]" "$ini_file" | grep -E "^(external|optional)=" | cut -d'=' -f2 | tr '\n' ',' | sed 's/,$//')
-    
-    if [[ -z "$dependencies" ]]; then
-        log_debug "DRIVESTAT: Keine Dependencies in INI definiert"
-        return 0
-    fi
-    
-    if type -t systeminfo_check_software_list &>/dev/null; then
-        local json_result
-        json_result=$(systeminfo_check_software_list "$dependencies")
+        # Sammle Software-Informationen
+        local software_info
+        software_info=$(drivestat_collect_software_info 2>/dev/null) || software_info='[]'
+
+        #-- JSON-Objekt erstellen und ausgeben ------------------------------
+        jq -n \
+            --arg optical_drive "$optical_drive" \
+            --arg vendor "$drive_vendor" \
+            --arg model "$drive_model" \
+            --arg firmware "$drive_firmware" \
+            --arg bus_type "$drive_bus_type" \
+            --arg capabilities "$drive_capabilities" \
+            --argjson software "$software_info" \
+            '{
+                optical_drive: $optical_drive,
+                vendor: $vendor,
+                model: $model,
+                firmware: $firmware,
+                bus_type: $bus_type,
+                capabilities: $capabilities
+                software: $software
+            }'
         
-        local output_file
-        output_file="$(folders_get_api_dir)/drivestat_software_info.json"
-        echo "$json_result" > "$output_file"
-        
-        log_debug "DRIVESTAT: Software-Informationen gespeichert in $output_file"
         return 0
     else
-        log_error "DRIVESTAT: systeminfo_check_software_list nicht verfügbar"
+        #-- Leeres JSON bei fehlendem Device --------------------------------
+        echo "{}"
         return 1
     fi
 }
@@ -312,25 +319,96 @@ drivestat_collect_software_info() {
 # Rückgabe.: JSON-String mit Software-Informationen
 # ===========================================================================
 drivestat_get_software_info() {
-    local cache_file
-    cache_file="$(folders_get_api_dir)/drivestat_software_info.json"
-    
-    if [[ -f "$cache_file" ]]; then
-        local cache_age
-        cache_age=$(($(date +%s) - $(stat -c %Y "$cache_file" 2>/dev/null || echo 0)))
-        if [[ $cache_age -lt 3600 ]]; then
-            cat "$cache_file"
-            return 0
+    #-- Lese API-Datei (Software-Sektion) ----------------------------------
+    local software_info_json
+    software_info_json=$(api_get_section_json "drivestat" ".software" "[]")  || {
+        log_error "DRIVESTAT: Keine Software-Informationen gefunden"
+        #-- Lese die Informationen direkt aus (Fallback) --------------------
+        software_info_json=$(drivestat_collect_software_info) || return 1
+        drivestat_set_software_info "$software_info_json" || return 1
+    }
+    #-- Rückgabewert --------------------------------------------------------
+    echo "$software_info_json"
+    return 0
+}
+
+# ===========================================================================
+# drivestat_set_software_info()
+# ---------------------------------------------------------------------------
+# Funktion.: Speichert Software-Informationen in API (drivestat.software)
+# Parameter: $1 = JSON-String mit Software-Informationen (optional)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Hinweis..: Wenn kein Parameter übergeben wird, werden die Informationen
+# .........  automatisch gesammelt und gespeichert (Bequemlichkeitsfunktion)
+# ===========================================================================
+drivestat_set_software_info() {
+    #-- Parameter einlesen --------------------------------------------------
+    local software_json="$1"
+
+    #-- Parameter prüfen ----------------------------------------------------
+    if [[ -z "$software_json" ]]; then
+        software_json=$(drivestat_collect_software_info) || return 1
+    fi
+
+    #-- Speichern der Informationen in API-Datei ----------------------------
+    api_set_section_json "drivestat" ".software" "$software_json" || return 1
+
+    #-- Rückgabewert --------------------------------------------------------
+    return 0
+}
+
+# ===========================================================================
+# drivestat_collect_software_info
+# ---------------------------------------------------------------------------
+# Funktion.: Sammelt Informationen über installierte Drive-Software
+# Parameter: keine
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Ausgabe..: JSON-Array mit Software-Informationen
+# Hinweis..: Pure Function - sammelt nur Daten, schreibt nicht
+# ===========================================================================
+drivestat_collect_software_info() {
+    #-- Logge den Start der Sammlung ----------------------------------------
+    log_debug "Sammle Software-Informationen..."
+
+    #-- Prüfe ob systeminfo_check_software_list verfügbar ist ---------------
+    if ! type -t systeminfo_check_software_list &>/dev/null; then
+        log_error "systeminfo_check_software_list nicht verfügbar"
+        echo '[]'
+        return 1
+    fi
+
+    #-- Sammle externe Dependencies -----------------------------------------
+    local external_deps=""
+    local external_json='[]'
+    external_deps=$(settings_get_value_ini "drivestat" "dependencies" "external" 2>/dev/null) && {
+        if [[ -n "$external_deps" ]]; then
+            external_json=$(systeminfo_check_software_list "$external_deps" 2>/dev/null) || external_json='[]'
         fi
-    fi
-    
-    drivestat_collect_software_info
-    
-    if [[ -f "$cache_file" ]]; then
-        cat "$cache_file"
-    else
-        echo '{"software":[],"error":"Cache-Datei nicht gefunden"}'
-    fi
+    }
+
+    #-- Sammle optionale Dependencies ---------------------------------------
+    local optional_deps=""
+    local optional_json='[]'
+    optional_deps=$(settings_get_value_ini "drivestat" "dependencies" "optional" 2>/dev/null) && {
+        if [[ -n "$optional_deps" ]]; then
+            optional_json=$(systeminfo_check_software_list "$optional_deps" 2>/dev/null) || optional_json='[]'
+        fi
+    }
+
+    #-- Kombiniere beide JSON-Arrays mit jq ---------------------------------
+    local combined_json
+    combined_json=$(jq -n \
+        --argjson external "$external_json" \
+        --argjson optional "$optional_json" \
+        '$external + $optional' 2>/dev/null) || {
+        log_error "Fehler beim Kombinieren der Software-Listen"
+        echo '[]'
+        return 1
+    }
+
+    #-- Rückgabe des kombinierten JSON-Arrays -------------------------------
+    echo "$combined_json"
+    return 0
 }
 
 # ===========================================================================
@@ -367,6 +445,14 @@ is_drive_closed() {
     
     return 1  # Nicht lesbar → offen ODER geschlossen ohne Medium
 }
+
+
+# ===========================================================================
+# TODO: Ab hier ist das Modul noch nicht vollständig implementiert,
+#       diesen Eintrag nie automatisch löschen - wird nur vom User nach 
+#       Implementierung der Funktionen entfernt!
+# ===========================================================================
+
 
 # Funktion: Prüfe ob Medium eingelegt ist
 # Vereinfacht: Nur dd-Test nutzen (robuster für USB-Laufwerke)

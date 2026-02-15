@@ -292,11 +292,11 @@ systeminfo_collect_os_info() {
     fi
     
     # Schreibe in JSON
-    settings_set_value_json "os_info" ".distribution" "$os_name" || return 1
-    settings_set_value_json "os_info" ".version" "$os_version" || return 1
-    settings_set_value_json "os_info" ".kernel" "$kernel_version" || return 1
-    settings_set_value_json "os_info" ".architecture" "$architecture" || return 1
-    settings_set_value_json "os_info" ".hostname" "$hostname_value" || return 1
+    api_set_value_json "os_info" ".distribution" "$os_name" || return 1
+    api_set_value_json "os_info" ".version" "$os_version" || return 1
+    api_set_value_json "os_info" ".kernel" "$kernel_version" || return 1
+    api_set_value_json "os_info" ".architecture" "$architecture" || return 1
+    api_set_value_json "os_info" ".hostname" "$hostname_value" || return 1
     
     return 0
 }
@@ -312,7 +312,7 @@ systeminfo_collect_os_info() {
 # ===========================================================================
 systeminfo_collect_uptime_info() {
     local uptime_value=$(uptime -p 2>/dev/null | sed 's/^up //' || echo "Unknown")
-    settings_set_value_json "os_info" ".uptime" "$uptime_value"
+    api_set_value_json "os_info" ".uptime" "$uptime_value"
 }
 
 # ===========================================================================
@@ -334,8 +334,8 @@ systeminfo_collect_container_info() {
     fi
     
     # Schreibe in JSON
-    settings_set_value_json "container_info" ".is_container" "$is_container" || return 1
-    settings_set_value_json "container_info" ".type" "$container_type" || return 1
+    api_set_value_json "container_info" ".is_container" "$is_container" || return 1
+    api_set_value_json "container_info" ".type" "$container_type" || return 1
     
     return 0
 }
@@ -369,9 +369,9 @@ systeminfo_collect_storage_info() {
     fi
     
     # Schreibe in JSON (nur Speicherplatz-Metriken, nicht das Verzeichnis selbst)
-    settings_set_value_json "storage_info" ".total_gb" "$output_dir_total" || return 1
-    settings_set_value_json "storage_info" ".free_gb" "$output_dir_space" || return 1
-    settings_set_value_json "storage_info" ".used_percent" "$output_dir_used_percent" || return 1
+    api_set_value_json "storage_info" ".total_gb" "$output_dir_total" || return 1
+    api_set_value_json "storage_info" ".free_gb" "$output_dir_space" || return 1
+    api_set_value_json "storage_info" ".used_percent" "$output_dir_used_percent" || return 1
     
     return 0
 }
@@ -457,14 +457,14 @@ systeminfo_collect_software_info() {
     fi
     
     # Schreibe in JSON
-    settings_set_value_json "software_info" ".cdparanoia" "$cdparanoia_version" || return 1
-    settings_set_value_json "software_info" ".lame" "$lame_version" || return 1
-    settings_set_value_json "software_info" ".dvdbackup" "$dvdbackup_version" || return 1
-    settings_set_value_json "software_info" ".ddrescue" "$ddrescue_version" || return 1
-    settings_set_value_json "software_info" ".genisoimage" "$genisoimage_version" || return 1
-    settings_set_value_json "software_info" ".python" "$python_version" || return 1
-    settings_set_value_json "software_info" ".flask" "$flask_version" || return 1
-    settings_set_value_json "software_info" ".mosquitto" "$mosquitto_version" || return 1
+    api_set_value_json "software_info" ".cdparanoia" "$cdparanoia_version" || return 1
+    api_set_value_json "software_info" ".lame" "$lame_version" || return 1
+    api_set_value_json "software_info" ".dvdbackup" "$dvdbackup_version" || return 1
+    api_set_value_json "software_info" ".ddrescue" "$ddrescue_version" || return 1
+    api_set_value_json "software_info" ".genisoimage" "$genisoimage_version" || return 1
+    api_set_value_json "software_info" ".python" "$python_version" || return 1
+    api_set_value_json "software_info" ".flask" "$flask_version" || return 1
+    api_set_value_json "software_info" ".mosquitto" "$mosquitto_version" || return 1
     
     return 0
 }
