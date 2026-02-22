@@ -474,12 +474,13 @@ drivestat_disc_insert() {
     return 1
 }
 
+# ===========================================================================
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert, diesen Eintrag
+# ....  nie automatisch löschen - wird nur vom User nach Implementierung
+# ....  der folgenden Funktionen entfernt!
+# ===========================================================================
 
-# ===========================================================================
-# TODO: Ab hier ist das Modul noch nicht vollständig implementiert,
-#       diesen Eintrag nie automatisch löschen - wird nur vom User nach 
-#       Implementierung der Funktionen entfernt!
-# ===========================================================================
+
 
 
 # Funktion: Warte auf Änderung im Drive-Status (Schublade öffnen/schließen oder Medium einlegen/entfernen)

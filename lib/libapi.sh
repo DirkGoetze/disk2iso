@@ -49,7 +49,6 @@ api_check_dependencies() {
     return 0
 }
 
-
 # ============================================================================
 # INITIALIZATION
 # ============================================================================
@@ -426,7 +425,11 @@ api_set_section_json() {
     return 0
 }
 
-# TODO: Ab hier ist das Modul noch nicht fertig implementiert!
+# ===========================================================================
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert, diesen Eintrag
+# ....  nie automatisch löschen - wird nur vom User nach Implementierung
+# ....  der folgenden Funktionen entfernt!
+# ===========================================================================
 
 
 # ============================================================================

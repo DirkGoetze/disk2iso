@@ -821,3 +821,113 @@ collect_system_information() {
     
     return 0
 }
+
+# ===========================================================================
+# _systeminfo_get_blkid_path
+# ---------------------------------------------------------------------------
+# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum blkid Kommando 
+# Parameter: keine
+# Rückgabe.: Pfad zum blkid Kommando oder leerer String, wenn nicht gefunden
+# ===========================================================================
+_systeminfo_get_blkid_path() {
+    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
+    if [[ -n "$_DISCINFO_BLKID_PATH" ]]; then
+        echo "$_DISCINFO_BLKID_PATH"
+        return 0
+    fi
+
+    #-- blkid kann unter /usr/sbin/ liegen ----------------------------------
+    if command -v blkid >/dev/null 2>&1; then
+        _DISCINFO_BLKID_PATH="blkid"
+    elif [[ -x /usr/sbin/blkid ]]; then
+        _DISCINFO_BLKID_PATH="/usr/sbin/blkid"
+    else
+        log_debug "$MSG_DEBUG_BLKID_NOT_FOUND"
+        _DISCINFO_BLKID_PATH=""
+        echo ""
+        return 1
+    fi
+
+    #-- Rückgabe des ermittelten Pfads (oder leerer String) -----------------
+    echo "$_DISCINFO_BLKID_PATH"
+    return 0
+}
+
+# ===========================================================================
+# _systeminfo_get_isoinfo_path
+# ---------------------------------------------------------------------------
+# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum isoinfo Kommando
+# Parameter: keine
+# Rückgabe.: Pfad zum isoinfo Kommando oder leerer String, wenn nicht gefunden
+# ===========================================================================
+_systeminfo_get_isoinfo_path() {
+    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
+    if [[ -n "$_DISCINFO_ISOINFO_PATH" ]]; then
+        echo "$_DISCINFO_ISOINFO_PATH"
+        return 0
+    fi
+
+    #-- isoinfo prüfen ------------------------------------------------------
+    if command -v isoinfo >/dev/null 2>&1; then
+        _DISCINFO_ISOINFO_PATH="isoinfo"
+    else
+        log_debug "$MSG_DEBUG_ISOINFO_NOT_FOUND"
+        _DISCINFO_ISOINFO_PATH=""
+        echo ""
+        return 1
+    fi
+
+    #-- Rückgabe des ermittelten Pfads -------------------------------------
+    echo "$_DISCINFO_ISOINFO_PATH"
+    return 0
+}
+
+# ===========================================================================
+# _systeminfo_get_blockdev_path
+# ---------------------------------------------------------------------------
+# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum blockdev Kommando
+# Parameter: keine
+# Rückgabe.: Pfad zum blockdev Kommando oder leerer String, wenn nicht gefunden
+# ===========================================================================
+_systeminfo_get_blockdev_path() {
+    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
+    if [[ -n "$_DISCINFO_BLOCKDEV_PATH" ]]; then
+        echo "$_DISCINFO_BLOCKDEV_PATH"
+        return 0
+    fi
+
+    #-- blockdev kann unter /usr/sbin/ liegen -------------------------------
+    if command -v blockdev >/dev/null 2>&1; then
+        _DISCINFO_BLOCKDEV_PATH="blockdev"
+    elif [[ -x /usr/sbin/blockdev ]]; then
+        _DISCINFO_BLOCKDEV_PATH="/usr/sbin/blockdev"
+    else
+        log_debug "$MSG_DEBUG_BLOCKDEV_NOT_FOUND"
+        _DISCINFO_BLOCKDEV_PATH=""
+        echo ""
+        return 1
+    fi
+
+    #-- Rückgabe des ermittelten Pfads -------------------------------------
+    echo "$_DISCINFO_BLOCKDEV_PATH"
+    return 0
+}
+
+# ===========================================================================
+# _systeminfo_get_jq_path
+# ---------------------------------------------------------------------------
+# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum jq Kommando
+# Parameter: keine
+# Rückgabe.: Pfad zum jq Kommando oder leerer String, wenn nicht gefunden
+# ===========================================================================
+_systeminfo_get_jq_path() {
+    if command -v jq >/dev/null 2>&1; then
+        echo "jq"
+        return 0
+    else
+        log_debug "$MSG_DEBUG_JQ_NOT_FOUND"
+        echo ""
+        return 1
+    fi
+}
+
