@@ -120,7 +120,8 @@ _DISCINFO_BLOCKDEV_PATH=""
 # Funktion.: Hilfsfunktion zur Erstellung eines JSON-Objekts aus einem Array
 # Parameter: $1 = Name des assoziativen Arrays (z.B. "DISC_INFO")
 # .........  $2 = JSON-Pfad/Key (optional, z.B. "disc_info" für Zweig)
-# Rückgabe.: JSON-String mit allen DISC_INFO Werten
+# Ausgabe..: JSON-String (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Array existiert nicht
 # ===========================================================================
 _discinfo_create_json() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -282,7 +283,8 @@ discinfo_set_id() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittelt Disc-ID (Provider-spezifisch: UUID)
 # Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Keine UUID verfügbar
+# Ausgabe..: UUID (stdout) oder leerer String
+# Rückgabe.: 0 = Erfolg
 # ===========================================================================
 discinfo_detect_id() {
     #-- Ermittle erkannten Disc-Typ -----------------------------------------
@@ -319,8 +321,8 @@ discinfo_detect_id() {
 # ---------------------------------------------------------------------------
 # Funktion.: Liest interne Disc-Identifier (für Medium-Wechsel-Erkennung)
 # Parameter: keine
-# Rückgabe.: Disc-Identifier (stdout)
-# Rückgabe.: 0
+# Ausgabe..: Disc-Identifier (stdout)
+# Rückgabe.: 0 = Wert vorhanden, 1 = Leer
 # ===========================================================================
 discinfo_get_identifier() {    
     #-- Array Wert lesen ----------------------------------------------------
@@ -345,8 +347,9 @@ discinfo_get_identifier() {
 # Funktion.: Setzt interne Disc-Identifier für Medium-Wechsel-Erkennung 
 # .........  (Format: UUID:LABEL:SIZE_MB)
 # Parameter: $1 = identifier (Format: UUID:LABEL:SIZE_MB)
-# Rückgabe.: 0
-# Beschr...: Setzt DISC_INFO[disc_identifier]
+# Rückgabe.: 0 = Erfolg, 1 = Identifier leer
+# Beschr...: Auto-Detection wenn kein Identifier übergeben wird,
+# .........  Setzt DISC_INFO[disc_identifier]
 # ===========================================================================
 discinfo_set_identifier() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -367,7 +370,7 @@ discinfo_set_identifier() {
     #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------
     DISC_INFO[disc_identifier]="$identifier"
     log_debug "$MSG_DEBUG_SET_IDENTIFIER = '$identifier'"
-    if [[ -n "$old_value"]] && [[ "$old_value" != "$identifier" ]]; then
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$identifier" ]]; then
         log_debug "$MSG_DEBUG_SET_IDENTIFIER_CHANGED = '$old_value' → '$identifier'"
         api_set_value_json "discinfos" "disc_identifier" "${DISC_INFO[disc_identifier]}"
     fi
@@ -381,7 +384,8 @@ discinfo_set_identifier() {
 # .........  aus den Werten DISC_INFO[disc_id], DISC_INFO[label] und 
 # .........  DISC_INFO[size_mb] (Format: UUID:LABEL:SIZE_MB)
 # Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Ausgabe..: Disc-Identifier (stdout) im Format UUID:LABEL:SIZE_MB
+# Rückgabe.: 0 = Erfolg, 1 = Fehler (wenn Getter fehlschlagen)
 # ===========================================================================
 discinfo_detect_identifier() {
     #-- UUID aus DISC_INFO[disc_id] mit Getter lesen ------------------------
@@ -427,8 +431,8 @@ discinfo_get_label() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Disc-Label mit Normalisierung
 # Parameter: $1 = label
-# Rückgabe.: 0
-# Beschr...: Konvertiert zu Kleinbuchstaben und bereinigt Sonderzeichen
+# Rückgabe.: 0 = Erfolg, 1 = Label ist leer
+# Beschr...: Auto-Detection wenn kein Label übergeben wird
 # ===========================================================================
 discinfo_set_label() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -461,6 +465,7 @@ discinfo_set_label() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Volume-Label von Disc
 # Parameter: keine
+# Ausgabe..: Label (stdout)
 # Rückgabe.: 0 = Erfolg
 # ===========================================================================
 discinfo_detect_label() {
@@ -570,7 +575,8 @@ discinfo_set_type() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Disc-Typ (Audio-CD, DVD-Video, BD-Video, etc.)
 # Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Ausgabe..: Disc-Typ (stdout)
+# Rückgabe.: 0 = Erfolg
 # ===========================================================================
 discinfo_detect_type() {
     local detected_type="$DISC_TYPE_UNKNOWN"
@@ -688,7 +694,8 @@ discinfo_set_size_mb() {
 # ---------------------------------------------------------------------------
 # Funktion.: Berechne Disc-Größe in MB aus size_sectors * block_size
 # Parameter: keine
-# Rückgabe.: Größe in MB (stdout)
+# Ausgabe..: Größe in MB (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler (keine gültigen Sektoren)
 # Beschr...: Berechnet aus vorhandenen size_sectors und block_size
 # ===========================================================================
 discinfo_detect_size_mb() {
@@ -788,7 +795,8 @@ discinfo_set_size_sectors() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Volume-Größe (in Sektoren) mit isoinfo
 # Parameter: keine
-# Rückgabe.: Anzahl Sektoren (stdout), 0 wenn nicht ermittelbar
+# Ausgabe..: Anzahl Sektoren (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Nicht ermittelbar
 # Beschr...: Liest "Volume size is: XXXXX" aus isoinfo -d Ausgabe
 # ===========================================================================
 discinfo_detect_size_sectors() {
@@ -890,7 +898,8 @@ discinfo_set_block_size() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Block-Größe mit isoinfo
 # Parameter: keine
-# Rückgabe.: Block-Größe in Bytes (stdout), default: 2048
+# Ausgabe..: Block-Größe in Bytes (stdout), default: 2048
+# Rückgabe.: 0 = Erfolg
 # Beschr...: Liest "Logical block size is: XXXX" aus isoinfo -d Ausgabe
 # ===========================================================================
 discinfo_detect_block_size() {
@@ -929,7 +938,7 @@ discinfo_detect_block_size() {
 # ===========================================================================
 discinfo_get_estimated_size_mb() {
     #-- Array Wert lesen ----------------------------------------------------
-    local "${DISC_INFO[estimated_size_mb]}"
+    local estimated_size_mb="${DISC_INFO[estimated_size_mb]}"
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$estimated_size_mb" ]] && [[ "$estimated_size_mb" =~ ^[0-9]+$ ]]; then
@@ -983,7 +992,8 @@ discinfo_set_estimated_size_mb() {
 # ---------------------------------------------------------------------------
 # Funktion.: Berechne geschätzte ISO-Größe mit Overhead (size_mb + 10%)
 # Parameter: keine
-# Rückgabe.: Geschätzte Größe in MB (stdout)
+# Ausgabe..: Geschätzte Größe in MB (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler (size_mb nicht verfügbar)
 # Beschr...: Berechnet als size_mb + 10% Overhead für ISO-Struktur
 # ===========================================================================
 discinfo_detect_estimated_size_mb() {
@@ -1009,7 +1019,7 @@ discinfo_detect_estimated_size_mb() {
 # ===========================================================================
 discinfo_get_filesystem() {
     #-- Array Wert lesen ----------------------------------------------------
-    local filesystem "${DISC_INFO[filesystem]:-unknown}"
+    local filesystem="${DISC_INFO[filesystem]:-unknown}"
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$filesystem" ]]; then
@@ -1029,7 +1039,8 @@ discinfo_get_filesystem() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Dateisystem-Typ
 # Parameter: $1 = filesystem (z.B. iso9660, udf, mixed, unknown)
-# Rückgabe.: 0 = Erfolg, 1 = Ungültiges Dateisystem
+# Rückgabe.: 0 = Erfolg, 1 = Dateisystem leer
+# Beschr...: Auto-Detection wenn kein Dateisystem übergeben wird
 # ===========================================================================
 discinfo_set_filesystem() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1062,7 +1073,8 @@ discinfo_set_filesystem() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Dateisystem-Typ
 # Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler 
+# Ausgabe..: Dateisystem-Typ (stdout)
+# Rückgabe.: 0 = Erfolg
 # ===========================================================================
 discinfo_detect_filesystem() {
     #-- Standardwert für unbekanntes Dateisystem ----------------------------
@@ -1111,7 +1123,7 @@ discinfo_get_copy_method() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze verwendete Kopiermethode
 # Parameter: $1 = copy_method (ddrescue, dd, cdparanoia, dvdbackup, makemkvcon)
-# Rückgabe.: 0 = Erfolg, 1 = Ungültige Methode
+# Rückgabe.: 0 = Erfolg, 1 = Methode leer
 # ===========================================================================
 discinfo_set_copy_method() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1164,7 +1176,8 @@ discinfo_get_created_at() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Erstellungsdatum
 # Parameter: $1 = timestamp (ISO 8601 Format: YYYY-MM-DDTHH:MM:SSZ)
-# Rückgabe.: 0 = Erfolg, 1 = Ungültiger Timestamp
+# Rückgabe.: 0 = Erfolg, 1 = Timestamp leer
+# Beschr...: Auto-Detection wenn kein Timestamp übergeben wird
 # ===========================================================================
 discinfo_set_created_at() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1197,7 +1210,8 @@ discinfo_set_created_at() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle ISO-Erstellungsdatum
 # Parameter: keine
-# Rückgabe.: 0 = Erfolg (ISO 8601 Timestamp), 1 = Fehler
+# Ausgabe..: ISO 8601 Timestamp (stdout)
+# Rückgabe.: 0 = Erfolg
 # ===========================================================================
 discinfo_detect_created_at() {
     local timestamp=""
@@ -1248,7 +1262,7 @@ discinfo_get_title() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Disc-Titel
 # Parameter: $1 = title
-# Rückgabe.: 0
+# Rückgabe.: 0 = Erfolg, 1 = Ungültiger Titel
 # ===========================================================================
 discinfo_set_title() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1281,8 +1295,10 @@ discinfo_set_title() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Disc-Titel
 # Parameter: keine
+# Ausgabe..: Titel (stdout)
 # Rückgabe.: 0 = Erfolg
-# Beschr...: Wird normalerweise von Provider-Modulen gesetzt
+# Beschr...: Wird normalerweise von Provider-Modulen gesetzt,
+# .........  Fallback: Nutzt Volume-Label als Titel
 # ===========================================================================
 discinfo_detect_title() {
     #-- Fallback: Versuche Volume-Label als Titel zu verwenden --------------
@@ -1324,7 +1340,8 @@ discinfo_get_release_date() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Veröffentlichungsdatum
 # Parameter: $1 = date (YYYY-MM-DD)
-# Rückgabe.: 0 = Erfolg, 1 = Ungültiges Datum
+# Rückgabe.: 0 = Erfolg, 1 = Datum leer
+# Beschr...: Auto-Detection wenn kein Datum übergeben wird
 # ===========================================================================
 discinfo_set_release_date() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1357,6 +1374,7 @@ discinfo_set_release_date() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Veröffentlichungsdatum
 # Parameter: keine
+# Ausgabe..: Datum (YYYY-MM-DD) (stdout)
 # Rückgabe.: 0 = Erfolg
 # Beschr...: Wird normalerweise von Provider-Modulen gesetzt
 # .........  Fallback 1: ISO-Erstellungsdatum (created_at)
@@ -1409,7 +1427,8 @@ discinfo_get_country() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Veröffentlichungsland
 # Parameter: $1 = country (Ländercode: DE, GB, US, EU, etc.)
-# Rückgabe.: 0 = Erfolg, 1 = Ungültiger Ländercode
+# Rückgabe.: 0 = Erfolg, 1 = Ländercode leer
+# Beschr...: Auto-Detection wenn kein Ländercode übergeben wird
 # ===========================================================================
 discinfo_set_country() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1442,7 +1461,9 @@ discinfo_set_country() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Veröffentlichungsland
 # Parameter: keine
-# Rückgabe.: 0 = Erfolg (Ländercode), 1 = Fehler
+# Ausgabe..: Ländercode (stdout)
+# Rückgabe.: 0 = Erfolg
+# Beschr...: Fallback: "XX" (Unknown)
 # ===========================================================================
 discinfo_detect_country() {
     # TODO: Welche Quellen für den Ländercode git es? 
@@ -1482,7 +1503,8 @@ discinfo_get_publisher() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Publisher/Label
 # Parameter: $1 = publisher
-# Rückgabe.: 0 = Erfolg, 1 = Ungültiger Publisher
+# Rückgabe.: 0 = Erfolg, 1 = Publisher leer
+# Beschr...: Auto-Detection wenn kein Publisher übergeben wird
 # ===========================================================================
 discinfo_set_publisher() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1515,7 +1537,9 @@ discinfo_set_publisher() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Publisher
 # Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Ausgabe..: Publisher (stdout) oder leerer String
+# Rückgabe.: 0 = Erfolg
+# Beschr...: Wird normalerweise von Provider-Modulen gesetzt
 # ===========================================================================
 discinfo_detect_publisher() {
     #-- Fallback: Unknown ---------------------------------------------------
@@ -1553,7 +1577,8 @@ discinfo_get_provider() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Metadaten-Provider
 # Parameter: $1 = provider (musicbrainz, tmdb, manual, none)
-# Rückgabe.: 0
+# Rückgabe.: 0 = Erfolg, 1 = Provider leer
+# Beschr...: Auto-Detection wenn kein Provider übergeben wird
 # ===========================================================================
 discinfo_set_provider() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1586,7 +1611,9 @@ discinfo_set_provider() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Metadaten-Provider
 # Parameter: keine
-# Rückgabe.: 0 = Erfolg (Provider-Name), 1 = Fehler
+# Ausgabe..: Provider-Name (stdout)
+# Rückgabe.: 0 = Erfolg
+# Beschr...: Fallback: "none"
 # ===========================================================================
 discinfo_detect_provider() {
     # TODO: Welche Kriterien für die Erkennung des Providers gibt es?
@@ -1626,7 +1653,8 @@ discinfo_get_provider_id() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Provider-ID
 # Parameter: $1 = provider_id
-# Rückgabe.: 0 = Erfolg, 1 = Ungültige ID
+# Rückgabe.: 0 = Erfolg, 1 = ID leer
+# Beschr...: Auto-Detection wenn keine ID übergeben wird
 # ===========================================================================
 discinfo_set_provider_id() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1659,7 +1687,9 @@ discinfo_set_provider_id() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittle Provider-ID
 # Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Ausgabe..: Provider-ID (stdout) oder leerer String
+# Rückgabe.: 0 = Erfolg
+# Beschr...: Keine automatische Erkennung möglich, gibt leeren String zurück
 # ===========================================================================
 discinfo_detect_provider_id() {
     # TODO: Welche Kriterien für die Erkennung der Provider-ID gibt es?
@@ -1710,7 +1740,7 @@ discinfo_get_cover_path() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze lokalen Cover-Pfad
 # Parameter: $1 = cover_path
-# Rückgabe.: 0 = Erfolg, 1 = Ungültiger Pfad
+# Rückgabe.: 0 = Erfolg, 1 = Pfad leer
 # ===========================================================================
 discinfo_set_cover_path() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1762,7 +1792,7 @@ discinfo_get_cover_url() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Cover-URL
 # Parameter: $1 = cover_url
-# Rückgabe.: 0 = Erfolg, 1 = Ungültige URL
+# Rückgabe.: 0 = Erfolg, 1 = URL leer
 # ===========================================================================
 discinfo_set_cover_url() {
     local url="$1"
@@ -1813,7 +1843,8 @@ discinfo_get_iso_basename() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze ISO-Basisnamen
 # Parameter: $1 = iso_basename (nur Dateiname)
-# Rückgabe.: 0 = Erfolg, 1 = Ungültiger Basisname
+# Rückgabe.: 0 = Erfolg, 1 = Basisname leer
+# Beschr...: Entfernt automatisch Dateiendungen falls vorhanden
 # ===========================================================================
 discinfo_set_iso_basename() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1872,7 +1903,8 @@ discinfo_get_iso_filename() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze ISO-Dateinamen
 # Parameter: $1 = iso_filename (vollständiger Pfad)
-# Rückgabe.: 0 = Erfolg, 1 = Ungültiger Pfad
+# Rückgabe.: 0 = Erfolg, 1 = Dateiname leer
+# Beschr...: Ergänzt .iso-Endung und Pfad automatisch falls nicht vorhanden
 # ===========================================================================
 discinfo_set_iso_filename() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -1939,7 +1971,7 @@ discinfo_get_md5_filename() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze MD5-Dateinamen
 # Parameter: $1 = md5_filename (vollständiger Pfad)
-# Rückgabe.: 0
+# Rückgabe.: 0 = Erfolg, 1 = Ungültiger Pfad
 # ===========================================================================
 discinfo_set_md5_filename() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -2007,7 +2039,7 @@ discinfo_get_log_filename() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze Log-Dateinamen
 # Parameter: $1 = log_filename (vollständiger Pfad)
-# Rückgabe.: 0
+# Rückgabe.: 0 = Erfolg, 1 = Ungültiger Pfad
 # ===========================================================================
 discinfo_set_log_filename() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -2075,7 +2107,8 @@ discinfo_get_temp_pathname() {
 # ---------------------------------------------------------------------------
 # Funktion.: Setze temporären Arbeitsordner
 # Parameter: $1 = temp_pathname (vollständiger Pfad)
-# Rückgabe.: 0 = Erfolg, 1 = Ungültiger Pfad
+# Rückgabe.: 0 = Erfolg, 1 = Pfad leer
+# Beschr...: Ergänzt .tmp-Endung und Pfad automatisch falls nicht vorhanden
 # ===========================================================================
 discinfo_set_temp_pathname() {
     #-- Parameter übernehmen ------------------------------------------------
@@ -2089,17 +2122,17 @@ discinfo_set_temp_pathname() {
     fi
 
     #-- Dateiendung prüfen (sollte .tmp sein) und ggf. ergänzen -------------
-    if [[ "$filename" != *.tmp ]]; then
-        filename="${filename}.tmp"
-        log_debug "$MSG_DEBUG_SET_TMP_FILENAME_EXTENSION_ADDED: '$filename'"
+    if [[ "$pathname" != *.tmp ]]; then
+        pathname="${pathname}.tmp"
+        log_debug "$MSG_DEBUG_SET_TMP_FILENAME_EXTENSION_ADDED: '$pathname'"
     fi
 
     #-- Enthält der übergebene Pfad Angaben? Wenn nicht Auto-Detect ---------
-    if [[ "$filename" != */* ]]; then
+    if [[ "$pathname" != */* ]]; then
         local missed_path="${folders_get_temp_dir}"
         if [[ -n "$missed_path" ]]; then
-            filename="${missed_path}/${filename}"
-            log_debug "$MSG_DEBUG_SET_TMP_FILENAME_AUTO_PATH: '$filename'"
+            pathname="${missed_path}/${pathname}"
+            log_debug "$MSG_DEBUG_SET_TMP_FILENAME_AUTO_PATH: '$pathname'"
         fi
     fi
 
@@ -2126,7 +2159,7 @@ discinfo_set_temp_pathname() {
 #            04. discinfo_set_label                              → Disc-Label
 #            05. discinfo_set_size_sectors            → Disc-Größe (Sektoren)
 #            06. discinfo_set_block_size            → Disc-Größe (Blockgröße)
-#            07. discinfo_set_size                          → Disc-Größe (MB)
+#            07. discinfo_set_size_mb                       → Disc-Größe (MB)
 #            08. discinfo_set_estimated_size_mb → (Disc-Größe + 10% Overhead)
 #            09. discinfo_set_created_at        → Erstellungsdatum (ISO 8601)
 #            10. discinfo_set_id                                    → Disc-ID 
@@ -2192,7 +2225,7 @@ discinfo_analyze() {
     fi
 
     #-- Step 7: Größe ermitteln (MB) ----------------------------------------
-    if ! (discinfo_set_size ""); then
+    if ! (discinfo_set_size_mb ""); then
         log_error "$MSG_ERROR_ANALYSE_FAILED"
         return 1
     fi
@@ -2252,7 +2285,8 @@ discinfo_analyze() {
 # ---------------------------------------------------------------------------
 # Funktion.: Sammelt Informationen über installierte Disk-Info-Software
 # Parameter: keine
-# Rückgabe.: Schreibt JSON-Datei mit Software-Informationen
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beschr...: Schreibt JSON-Daten mit Software-Informationen in API
 # ===========================================================================
 diskinfos_collect_software_info() {
     #-- Start der Sammlung im LOG vermerken ---------------------------------
@@ -2321,7 +2355,8 @@ diskinfos_collect_software_info() {
 # ---------------------------------------------------------------------------
 # Funktion.: Gibt Software-Informationen als JSON zurück
 # Parameter: keine
-# Rückgabe.: JSON-String mit Software-Informationen
+# Ausgabe..: JSON-String mit Software-Informationen (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
 # ===========================================================================
 diskinfos_get_software_info() {
     diskinfos_collect_software_info
