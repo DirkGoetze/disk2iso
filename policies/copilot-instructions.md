@@ -7,6 +7,16 @@
 
 ---
 
+## ⚠️ CRITICAL: Verification-First Protocol
+
+**VOR JEDER Code-bezogenen Antwort:**
+1. Lies die Datei VOLLSTÄNDIG
+2. Grep nach relevanten Patterns
+3. Zitiere ZEILEN-NUMMERN + Code-Snippets
+4. Wenn du etwas NICHT verifiziert hast: SAG ES!
+5. Warte auf Nutzer-Feedback bevor du Änderungen durchführst
+6. Alle Änderungen müssen einzeln und nachvollziehbar mit dem Nutzer abgestimmt werden
+
 ## Kommunikationsrichtlinien - Prompt-Keywords
 
 ### #Frage - Analyse und Diskussion ohne Code-Änderungen

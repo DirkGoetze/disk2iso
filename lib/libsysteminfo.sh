@@ -788,40 +788,6 @@ systeminfo_get_software_info() {
     cat "$json_file"
 }
 
-# ============================================================================
-# DEPRECATED FUNCTIONS
-# ============================================================================
-
-# ===========================================================================
-# collect_system_information (DEPRECATED)
-# ---------------------------------------------------------------------------
-# Funktion.: DEPRECATED - Verwende stattdessen die neuen Collector-Funktionen
-# Hinweis..: Diese Funktion wird in Zukunft entfernt
-# Migration: systeminfo_collect_os_info()
-#            systeminfo_collect_container_info()
-#            systeminfo_collect_storage_info()
-#            systeminfo_collect_hardware_info()
-#            systeminfo_collect_software_info()
-# ===========================================================================
-collect_system_information() {
-    log_warning "collect_system_information() ist DEPRECATED und wird bald entfernt"
-    log_info "Nutze stattdessen: systeminfo_collect_*() Funktionen"
-    
-    # Rufe neue Collector-Funktionen auf (Kompatibilitätsmodus)
-    systeminfo_collect_os_info
-    systeminfo_collect_uptime_info
-    systeminfo_collect_container_info
-    systeminfo_collect_storage_info
-    systeminfo_collect_software_info
-    
-    # Drive-Info via drivestat (wenn verfügbar)
-    if declare -f drivestat_collect_drive_info >/dev/null 2>&1; then
-        drivestat_collect_drive_info
-    fi
-    
-    return 0
-}
-
 # ===========================================================================
 # _systeminfo_get_blkid_path
 # ---------------------------------------------------------------------------
@@ -929,5 +895,44 @@ _systeminfo_get_jq_path() {
         echo ""
         return 1
     fi
+}
+
+# ============================================================================
+# DEPRECATED FUNCTIONS
+# ============================================================================
+
+# ===========================================================================
+# collect_system_information (DEPRECATED)
+# ---------------------------------------------------------------------------
+# Funktion.: DEPRECATED - Verwende stattdessen die neuen Collector-Funktionen
+# Hinweis..: Diese Funktion wird in Zukunft entfernt
+# Migration: systeminfo_collect_os_info()
+#            systeminfo_collect_container_info()
+#            systeminfo_collect_storage_info()
+#            systeminfo_collect_hardware_info()
+#            systeminfo_collect_software_info()
+# ===========================================================================
+collect_system_information() {
+    log_warning "collect_system_information() ist DEPRECATED und wird bald entfernt"
+    log_info "Nutze stattdessen: systeminfo_collect_*() Funktionen"
+    
+    # Rufe neue Collector-Funktionen auf (Kompatibilitätsmodus)
+    systeminfo_collect_os_info
+    systeminfo_collect_uptime_info
+    systeminfo_collect_container_info
+    systeminfo_collect_storage_info
+    systeminfo_collect_software_info
+    
+    # Drive-Info via drivestat (wenn verfügbar)
+    if declare -f drivestat_collect_drive_info >/dev/null 2>&1; then
+        drivestat_collect_drive_info
+    fi
+    
+    # Disc-Info via discinfo (wenn verfügbar)
+    if declare -f discinfo_collect_disc_info >/dev/null 2>&1; then
+        discinfo_collect_disc_info
+    fi
+
+    return 0
 }
 

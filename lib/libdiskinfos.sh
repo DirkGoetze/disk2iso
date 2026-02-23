@@ -214,7 +214,7 @@ discinfo_reset() {
     DISC_INFO[temp_pathname]=""
     
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
-    api_set_section_json "discinfos" ".disc_info" "$(_discinfo_create_json "DISC_INFO" "disc_info")"
+    api_set_section_json "discinfos" "disc_info" "$(_discinfo_create_json "DISC_INFO")"
     log_debug "discinfo_reset: $MSG_DEBUG_DISCINFO_INIT"
     return 0
 }
@@ -2273,7 +2273,7 @@ discinfo_analyze() {
     fi
 
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
-    api_set_section_json "discinfos" ".disc_info" "$(_discinfo_create_json "DISC_INFO" "disc_info")"
+    api_set_section_json "discinfos" "disc_info" "$(_discinfo_create_json "DISC_INFO")"
 
     #-- Ende der Analyse im LOG vermerken --------------------------------------    
     log_debug "$MSG_DEBUG_INIT_SUCCESS"
@@ -2317,7 +2317,7 @@ diskinfos_collect_software_info() {
         log_debug "$MSG_DEBUG_NO_DEPENDENCIES"
         
         #-- Schreibe leeres Array in API ------------------------------------
-        api_set_section_json "diskinfos" ".software" "[]"
+        api_set_section_json "diskinfos" "software" "[]"
         return 0
     fi
     
@@ -2326,7 +2326,7 @@ diskinfos_collect_software_info() {
         log_error "$MSG_ERROR_SYSTEMINFO_UNAVAILABLE"
         
         #-- Schreibe Fehler in API ------------------------------------------
-        api_set_section_json "diskinfos" ".software" '{"error":"systeminfo_check_software_list nicht verfügbar"}'
+        api_set_section_json "diskinfos" "software" '{"error":"systeminfo_check_software_list nicht verfügbar"}'
         return 1
     fi
     
@@ -2336,12 +2336,19 @@ diskinfos_collect_software_info() {
         log_error "$MSG_ERROR_SOFTWARE_CHECK_FAILED"
         
         #-- Schreibe Fehler in API ------------------------------------------
-        api_set_section_json "diskinfos" ".software" '{"error":"Software-Prüfung fehlgeschlagen"}'
+        api_set_section_json "diskinfos" "software" '{"error":"Software-Prüfung fehlgeschlagen"}'
         return 1
     }
     
+    #-- Konvertiere Array zu Objekt (name als Key) --------------------------
+    local json_object=$(echo "$json_array" | jq 'map({(.name): {path, version, available, required}}) | add // {}') || {
+        log_error "$MSG_ERROR_JSON_CONVERSION_FAILED"
+        api_set_section_json "diskinfos" "software" '{"error":"JSON-Konvertierung fehlgeschlagen"}'
+        return 1
+    }
+
     #-- Schreibe Ergebnis in API --------------------------------------------
-    api_set_section_json "diskinfos" ".software" "$json_result" || {
+    api_set_section_json "diskinfos" "software" "$json_object" || {
         log_error "$MSG_ERROR_API_WRITE_FAILED"
         return 1
     }
