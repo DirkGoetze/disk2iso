@@ -573,7 +573,7 @@ wait_for_medium_change() {
         
         # Prüfe auf neues Medium: Analysiere Disc neu
         if drivestat_disc_insert; then
-            init_disc_info 2>/dev/null  # Setzt disc_identifier
+            discinfo_analyze 2>/dev/null  # Setzt disc_identifier
             new_identifier=$(discinfo_get_identifier 2>/dev/null || echo "::")
             
             # Vergleiche Identifier
@@ -633,9 +633,14 @@ wait_for_medium_change_lxc_safe() {
             continue
         fi
         
-        # Disk erkannt → Ermittle Typ und Label
-        detect_disc_type
-        get_disc_label
+        # Disk erkannt → Analysiere Disc (Typ, Label, Größe, etc.)
+        if ! discinfo_analyze 2>/dev/null; then
+            # Analyse fehlgeschlagen → weiter warten
+            if (( elapsed % 30 == 0 )); then
+                log_info "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
+            fi
+            continue
+        fi
         
         # Prüfe ob ISO mit diesem Label bereits existiert
         local disc_type=$(discinfo_get_type)

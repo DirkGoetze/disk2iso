@@ -329,7 +329,7 @@ run_state_machine() {
                 
             "$STATE_ANALYZING")
                 # Initialisiere ALLE Disc-Informationen (Typ, Label, Größe, Dateinamen)
-                if ! init_disc_info; then
+                if ! discinfo_analyze; then
                     transition_to_state "$STATE_ERROR" "Disc-Analyse fehlgeschlagen"
                     sleep 3
                     continue

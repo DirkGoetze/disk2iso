@@ -8,7 +8,7 @@
 #   Typ-Erkennung und Label-Extraktion für optische Medien
 #   - Audio-CD, Video-DVD, Blu-ray, Daten-Discs
 #   - UDF, ISO9660, Audio-TOC Erkennung
-#   - get_disc_type(), extract_disc_label()
+#   - discinfo_analyze(), discinfo_get_type(), discinfo_get_label()
 #   - Unterstützung für verschiedene Dateisysteme
 #
 # -----------------------------------------------------------------------------
