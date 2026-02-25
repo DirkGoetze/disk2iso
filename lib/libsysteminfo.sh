@@ -788,6 +788,190 @@ systeminfo_get_software_info() {
     cat "$json_file"
 }
 
+
+# ============================================================================
+# PRIVATE VARIABLES AND HELPER FUNCTIONS FOR TOOLS PATHS INFORMATION
+# ============================================================================
+# Private Variablen und Hilfsfunktionen für die Getter/Setter-Methoden
+_DRIVESTAT_LSBLK_PATH=""
+_DRIVESTAT_DMESG_PATH=""
+_DRIVESTAT_UDEVADM_PATH=""
+_DRIVESTAT_DD_PATH=""
+_DRIVESTAT_CDPARANOIA_PATH=""
+_DISCINFO_BLKID_PATH=""
+_DISCINFO_ISOINFO_PATH=""
+_DISCINFO_BLOCKDEV_PATH=""
+
+# ===========================================================================
+# _systeminfo_get_lsblk_path
+# ---------------------------------------------------------------------------
+# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum lsblk Kommando
+# Parameter: keine
+# Rückgabe.: Pfad zum lsblk Kommando oder leerer String, wenn nicht gefunden
+# ===========================================================================
+_systeminfo_get_lsblk_path() {
+    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
+    if [[ -n "$_DRIVESTAT_LSBLK_PATH" ]]; then
+        echo "$_DRIVESTAT_LSBLK_PATH"
+        return 0
+    fi
+
+    #-- Ermittele Pfad zu lsblk ---------------------------------------------
+    if command -v lsblk >/dev/null 2>&1; then
+        _DRIVESTAT_LSBLK_PATH=$(command -v lsblk 2>/dev/null)
+        echo "$_DRIVESTAT_LSBLK_PATH"
+        return 0
+    elif [[ -x "/bin/lsblk" ]]; then
+        _DRIVESTAT_LSBLK_PATH="/bin/lsblk"
+        echo "$_DRIVESTAT_LSBLK_PATH"
+        return 0
+    elif [[ -x "/usr/bin/lsblk" ]]; then
+        _DRIVESTAT_LSBLK_PATH="/usr/bin/lsblk"
+        echo "$_DRIVESTAT_LSBLK_PATH"
+        return 0
+    else
+        log_error "lsblk nicht gefunden, Drive-Informationen werden unvollständig sein"
+        _DRIVESTAT_LSBLK_PATH=""
+        return 1
+    fi
+
+    #-- Rückgabe des ermittelten Pfad ---------------------------------------
+    echo "$_DRIVESTAT_LSBLK_PATH"
+    return 0
+}
+
+# ===========================================================================
+# _systeminfo_get_dmesg_path
+# ---------------------------------------------------------------------------
+# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum dmesg Kommando
+# Parameter: keine
+# Rückgabe.: Pfad zum dmesg Kommando oder leerer String, wenn nicht gefunden
+# ===========================================================================
+_systeminfo_get_dmesg_path() {
+    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
+    if [[ -n "$_DRIVESTAT_DMESG_PATH" ]]; then
+        echo "$_DRIVESTAT_DMESG_PATH"
+        return 0
+    fi
+
+    #--Ermittele Pfad zu dmesg ----------------------------------------------
+    if command -v dmesg >/dev/null 2>&1; then
+        _DRIVESTAT_DMESG_PATH="dmesg"
+        echo "dmesg"
+        return 0
+    elif [[ -x "/bin/dmesg" ]]; then
+        _DRIVESTAT_DMESG_PATH="/bin/dmesg"
+        echo "/bin/dmesg"
+        return 0
+    elif [[ -x "/usr/bin/dmesg" ]]; then
+        _DRIVESTAT_DMESG_PATH="/usr/bin/dmesg"
+        echo "/usr/bin/dmesg"
+        return 0
+    else
+        log_error "dmesg nicht gefunden, Drive-Informationen werden unvollständig sein"
+        _DRIVESTAT_DMESG_PATH=""
+        echo ""
+        return 1
+    fi
+}
+
+# ===========================================================================
+# _systeminfo_get_udevadm_path
+# ---------------------------------------------------------------------------
+# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum udevadm Kommando
+# Parameter: keine
+# Rückgabe.: Pfad zum udevadm Kommando oder leerer String, wenn nicht gefunden
+# ===========================================================================
+_systeminfo_get_udevadm_path() {
+    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
+    if [[ -n "$_DRIVESTAT_UDEVADM_PATH" ]]; then
+        echo "$_DRIVESTAT_UDEVADM_PATH"
+        return 0
+    fi
+
+    #--Ermittele Pfad zu udevadm -------------------------------------------
+    if command -v udevadm >/dev/null 2>&1; then
+        _DRIVESTAT_UDEVADM_PATH="udevadm"
+        echo "udevadm"
+        return 0
+    elif [[ -x "/bin/udevadm" ]]; then
+        _DRIVESTAT_UDEVADM_PATH="/bin/udevadm"
+        echo "/bin/udevadm"
+        return 0
+    elif [[ -x "/usr/bin/udevadm" ]]; then
+        _DRIVESTAT_UDEVADM_PATH="/usr/bin/udevadm"
+        echo "/usr/bin/udevadm"
+        return 0
+    else
+        log_error "udevadm nicht gefunden, Drive-Informationen werden unvollständig sein"
+        _DRIVESTAT_UDEVADM_PATH=""
+        echo ""
+        return 1
+    fi
+}
+
+# ===========================================================================
+# _systeminfo_get_dd_path
+# ---------------------------------------------------------------------------
+# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum dd Kommando
+# Parameter: keine
+# Rückgabe.: Pfad zum dd Kommando oder leerer String, wenn nicht gefunden
+# ===========================================================================
+_systeminfo_get_dd_path() {
+    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
+    if [[ -n "$_DRIVESTAT_DD_PATH" ]]; then
+        echo "$_DRIVESTAT_DD_PATH"
+        return 0
+    fi
+
+    #-- dd kann unter /bin/ liegen -------------------------------------------
+    if command -v dd >/dev/null 2>&1; then
+        _DRIVESTAT_DD_PATH="dd"
+        echo "dd"
+        return 0
+    elif [[ -x "/bin/dd" ]]; then
+        _DRIVESTAT_DD_PATH="/bin/dd"
+        echo "/bin/dd"
+        return 0
+    elif [[ -x "/usr/bin/dd" ]]; then
+        _DRIVESTAT_DD_PATH="/usr/bin/dd"
+        echo "/usr/bin/dd"
+        return 0
+    else
+        log_error "dd nicht gefunden, Drive-Informationen werden unvollständig sein"
+        _DRIVESTAT_DD_PATH=""
+        echo ""
+        return 1
+    fi
+}
+
+# ===========================================================================
+# _systeminfo_get_cdparanoia_path
+# ---------------------------------------------------------------------------
+# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum cdparanoia Kommando
+# Parameter: keine
+# Rückgabe.: Pfad zum cdparanoia Kommando oder leerer String, wenn nicht gefunden
+# ===========================================================================
+_systeminfo_get_cdparanoia_path() {
+    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
+    if [[ -n "$_DRIVESTAT_CDPARANOIA_PATH" ]]; then
+        echo "$_DRIVESTAT_CDPARANOIA_PATH"
+        return 0
+    fi
+
+    #-- cdparanoia prüfen -------------------------------------------------
+    if command -v cdparanoia >/dev/null 2>&1; then
+        _DRIVESTAT_CDPARANOIA_PATH="cdparanoia"
+        echo "cdparanoia"
+        return 0
+    else
+        log_debug "$MSG_DEBUG_CDPARANOIA_NOT_FOUND"
+        _DRIVESTAT_CDPARANOIA_PATH=""
+        echo ""
+        return 1
+    fi
+}
+
 # ===========================================================================
 # _systeminfo_get_blkid_path
 # ---------------------------------------------------------------------------

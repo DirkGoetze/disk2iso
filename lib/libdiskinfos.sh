@@ -106,21 +106,13 @@ declare -A DISC_DATA=(
     ["backup_date"]=""         # Backup-Datum (YYYY-MM-DD)
 )
 
-# ============================================================================
-# GETTER/SETTER FUNKTIONEN FÜR DISC_INFO
-# ============================================================================
-# Private Variablen und Hilfsfunktionen für die Getter/Setter-Methoden
-_DISCINFO_BLKID_PATH=""
-_DISCINFO_ISOINFO_PATH=""
-_DISCINFO_BLOCKDEV_PATH=""
-
 # ===========================================================================
 # _discinfo_create_json
 # ---------------------------------------------------------------------------
 # Funktion.: Hilfsfunktion zur Erstellung eines JSON-Objekts aus einem Array
 # Parameter: $1 = Name des assoziativen Arrays (z.B. "DISC_INFO")
 # .........  $2 = JSON-Pfad/Key (optional, z.B. "disc_info" für Zweig)
-# Ausgabe..: JSON-String (stdout)
+# Ausgabe..: JSON-String
 # Rückgabe.: 0 = Erfolg, 1 = Array existiert nicht
 # ===========================================================================
 _discinfo_create_json() {
@@ -131,7 +123,7 @@ _discinfo_create_json() {
     
     #-- Validierung: Prüfe ob Array existiert -------------------------------
     if [[ ! -v "$array_name" ]]; then
-        log_error "_discinfo_create_json: Array '$array_name' existiert nicht"
+        log_error "Array '$array_name' existiert nicht"
         echo "{}"
         return 1
     fi
@@ -178,7 +170,6 @@ _discinfo_create_json() {
 # Funktion.: Initialisiere/Leere DISC_INFO Array
 # Parameter: keine
 # Rückgabe.: 0
-# Beschr...: Setzt alle Felder auf Standardwerte zurück
 # ===========================================================================
 discinfo_reset() {
     #-- Technische Basis-Informationen --------------------------------------
@@ -215,9 +206,148 @@ discinfo_reset() {
     
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
     api_set_section_json "discinfos" "disc_info" "$(_discinfo_create_json "DISC_INFO")"
-    log_debug "discinfo_reset: $MSG_DEBUG_DISCINFO_INIT"
+    log_debug "$MSG_DEBUG_DISCINFO_INIT"
     return 0
 }
+
+# ===========================================================================
+# discinfo_analyze
+# ---------------------------------------------------------------------------
+# Funktion.: Analyse der Disc-Info's für die aktuell eingelegte Disc
+# Parameter: keine
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beschr...: Orchestriert alle Analyse-Schritte in der richtigen Reihenfolge
+#            01. drivestat_get_drive & drivestat_disc_insert     → Disc in LW
+#            02. discinfo_set_type                                → Disc Type
+#            03. discinfo_set_filesystem                   → Disc-Dateisystem
+#            04. discinfo_set_label                              → Disc-Label
+#            05. discinfo_set_size_sectors            → Disc-Größe (Sektoren)
+#            06. discinfo_set_block_size            → Disc-Größe (Blockgröße)
+#            07. discinfo_set_size_mb                       → Disc-Größe (MB)
+#            08. discinfo_set_estimated_size_mb → (Disc-Größe + 10% Overhead)
+#            09. discinfo_set_created_at        → Erstellungsdatum (ISO 8601)
+#            10. discinfo_set_id                                    → Disc-ID 
+#            11. discinfo_set_identifier                    → Disc-Identifier
+#            12. discinfo_set_title                              → Disc-Titel
+#            13. discinfo_set_release_date                → Erscheinungsdatum
+#            14. init_filenames                                → iso_filename
+#                                                              → md5_filename
+#                                                              → log_filename
+#                                                              → tmp_filename
+#                                                              → iso_basename
+#            
+#            Diese Funktion wird in STATE_ANALYZING aufgerufen und stellt
+#            sicher dass ALLE Disc-Informationen verfügbar sind bevor
+#            der Kopiervorgang startet.
+# ===========================================================================
+discinfo_analyze() {
+    #-- Start der Analyse im LOG vermerken ----------------------------------
+    log_debug "$MSG_DEBUG_ANALYSE_START"
+    
+    #------------------------------------------------------------------------
+    # Die Analyse erfolgt für jeden Wert durch den Aufruf des entsprechenden
+    # Getter/Setter ohne Parameter. Dadurch wird die Auto-Detection des 
+    # Setter getriggert und der exaktestes Wert oder der Default-Wert für 
+    # dieses Disc-Info Feld ermittelt. Ein zusätzliches Loggen der Aktion 
+    # ist hierbei nicht notwendig, das dies durch den Getter/Setter/Detctor 
+    # bereits erfolgt.
+    # -----------------------------------------------------------------------
+
+    #-- Step 1: Prüfung ob überhaupt eine Disk erkannt wurde ----------------
+    if ! (drivestat_get_drive && drivestat_disc_insert); then
+        log_error "$MSG_ERROR_NO_DISC"
+        return 1
+    fi
+
+    #-- Step 2: Disc-Typ erkennen -------------------------------------------
+    if ! (discinfo_set_type ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 3: Dateisystem erkennen ----------------------------------------
+    if ! (discinfo_set_filesystem ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 4: Label extrahieren -------------------------------------------
+    if ! (discinfo_set_label ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 5: Größe ermitteln (Sektoren) ----------------------------------
+    if ! (discinfo_set_size_sectors ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 6: Größe ermitteln (Blockgröße) --------------------------------
+    if ! (discinfo_set_block_size ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 7: Größe ermitteln (MB) ----------------------------------------
+    if ! (discinfo_set_size_mb ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 8: Geschätzte Größe ermitteln (MB) -----------------------------
+    if ! (discinfo_set_estimated_size_mb ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 9: Erstellungsdatum ermitteln ----------------------------------
+    if ! (discinfo_set_created_at ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 10: Disc-ID ermitteln ------------------------------------------
+    if ! (discinfo_set_id ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 11: Interne Disc-Identifier berechnen --------------------------
+    if ! (discinfo_set_identifier ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 12: Titel ermitteln ---------------------------------------------
+    if ! (discinfo_set_title ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Step 13: Erscheinungsdatum ermitteln --------------------------------
+    if ! (discinfo_set_release_date ""); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #--Step 14: Dateinamen generieren ---------------------------------------
+    if ! (init_filenames); then
+        log_error "$MSG_ERROR_ANALYSE_FAILED"
+        return 1
+    fi
+
+    #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
+    api_set_section_json "discinfos" "disc_info" "$(_discinfo_create_json "DISC_INFO")"
+
+    #-- Ende der Analyse im LOG vermerken --------------------------------------    
+    log_debug "$MSG_DEBUG_INIT_SUCCESS"
+    return 0
+}
+
+# ============================================================================
+# GETTER/SETTER FUNKTIONEN FÜR DISC_INFO
+# ============================================================================
 
 # ===========================================================================
 # discinfo_get_id
@@ -239,7 +369,7 @@ discinfo_get_id() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_ID: $MSG_DEBUG_GET_ID_EMPTY"
+    log_error "$MSG_DEBUG_GET_ID: $MSG_DEBUG_GET_ID_EMPTY"
     echo ""
     return 1
 }
@@ -416,12 +546,13 @@ discinfo_get_label() {
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$label" ]]; then
+        log_debug "$MSG_DEBUG_GET_LABEL: '$label'"
         echo "$label"
         return 0
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_LABEL: $MSG_DEBUG_GET_LABEL_EMPTY"
+    log_error "$MSG_DEBUG_GET_LABEL: $MSG_DEBUG_GET_LABEL_EMPTY"
     echo ""
     return 1
 }
@@ -518,7 +649,7 @@ discinfo_get_type() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_TYPE: $MSG_DEBUG_GET_TYPE_EMPTY"
+    log_error "$MSG_DEBUG_GET_TYPE: $MSG_DEBUG_GET_TYPE_EMPTY"
     echo ""
     return 1
 }
@@ -652,7 +783,7 @@ discinfo_get_size_mb() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_SIZE_MB: $MSG_DEBUG_GET_SIZE_MB_EMPTY"
+    log_error "$MSG_DEBUG_GET_SIZE_MB: $MSG_DEBUG_GET_SIZE_MB_EMPTY"
     echo "0"
     return 1
 }
@@ -738,7 +869,7 @@ discinfo_get_size_sectors() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_SIZE_SECTORS: $MSG_DEBUG_GET_SIZE_SECTORS_EMPTY"
+    log_error "$MSG_DEBUG_GET_SIZE_SECTORS: $MSG_DEBUG_GET_SIZE_SECTORS_EMPTY"
     echo "0"
     return 1
 }
@@ -843,7 +974,7 @@ discinfo_get_block_size() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_BLOCK_SIZE: $MSG_DEBUG_GET_BLOCK_SIZE_EMPTY"
+    log_error "$MSG_DEBUG_GET_BLOCK_SIZE: $MSG_DEBUG_GET_BLOCK_SIZE_EMPTY"
     echo "2048"
     return 1
 }
@@ -948,7 +1079,7 @@ discinfo_get_estimated_size_mb() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_ESTIMATED_SIZE_MB: $MSG_DEBUG_GET_ESTIMATED_SIZE_MB_EMPTY"
+    log_error "$MSG_DEBUG_GET_ESTIMATED_SIZE_MB: $MSG_DEBUG_GET_ESTIMATED_SIZE_MB_EMPTY"
     echo "0"
     return 1
 }
@@ -1029,7 +1160,7 @@ discinfo_get_filesystem() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_FILESYSTEM: $MSG_DEBUG_GET_FILESYSTEM_EMPTY"
+    log_error "$MSG_DEBUG_GET_FILESYSTEM: $MSG_DEBUG_GET_FILESYSTEM_EMPTY"
     echo "unknown"
     return 1
 }
@@ -1113,7 +1244,7 @@ discinfo_get_copy_method() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_COPY_METHOD: $MSG_DEBUG_GET_COPY_METHOD_EMPTY"
+    log_error "$MSG_DEBUG_GET_COPY_METHOD: $MSG_DEBUG_GET_COPY_METHOD_EMPTY"
     echo ""
     return 1
 }
@@ -1166,7 +1297,7 @@ discinfo_get_created_at() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_CREATED_AT: $MSG_DEBUG_GET_CREATED_AT_EMPTY"
+    log_error "$MSG_DEBUG_GET_CREATED_AT: $MSG_DEBUG_GET_CREATED_AT_EMPTY"
     echo ""
     return 1
 }
@@ -1252,7 +1383,7 @@ discinfo_get_title() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_TITLE: $MSG_DEBUG_GET_TITLE_EMPTY"
+    log_error "$MSG_DEBUG_GET_TITLE: $MSG_DEBUG_GET_TITLE_EMPTY"
     echo ""
     return 1
 }
@@ -1330,7 +1461,7 @@ discinfo_get_release_date() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_RELEASE_DATE: $MSG_DEBUG_GET_RELEASE_DATE_EMPTY"
+    log_error "$MSG_DEBUG_GET_RELEASE_DATE: $MSG_DEBUG_GET_RELEASE_DATE_EMPTY"
     echo ""
     return 1
 }
@@ -1417,7 +1548,7 @@ discinfo_get_country() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_COUNTRY: $MSG_DEBUG_GET_COUNTRY_EMPTY"
+    log_error "$MSG_DEBUG_GET_COUNTRY: $MSG_DEBUG_GET_COUNTRY_EMPTY"
     echo ""
     return 1
 }
@@ -1493,7 +1624,7 @@ discinfo_get_publisher() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_PUBLISHER: $MSG_DEBUG_GET_PUBLISHER_EMPTY"
+    log_error "$MSG_DEBUG_GET_PUBLISHER: $MSG_DEBUG_GET_PUBLISHER_EMPTY"
     echo ""
     return 1
 }
@@ -1567,7 +1698,7 @@ discinfo_get_provider() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_PROVIDER: $MSG_DEBUG_GET_PROVIDER_EMPTY"
+    log_error "$MSG_DEBUG_GET_PROVIDER: $MSG_DEBUG_GET_PROVIDER_EMPTY"
     echo ""
     return 1
 }
@@ -1643,7 +1774,7 @@ discinfo_get_provider_id() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_PROVIDER_ID: $MSG_DEBUG_GET_PROVIDER_ID_EMPTY"
+    log_error "$MSG_DEBUG_GET_PROVIDER_ID: $MSG_DEBUG_GET_PROVIDER_ID_EMPTY"
     echo "0"
     return 1
 }
@@ -1730,7 +1861,7 @@ discinfo_get_cover_path() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_COVER_PATH: $MSG_DEBUG_GET_COVER_PATH_EMPTY"
+    log_error "$MSG_DEBUG_GET_COVER_PATH: $MSG_DEBUG_GET_COVER_PATH_EMPTY"
     echo ""
     return 1
 }
@@ -1833,7 +1964,7 @@ discinfo_get_iso_basename() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_ISO_BASENAME: $MSG_DEBUG_GET_ISO_BASENAME_EMPTY"
+    log_error "$MSG_DEBUG_GET_ISO_BASENAME: $MSG_DEBUG_GET_ISO_BASENAME_EMPTY"
     echo ""
     return 1
 }
@@ -1893,7 +2024,7 @@ discinfo_get_iso_filename() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_ISO_FILENAME: $MSG_DEBUG_GET_ISO_FILENAME_EMPTY"
+    log_error "$MSG_DEBUG_GET_ISO_FILENAME: $MSG_DEBUG_GET_ISO_FILENAME_EMPTY"
     echo ""
     return 1
 }
@@ -1961,7 +2092,7 @@ discinfo_get_md5_filename() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_MD5_FILENAME: $MSG_DEBUG_GET_MD5_FILENAME_EMPTY"
+    log_error "$MSG_DEBUG_GET_MD5_FILENAME: $MSG_DEBUG_GET_MD5_FILENAME_EMPTY"
     echo ""
     return 1
 }
@@ -2029,7 +2160,7 @@ discinfo_get_log_filename() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_LOG_FILENAME: $MSG_DEBUG_GET_LOG_FILENAME_EMPTY"
+    log_error "$MSG_DEBUG_GET_LOG_FILENAME: $MSG_DEBUG_GET_LOG_FILENAME_EMPTY"
     echo ""
     return 1
 }
@@ -2097,7 +2228,7 @@ discinfo_get_temp_pathname() {
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_debug "$MSG_DEBUG_GET_TEMP_PATHNAME: $MSG_DEBUG_GET_TEMP_PATHNAME_EMPTY"
+    log_error "$MSG_DEBUG_GET_TEMP_PATHNAME: $MSG_DEBUG_GET_TEMP_PATHNAME_EMPTY"
     echo ""
     return 1
 }
@@ -2147,136 +2278,23 @@ discinfo_set_temp_pathname() {
 }
 
 # ===========================================================================
-# discinfo_analyze
+# diskinfos_get_software_info
 # ---------------------------------------------------------------------------
-# Funktion.: Analyse der Disc-Info's für die aktuell eingelegte Disc
+# Funktion.: Gibt Software-Informationen als JSON zurück
 # Parameter: keine
+# Ausgabe..: JSON-String mit Software-Informationen (stdout)
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Beschr...: Orchestriert alle Analyse-Schritte in der richtigen Reihenfolge
-#            01. drivestat_get_drive & drivestat_disc_insert     → Disc in LW
-#            02. discinfo_set_type                                → Disc Type
-#            03. discinfo_set_filesystem                   → Disc-Dateisystem
-#            04. discinfo_set_label                              → Disc-Label
-#            05. discinfo_set_size_sectors            → Disc-Größe (Sektoren)
-#            06. discinfo_set_block_size            → Disc-Größe (Blockgröße)
-#            07. discinfo_set_size_mb                       → Disc-Größe (MB)
-#            08. discinfo_set_estimated_size_mb → (Disc-Größe + 10% Overhead)
-#            09. discinfo_set_created_at        → Erstellungsdatum (ISO 8601)
-#            10. discinfo_set_id                                    → Disc-ID 
-#            11. discinfo_set_identifier                    → Disc-Identifier
-#            12. discinfo_set_title                              → Disc-Titel
-#            13. discinfo_set_release_date                → Erscheinungsdatum
-#            14. init_filenames                                → iso_filename
-#                                                              → md5_filename
-#                                                              → log_filename
-#                                                              → tmp_filename
-#                                                              → iso_basename
-#            
-#            Diese Funktion wird in STATE_ANALYZING aufgerufen und stellt
-#            sicher dass ALLE Disc-Informationen verfügbar sind bevor
-#            der Kopiervorgang startet.
 # ===========================================================================
-discinfo_analyze() {
-    #-- Start der Analyse im LOG vermerken ----------------------------------
-    log_debug "$MSG_DEBUG_ANALYSE_START"
-    
-    #------------------------------------------------------------------------
-    # Die Analyse erfolgt für jeden Wert durch den Aufruf des Getter ohne 
-    # Parameter. Dadurch wird die Auto-Detection des Setter getriggert und 
-    # der exaktestes Wert oder der Default-Wert für dieses Disc-Info Feld 
-    # ermittelt. Ein zusätzliches Loggen der Aktion ist hierbei nicht not-
-    # wendig, das dies durch den Setter/Detctor bereits erfolgt.
-    # -----------------------------------------------------------------------
-
-    #-- Step 1: Prüfung ob überhaupt eine Disk erkannt wurde ----------------
-    if ! (drivestat_get_drive && drivestat_disc_insert); then
-        log_error "$MSG_ERROR_NO_DISC"
-        return 1
-    fi
-
-    #-- Step 2: Disc-Typ erkennen -------------------------------------------
-    if ! (discinfo_set_type ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 3: Dateisystem erkennen ----------------------------------------
-    if ! (discinfo_set_filesystem ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 4: Label extrahieren -------------------------------------------
-    if ! (discinfo_set_label ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 5: Größe ermitteln (Sektoren) ----------------------------------
-    if ! (discinfo_set_size_sectors ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 6: Größe ermitteln (Blockgröße) --------------------------------
-    if ! (discinfo_set_block_size ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 7: Größe ermitteln (MB) ----------------------------------------
-    if ! (discinfo_set_size_mb ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 8: Geschätzte Größe ermitteln (MB) -----------------------------
-    if ! (discinfo_set_estimated_size_mb ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 9: Erstellungsdatum ermitteln ----------------------------------
-    if ! (discinfo_set_created_at ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 10: Disc-ID ermitteln ------------------------------------------
-    if ! (discinfo_set_id ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 11: Interne Disc-Identifier berechnen --------------------------
-    if ! (discinfo_set_identifier ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 12: Titel ermitteln ---------------------------------------------
-    if ! (discinfo_set_title ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 13: Erscheinungsdatum ermitteln --------------------------------
-    if ! (discinfo_set_release_date ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #--Step 14: Dateinamen generieren ---------------------------------------
-    if ! (init_filenames); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
-    api_set_section_json "discinfos" "disc_info" "$(_discinfo_create_json "DISC_INFO")"
-
-    #-- Ende der Analyse im LOG vermerken --------------------------------------    
-    log_debug "$MSG_DEBUG_INIT_SUCCESS"
+diskinfos_get_software_info() {
+    #-- Lese API-Datei (Software-Sektion) -----------------------------------
+    local software_json
+    software_json=$(api_get_section_json "diskinfos" "software") || {
+        log_error "$MSG_ERROR_API_READ_FAILED"
+        #-- Lese die Informationen direkt aus (Fallback) --------------------
+        software_json=$(diskinfos_collect_software_info) || return 1
+    }
+    #-- Ausgabe des JSON-Strings --------------------------------------------
+    echo "$software_json"
     return 0
 }
 
@@ -2331,8 +2349,7 @@ diskinfos_collect_software_info() {
     fi
     
     #-- Prüfe Software-Verfügbarkeit ----------------------------------------
-    local json_result
-    json_result=$(systeminfo_check_software_list "$all_deps") || {
+    local json_result=$(systeminfo_check_software_list "$all_deps") || {
         log_error "$MSG_ERROR_SOFTWARE_CHECK_FAILED"
         
         #-- Schreibe Fehler in API ------------------------------------------
@@ -2341,7 +2358,7 @@ diskinfos_collect_software_info() {
     }
     
     #-- Konvertiere Array zu Objekt (name als Key) --------------------------
-    local json_object=$(echo "$json_array" | jq 'map({(.name): {path, version, available, required}}) | add // {}') || {
+    local json_object=$(echo "$json_result" | jq 'map({(.name): {path, version, available, required}}) | add // {}') || {
         log_error "$MSG_ERROR_JSON_CONVERSION_FAILED"
         api_set_section_json "diskinfos" "software" '{"error":"JSON-Konvertierung fehlgeschlagen"}'
         return 1
@@ -2358,21 +2375,7 @@ diskinfos_collect_software_info() {
 }
 
 # ===========================================================================
-# diskinfos_get_software_info
-# ---------------------------------------------------------------------------
-# Funktion.: Gibt Software-Informationen als JSON zurück
-# Parameter: keine
-# Ausgabe..: JSON-String mit Software-Informationen (stdout)
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert, diesen Eintrag
+# ....  nie automatisch löschen - wird nur vom User nach Implementierung
+# ....  der folgenden Funktionen entfernt!
 # ===========================================================================
-diskinfos_get_software_info() {
-    diskinfos_collect_software_info
-    local software_json
-    software_json=$(api_get_section_json "diskinfos" "software") || {
-        log_error "$MSG_ERROR_API_READ_FAILED"
-        echo '{"error":"API-Auslese fehlgeschlagen"}'
-        return 1
-    }
-    echo "$software_json"
-    return 0
-}
