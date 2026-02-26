@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # =============================================================================
 # Drive Status Library
 # =============================================================================
@@ -121,7 +121,7 @@ drivestat_reset() {
     DRIVE_INFO[bus_type]=""
     DRIVE_INFO[capabilities]="none"
     DRIVE_INFO[closed]=true
-    DRIVE_INFO[inserted]=false
+    DRIVE_INFO[medium_inserted]=false
     DRIVE_INFO[status]="$DRIVE_STATUS_EMPTY"
 
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
