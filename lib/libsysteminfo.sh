@@ -43,8 +43,9 @@ systeminfo_check_dependencies() {
     integrity_check_module_dependencies "systeminfo" || return 1
     
     # Modul-spezifische Initialisierung
-    # Erkenne Container-Umgebung
-    systeminfo_detect_container_env
+    systeminfo_reset || return 1
+    systeminfo_analyse || return 1
+    systeminfo_reset_tool_cache || return 1
     
     return 0
 }
@@ -70,18 +71,11 @@ declare -A SYSTEM_INFO=(
     [container_type]=""         # "lxc", "docker", "podman", ""
     
     # ========== Speicher ==========
+    [storage_output_dir]=""     # Ausgabeverzeichnis-Pfad
     [storage_total_gb]=0        # Gesamtspeicher in GB
     [storage_free_gb]=0         # Freier Speicher in GB
-    [storage_used_percent]=0    # Belegung in %
-    [storage_output_dir]=""     # Ausgabeverzeichnis-Pfad
+    [storage_used]=0            # Belegung in %
 )
-
-# ---------------------------------------------------------------------------
-# Konstanten für Container Typen
-# ---------------------------------------------------------------------------
-readonly CONTAINER_TYPE_LXC="lxc"
-readonly CONTAINER_TYPE_DOCKER="docker"
-readonly CONTAINER_TYPE_PODMAN="podman"
 
 # ===========================================================================
 # systeminfo_reset
@@ -103,10 +97,10 @@ systeminfo_reset() {
         [container_activ]=false
         [container_type]="none"
         
+        [storage_output_dir]=""
         [storage_total_gb]=0
         [storage_free_gb]=0
-        [storage_used_percent]=0
-        [storage_output_dir]=""
+        [storage_used]=0
     )
 
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
@@ -130,9 +124,10 @@ systeminfo_reset() {
 #            06. systeminfo_set_os_uptime
 #            07. systeminfo_set_container_is_container
 #            08. systeminfo_set_container_type
-#            09. systeminfo_set_storage_total_gb
-#            10. systeminfo_set_storage_free_gb
-#            11. systeminfo_set_storage_used_percent
+#            09. systeminfo_set_output_dir
+#            10. systeminfo_set_storage_total
+#            11. systeminfo_set_storage_free
+#            12. systeminfo_set_storage_used
 # ===========================================================================
 systeminfo_analyse() {
     #-- Start der Analyse im LOG vermerken ----------------------------------
@@ -160,9 +155,10 @@ systeminfo_analyse() {
     systeminfo_set_container_type || return 1
     
     #-- Speicher-Informationen ----------------------------------------------
-    systeminfo_set_storage_total_gb || return 1
-    systeminfo_set_storage_free_gb || return 1
-    systeminfo_set_storage_used_percent || return 1
+    systeminfo_set_output_dir || return 1
+    systeminfo_set_storage_total || return 1
+    systeminfo_set_storage_free || return 1
+    systeminfo_set_storage_used || return 1
     
     #-- Schreiben nach JSON & Loggen der Analyseergebnisse ------------------
     api_set_section_json "systeminfo" "system_info" "$(api_create_json "SYSTEM_INFO")"
@@ -658,6 +654,16 @@ systeminfo_detect_uptime() {
 }
 
 # ===========================================================================
+# CONTAINER ERKENNUNG
+# ===========================================================================
+# ---------------------------------------------------------------------------
+# Konstanten für Container Typen
+# ---------------------------------------------------------------------------
+readonly CONTAINER_TYPE_LXC="lxc"
+readonly CONTAINER_TYPE_DOCKER="docker"
+readonly CONTAINER_TYPE_PODMAN="podman"
+
+# ===========================================================================
 # systeminfo_get_container_activ
 # ---------------------------------------------------------------------------
 # Funktion.: Gibt zurück, ob Container-Umgebung aktiv ist
@@ -905,7 +911,695 @@ sysinfo_detect_container_type() {
     return 1
 }   
 
+# ===========================================================================
+# DISK SPACE CHECK
+# ===========================================================================
 
+# ===========================================================================
+# systeminfo_get_output_dir
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt Ausgabe-Verzeichnis zurück
+# Parameter: Keine
+# Ausgabe..: Ausgabe-Verzeichnis-String
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_output_dir() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local output_dir="${SYSTEM_INFO[output_dir]}"
+
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$output_dir" ]]; then
+        log_debug "$MSG_DEBUG_GET_OUTPUT_DIR: '$output_dir'"
+        echo "$output_dir"
+        return 0
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_OUTPUT_DIR_UNKNOWN"
+    echo ""
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_output_dir
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt Ausgabe-Verzeichnis
+# Parameter: $1 = output_dir (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_output_dir() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local output_dir="$1"
+    local old_value="${SYSTEM_INFO[output_dir]}"
+
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$output_dir" ]]; then
+        output_dir=$(folders_get_output_dir)
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$output_dir" ]]; then
+        log_error "$MSG_ERROR_OUTPUT_DIR_UNKNOWN"
+        output_dir=""
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------    
+    SYSTEM_INFO[output_dir]="$output_dir"
+    log_debug "$MSG_DEBUG_SET_OUTPUT_DIR: '$output_dir'"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$output_dir" ]]; then
+        log_debug "$MSG_DEBUG_OUTPUT_DIR_CHANGED: '$old_value' → '$output_dir'"
+        api_set_value_json "systeminfo" "output_dir" "${SYSTEM_INFO[output_dir]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_get_storage_total
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt Gesamtspeicherplatz am Ausgabe-Verzeichnis zurück (in GB)
+# Parameter: Keine
+# Ausgabe..: Gesamtspeicherplatz in GB (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_storage_total() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local storage_total="${SYSTEM_INFO[storage_total]}"
+    
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$storage_total" ]]; then
+        log_debug "$MSG_DEBUG_GET_STORAGE_TOTAL: '$storage_total' GB"
+        echo "$storage_total"
+        return 0
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_STORAGE_TOTAL_UNKNOWN"
+    echo "0"
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_storage_total
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt Gesamtspeicherplatz am Ausgabe-Verzeichnis (in GB)
+# Parameter: $1 = storage_total (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_storage_total() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local storage_total="$1"
+    local old_value="${SYSTEM_INFO[storage_total]}"
+
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$storage_total" ]]; then
+        storage_total=$(systeminfo_detect_storage_total)
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$storage_total" ]] || [[ ! "$storage_total" =~ ^[0-9]+$ ]]; then
+        log_error "$MSG_ERROR_STORAGE_TOTAL_UNKNOWN"
+        storage_total="0"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------
+    SYSTEM_INFO[storage_total]="$storage_total"
+    log_debug "$MSG_DEBUG_SET_STORAGE_TOTAL: '$storage_total' GB"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$storage_total" ]]; then
+        log_debug "$MSG_DEBUG_STORAGE_TOTAL_CHANGED: '$old_value' → '$storage_total'"
+        api_set_value_json "systeminfo" "storage_total" "${SYSTEM_INFO[storage_total]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_detect_storage_total
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt Gesamtspeicherplatz am Ausgabe-Verzeichnis mit df
+# Parameter: Keine
+# Ausgabe..: Gesamtspeicherplatz in GB (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_detect_storage_total() {
+    #-- Ermittle Ausgabe-Verzeichnis ----------------------------------------
+    local output_dir=$(systeminfo_get_output_dir) 
+    
+    #-- Ermittle verfügbaren Speicherplatz am Ausgabepfad -------------------
+    local output_dir_total="0"
+        
+    if [[ -d "$output_dir" ]]; then
+        local df_output=$(df -BG "$output_dir" 2>/dev/null | tail -1)
+        if [[ -n "$df_output" ]]; then
+            output_dir_total=$(echo "$df_output" | awk '{print $2}' | sed 's/G//')
+        fi
+    fi
+
+    #-- Ermittelten Wert zurückgeben ----------------------------------------
+    echo $output_dir_total
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_get_storage_free
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt freien Speicherplatz am Ausgabe-Verzeichnis zurück (in GB)
+# Parameter: Keine
+# Ausgabe..: Freier Speicherplatz in GB (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_storage_free() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local storage_free="${SYSTEM_INFO[storage_free]}"
+    
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$storage_free" ]]; then
+        log_debug "$MSG_DEBUG_GET_STORAGE_FREE: '$storage_free' GB"
+        echo "$storage_free"
+        return 0
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_STORAGE_FREE_UNKNOWN"
+    echo "0"
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_storage_free
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt freien Speicherplatz am Ausgabe-Verzeichnis (in GB)
+# Parameter: $1 = storage_free (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_storage_free() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local storage_free="$1"
+    local old_value="${SYSTEM_INFO[storage_free]}"
+
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$storage_free" ]]; then
+        storage_free=$(systeminfo_detect_storage_free)
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$storage_free" ]] || [[ ! "$storage_free" =~ ^[0-9]+$ ]]; then
+        log_error "$MSG_ERROR_STORAGE_FREE_UNKNOWN"
+        storage_free="0"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------
+    SYSTEM_INFO[storage_free]="$storage_free"
+    log_debug "$MSG_DEBUG_SET_STORAGE_FREE: '$storage_free' GB"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$storage_free" ]]; then
+        log_debug "$MSG_DEBUG_STORAGE_FREE_CHANGED: '$old_value' → '$storage_free'"
+        api_set_value_json "systeminfo" "storage_free" "${SYSTEM_INFO[storage_free]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_detect_storage_free
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt freien Speicherplatz am Ausgabe-Verzeichnis mit df
+# Parameter: Keine
+# Ausgabe..: Freier Speicherplatz in GB (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_detect_storage_free() {
+    #-- Ermittle Ausgabe-Verzeichnis ----------------------------------------
+    local output_dir=$(systeminfo_get_output_dir) 
+    
+    #-- Ermittle verfügbaren Speicherplatz am Ausgabepfad -------------------
+    local output_dir_space="0"
+        
+    if [[ -d "$output_dir" ]]; then
+        local df_output=$(df -BG "$output_dir" 2>/dev/null | tail -1)
+        if [[ -n "$df_output" ]]; then
+            output_dir_space=$(echo "$df_output" | awk '{print $4}' | sed 's/G//')
+        fi
+    fi
+
+    #-- Ermittelten Wert zurückgeben ----------------------------------------
+    echo $output_dir_space
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_get_storage_used
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt prozentualen genutzten Speicherplatz am Ausgabe-Verzeichnis zurück
+# Parameter: Keine
+# Ausgabe..: Genutzter Speicherplatz in Prozent (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_storage_used() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local storage_used="${SYSTEM_INFO[storage_used]}"
+    
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$storage_used" ]]; then
+        log_debug "$MSG_DEBUG_GET_STORAGE_USED_PERCENT: '$storage_used' %"
+        echo "$storage_used"
+        return 0
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_STORAGE_USED_PERCENT_UNKNOWN"
+    echo "0"
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_storage_used
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt prozentualen genutzten Speicherplatz am Ausgabe-Verzeichnis
+# Parameter: $1 = storage_used (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_storage_used() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local storage_used="$1"
+    local old_value="${SYSTEM_INFO[storage_used]}"
+
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$storage_used" ]]; then
+        storage_used=$(systeminfo_detect_storage_used)
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$storage_used" ]] || [[ ! "$storage_used" =~ ^[0-9]+$ ]]; then
+        log_error "$MSG_ERROR_STORAGE_USED_PERCENT_UNKNOWN"
+        storage_used="0"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------
+    SYSTEM_INFO[storage_used]="$storage_used"
+    log_debug "$MSG_DEBUG_SET_STORAGE_USED_PERCENT: '$storage_used' %"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$storage_used" ]]; then
+        log_debug "$MSG_DEBUG_STORAGE_USED_PERCENT_CHANGED: '$old_value' → '$storage_used'"
+        api_set_value_json "systeminfo" "storage_used" "${SYSTEM_INFO[storage_used]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_detect_storage_used
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt prozentualen genutzten Speicherplatz am Ausgabe-
+# .........  Verzeichnis mit df
+# Parameter: Keine
+# Ausgabe..: Genutzter Speicherplatz in Prozent (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_detect_storage_used() {
+    #-- Ermittle Ausgabe-Verzeichnis ----------------------------------------
+    local output_dir=$(systeminfo_get_output_dir) 
+    
+    #-- Ermittle verfügbaren Speicherplatz am Ausgabepfad -------------------
+    local output_dir_used="0"
+        
+    if [[ -d "$output_dir" ]]; then
+        local df_output=$(df -BG "$output_dir" 2>/dev/null | tail -1)
+        if [[ -n "$df_output" ]]; then
+            output_dir_used=$(echo "$df_output" | awk '{print $5}' | sed 's/%//')
+        fi
+    fi
+
+    #-- Ermittelten Wert zurückgeben ----------------------------------------
+    echo $output_dir_used
+    return 0
+}
+
+# ===========================================================================
+# HINTERGRUND ÜBERWACHUNG DES SPEICHERPLATZES
+# ===========================================================================
+_SYSTEMINFO_MONITOR_PID=""   # PID des Hintergrund-Monitors für Speicherplatz
+
+# ===========================================================================
+# systeminfo_monitor_worker
+# ---------------------------------------------------------------------------
+# Funktion.: Endlosschleife, die alle 60 Sekunden Speicherplatz aktualisiert
+# Parameter: Keine
+# Rückgabe.: Läuft endlos, bis Prozess beendet wird
+# ===========================================================================
+systeminfo_monitor_worker() {
+    #-- Endlosschleife, die alle 60 Sekunden Speicherplatz aktualisiert -----
+    while true; do
+        systeminfo_set_output_dir          # Aktualisiere Ausgabe-Verzeichnis
+        systeminfo_set_storage_total       # Aktualisiere Gesamtspeicherplatz
+        systeminfo_set_storage_free       # Aktualisiere freien Speicherplatz
+        systeminfo_set_storage_used    # Aktualisiere genutzten Speicherplatz
+        sleep 60                             # Alle 60 Sekunden aktualisieren
+    done
+}
+
+# ===========================================================================
+# systeminfo_start_monitor
+# ---------------------------------------------------------------------------
+# Funktion.: Startet den Hintergrund-Monitor für Speicherplatz
+# Parameter: Keine
+# Rückgabe.: 0 = Monitor gestartet oder läuft bereits, 1 = Fehler
+# ===========================================================================
+systeminfo_start_monitor() {
+    #-- Überprüfe, ob bereits ein Monitor läuft --------------------------------
+    if [[ -n "$_SYSTEMINFO_MONITOR_PID" ]] && kill -0 "$_SYSTEMINFO_MONITOR_PID" 2>/dev/null; then
+        log_debug "Systeminfo Monitor läuft bereits mit PID $_SYSTEMINFO_MONITOR_PID"
+        return 0
+    fi
+    
+    #-- Starte den Monitor-Worker im Hintergrund ----------------------------
+    systeminfo_disk_space_monitor &
+    _SYSTEMINFO_MONITOR_PID=$!
+    log_debug "Systeminfo Monitor gestartet mit PID $_SYSTEMINFO_MONITOR_PID"
+    return 0
+}
+
+# ===========================================================================
+#  systeminfo_stop_monitor
+# ---------------------------------------------------------------------------
+# Funktion.: Stoppt den Hintergrund-Monitor für Speicherplatz
+# Parameter: Keine
+# Rückgabe.: 0 = Monitor gestoppt oder lief nicht, 1 = Fehler
+# ===========================================================================
+systeminfo_stop_monitor() {
+    #-- Überprüfe, ob Monitor läuft und beende ihn --------------------------------
+    if [[ -n "$_SYSTEMINFO_MONITOR_PID" ]] && kill -0 "$_SYSTEMINFO_MONITOR_PID" 2>/dev/null; then
+        log_info "Beende Hintergrund-Überwachung des Speicherplatzes (PID $_SYSTEMINFO_MONITOR_PID)"
+        kill "$_SYSTEMINFO_MONITOR_PID" 2>/dev/null
+        _SYSTEMINFO_MONITOR_PID=""
+    else
+        log_debug "Kein aktiver Disk Space Monitor zum Beenden gefunden"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# PRIVATE VARIABLES AND HELPER FUNCTIONS FOR TOOLS PATHS INFORMATION
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Datenstruktur für Tool Path und Versionen (für Auto-Detection)
+# ---------------------------------------------------------------------------
+declare -A TOOL_PATHS=(
+    #-- Drivestat-Tools -----------------------------------------------------
+    [lsblk]=""
+    [dmesg]=""
+    [udevadm]=""
+    [dd]=""
+    [cdparanoia]=""
+    #-- DiscInfo-Tools ------------------------------------------------------
+    [blkid]=""
+    [isoinfo]=""
+    [blockdev]=""
+    #-- API-Tools -----------------------------------------------------------
+    [jq]=""
+)
+
+# ===========================================================================
+# systeminfo_reset_tool_cache
+# ---------------------------------------------------------------------------
+# Funktion.: Leert Tool-Pfad-Cache (z.B. nach Software-Installation)
+# Parameter: Keine
+# ===========================================================================
+systeminfo_reset_tool_cache() {
+    for key in "${!TOOL_PATHS[@]}"; do
+        TOOL_PATHS[$key]=""
+    done
+}
+
+# ===========================================================================
+# _systeminfo_get_software_version
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittle Version einer installierten Software
+# Parameter: $1 = Software-Name (z.B. "cdparanoia", "lame", "python3")
+# Rückgabe.: 0 = gefunden, 1 = nicht gefunden
+# Ausgabe..: Version-String oder "Not installed"
+# Hinweis..: Zentrale Erkennungslogik für alle Module
+# ===========================================================================
+_systeminfo_get_software_version() {
+    local software_name="$1"
+    local version="Not installed"
+    
+    # Prüfe ob Command existiert
+    if ! command -v "$software_name" >/dev/null 2>&1; then
+        # Spezialfall: Python-Module prüfen
+        if [[ "$software_name" == "flask" ]] || [[ "$software_name" == "musicbrainzngs" ]] || [[ "$software_name" == "requests" ]]; then
+            # Versuche mit System-Python
+            if python3 -c "import ${software_name}" 2>/dev/null; then
+                version=$(python3 -c "import importlib.metadata; print(importlib.metadata.version('${software_name}'))" 2>/dev/null || echo "installed")
+            # Versuche mit venv-Python
+            elif [[ -f "/opt/disk2iso/venv/bin/python3" ]]; then
+                if /opt/disk2iso/venv/bin/python3 -c "import ${software_name}" 2>/dev/null; then
+                    version=$(/opt/disk2iso/venv/bin/python3 -c "import importlib.metadata; print(importlib.metadata.version('${software_name}'))" 2>/dev/null || echo "installed")
+                fi
+            fi
+        fi
+        
+        echo "$version"
+        [[ "$version" != "Not installed" ]] && return 0 || return 1
+    fi
+    
+    # Software-spezifische Version-Erkennung
+    case "$software_name" in
+        cdparanoia)
+            version=$(cdparanoia --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
+            ;;
+        lame)
+            version=$(lame --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
+            ;;
+        dvdbackup)
+            version=$(dvdbackup --version 2>&1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
+            ;;
+        ddrescue)
+            version=$(ddrescue --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
+            ;;
+        genisoimage)
+            version=$(genisoimage --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
+            ;;
+        python3|python)
+            version=$(python3 --version 2>&1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
+            ;;
+        mosquitto)
+            version=$(mosquitto -h 2>&1 | grep -oP 'version \K\d+\.\d+(\.\d+)?' || echo "installed")
+            ;;
+        makemkvcon)
+            version=$(makemkvcon --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
+            ;;
+        flac)
+            version=$(flac --version 2>&1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
+            ;;
+        oggenc)
+            version=$(oggenc --version 2>&1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
+            ;;
+        *)
+            # Generischer Fallback: Versuche --version
+            if "$software_name" --version >/dev/null 2>&1; then
+                version=$("$software_name" --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
+            else
+                version="installed"
+            fi
+            ;;
+    esac
+    
+    echo "$version"
+    return 0
+}
+
+# ===========================================================================
+# _systeminfo_get_available_version
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittle verfügbare Version einer Software (apt-cache)
+# Parameter: $1 = Software-Name
+# Rückgabe.: 0 = Erfolg
+# Ausgabe..: Version-String oder "Unknown"
+# ===========================================================================
+_systeminfo_get_available_version() {
+    local software_name="$1"
+    local available_version="Unknown"
+    
+    # Prüfe ob apt-cache verfügbar ist
+    if command -v apt-cache >/dev/null 2>&1; then
+        # Hole Candidate-Version (nächste installierbare Version)
+        available_version=$(apt-cache policy "$software_name" 2>/dev/null | grep "Candidate:" | awk '{print $2}')
+        
+        # Fallback: Prüfe ob überhaupt ein Paket existiert
+        if [[ -z "$available_version" ]] || [[ "$available_version" == "(none)" ]]; then
+            available_version="Unknown"
+        fi
+    fi
+    
+    echo "$available_version"
+    return 0
+}
+
+# ===========================================================================
+# _systeminfo_get_tool_path
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt Pfad zu System-Tool mit Caching
+# Parameter: $1 = tool_name
+# Ausgabe..: Tool-Pfad (stdout)
+# Rückgabe.: 0 = gefunden, 1 = nicht gefunden
+# ===========================================================================
+_systeminfo_get_tool_path() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local tool_name="$1"
+    
+    #-- Validierung der Parameter -------------------------------------------
+    if [[ -z "$tool_name" ]]; then
+        log_error "Kein Tool-Name angegeben"
+        return 1
+    fi
+    
+    #-- Cache-Treffer ? -----------------------------------------------------
+    if [[ -n "${TOOL_PATHS[$tool_name]}" ]]; then
+        echo "${TOOL_PATHS[$tool_name]}"
+        return 0
+    fi
+    
+    #-- Such-Pfade für das Tool definieren ----------------------------------
+    local search_paths=(
+        "$(command -v "$tool_name" 2>/dev/null)"
+        "/bin/$tool_name"
+        "/usr/bin/$tool_name"
+        "/usr/sbin/$tool_name"
+        "/sbin/$tool_name"
+    )
+
+    #-- Durchsuche die Pfade / erste existierende ausführbare Tool zurück ---
+    for path in "${search_paths[@]}"; do
+        if [[ -x "$path" ]]; then
+            TOOL_PATHS[$tool_name]="$path"
+            echo "$path"
+            return 0
+        fi
+    done
+    
+    # Nicht gefunden
+    log_debug "Tool '$tool_name' nicht im PATH gefunden"
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_check_software_list
+# ---------------------------------------------------------------------------
+# Funktion.: Zentrale Software-Versions-Prüfung mit Update-Check
+# Parameter: Keine (ermittelt Caller automatisch)
+# Rückgabe.: 0 = Erfolg
+# Ausgabe..: JSON-Array mit Software-Informationen (stdout)
+# Format...: [{"name":"cdparanoia","installed":"10.2","available":"10.2",
+# .........   "status":"current","update_available":false,
+# .........   "executable_path":"/usr/bin/cdparanoia",
+# .........   "caller_module":"libdrivestat.sh"}]
+# Nutzung..: Wird von Modulen aufgerufen für ihre Dependencies
+# ===========================================================================
+systeminfo_check_software_list() {
+    #-- Auto-Detect Caller-Modul --------------------------------------------
+    local caller_file="${BASH_SOURCE[1]##*/}"       # "libdiskinfos.sh"
+    local caller_module="${caller_file%.sh}"        # "libdiskinfos"
+    
+    log_debug "Caller-Modul erkannt: $caller_module (aus $caller_file)"
+    
+    #-- Lese Dependencies aus INI-Datei -------------------------------------
+    local external_deps
+    external_deps=$(settings_get_value_ini "$caller_module" "dependencies" "external" "") || {
+        log_warning "Keine external Dependencies in $caller_module.ini gefunden"
+        external_deps=""
+    }
+    
+    local optional_deps
+    optional_deps=$(settings_get_value_ini "$caller_module" "dependencies" "optional" "") || {
+        log_warning "Keine optional Dependencies in $caller_module.ini gefunden"
+        optional_deps=""
+    }
+    
+    #-- Kombiniere Dependencies ---------------------------------------------
+    local all_deps=""
+    if [[ -n "$external_deps" ]] && [[ -n "$optional_deps" ]]; then
+        all_deps="${external_deps},${optional_deps}"
+    elif [[ -n "$external_deps" ]]; then
+        all_deps="$external_deps"
+    elif [[ -n "$optional_deps" ]]; then
+        all_deps="$optional_deps"
+    fi
+    
+    #-- Keine Dependencies gefunden -----------------------------------------
+    if [[ -z "$all_deps" ]]; then
+        log_debug "Keine Dependencies für $caller_module definiert"
+        echo "[]"
+        return 0
+    fi
+    
+    #-- Parse Dependencies (kommasepariert → Array) -------------------------
+    IFS=',' read -ra deps_array <<< "$all_deps"
+    
+    #-- JSON-Array aufbauen -------------------------------------------------
+    local json_array="{"
+    local first=true
+
+    for software_name in "${software_list[@]}"; do
+
+        #-- Trim Whitespace -------------------------------------------------
+        software_name=$(echo "$software_name" | xargs)
+
+        #-- Komma zwischen Einträgen, außer beim ersten Eintrag -------------
+        if [[ "$first" == "false" ]] && json_array+=","
+        first=false
+        
+        #-- 1. Installierte Version ermitteln -------------------------------
+        local installed_version
+        installed_version=$(_systeminfo_get_software_version "$software_name")
+        
+        #-- 2. Verfügbare Version ermitteln ---------------------------------
+        local available_version="Unknown"
+        if [[ "$installed_version" != "Not installed" ]]; then
+            available_version=$(_systeminfo_get_available_version "$software_name")
+        fi
+        
+        #-- 3. Executable-Pfad ermitteln (NEU!) -----------------------------
+        local executable_path=""
+        if [[ "$installed_version" != "Not installed" ]]; then
+            executable_path=$(_systeminfo_get_tool_path "$software_name" 2>/dev/null || echo "")
+        fi
+
+        #-- 4. Status bestimmen ---------------------------------------------
+        local status="unknown"
+        local update_available="false"
+        
+        if [[ "$installed_version" == "Not installed" ]]; then
+            # Software nicht installiert → Status "missing"
+            status="missing"
+        elif [[ "$available_version" == "Unknown" ]]; then
+            # Keine Info über verfügbare Version → Status "installed" 
+            status="installed"
+        elif [[ "$installed_version" == "$available_version" ]]; then
+            # Versionen gleich oder keine genaue Version → Status "current"
+            status="current"
+        else
+            # Versionen unterschiedlich → Update verfügbar
+            status="outdated"
+            update_available="true"
+        fi
+        
+        #-- 4. JSON-Objekt bauen (escaping für JSON) ------------------------
+        json_array+="\"${software_name}\":{"
+        json_array+="\"path\":\"${executable_path}\","
+        json_array+="\"version\":\"${installed_version}\","
+        json_array+="\"available\":\"${available_version}\","
+        json_array+="\"status\":\"${status}\","
+        json_array+="\"update_available\":${update_available}"
+        json_array+="}"
+    done
+    
+    json_array+="}"
+
+    #-- Speicher in systeminfo.json unter software.{modul}_dependencies -----
+    api_set_value_json "systeminfo" ".software.${caller_module}_dependencies" "$json_object" || {
+        log_error "Fehler beim Schreiben der Software-Infos für $caller_module"
+        return 1
+    }
+
+    log_debug "Software-Infos für $caller_module erfolgreich geschrieben"
+    return 0
+}
 
 
 
@@ -918,9 +1612,6 @@ sysinfo_detect_container_type() {
 # ....  der folgenden Funktionen entfernt!
 # ===========================================================================
 
-# ============================================================================
-# DISK SPACE CHECK
-# ============================================================================
 
 # ===========================================================================
 # systeminfo_check_disk_space
@@ -986,140 +1677,6 @@ systeminfo_check_disk_space() {
 # ===========================================================================
 # COLLECTOR FUNCTIONS - Schreiben Daten in JSON-Dateien
 # ===========================================================================
-
-# ===========================================================================
-# systeminfo_collect_os_info
-# ---------------------------------------------------------------------------
-# Funktion.: Sammle OS-Informationen und schreibe in os_info.json
-# Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Hinweis..: STATISCH - einmal beim Start ausführen
-# Schreibt.: api/os_info.json
-# ===========================================================================
-systeminfo_collect_os_info() {
-    local os_name="Unknown"
-    local os_version="Unknown"
-    local kernel_version=$(uname -r 2>/dev/null || echo "Unknown")
-    local architecture=$(uname -m 2>/dev/null || echo "Unknown")
-    local hostname_value=$(hostname 2>/dev/null || echo "Unknown")
-    
-    # Distribution erkennen
-    if [[ -f /etc/os-release ]]; then
-        os_name=$(grep "^NAME=" /etc/os-release | cut -d= -f2 | tr -d '"')
-        os_version=$(grep "^VERSION=" /etc/os-release | cut -d= -f2 | tr -d '"')
-    elif [[ -f /etc/debian_version ]]; then
-        os_name="Debian"
-        os_version=$(cat /etc/debian_version)
-    fi
-    
-    # Schreibe in JSON
-    api_set_value_json "os_info" ".distribution" "$os_name" || return 1
-    api_set_value_json "os_info" ".version" "$os_version" || return 1
-    api_set_value_json "os_info" ".kernel" "$kernel_version" || return 1
-    api_set_value_json "os_info" ".architecture" "$architecture" || return 1
-    api_set_value_json "os_info" ".hostname" "$hostname_value" || return 1
-    
-    return 0
-}
-
-# ===========================================================================
-# systeminfo_collect_uptime_info
-# ---------------------------------------------------------------------------
-# Funktion.: Sammle Uptime-Information und aktualisiere os_info.json
-# Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Hinweis..: FLÜCHTIG - zyklisch ausführen (z.B. alle 30s)
-# Aktualisiert: api/os_info.json (nur .uptime Feld)
-# ===========================================================================
-systeminfo_collect_uptime_info() {
-    local uptime_value=$(uptime -p 2>/dev/null | sed 's/^up //' || echo "Unknown")
-    api_set_value_json "os_info" ".uptime" "$uptime_value"
-}
-
-# ===========================================================================
-# systeminfo_collect_container_info
-# ---------------------------------------------------------------------------
-# Funktion.: Sammle Container-Informationen und schreibe in container_info.json
-# Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Hinweis..: STATISCH - einmal beim Start ausführen
-# Schreibt.: api/container_info.json
-# ===========================================================================
-systeminfo_collect_container_info() {
-    local is_container="false"
-    local container_type="none"
-    
-    if systeminfo_is_container; then
-        is_container="true"
-        container_type="$(systeminfo_get_container_type)"
-    fi
-    
-    # Schreibe in JSON
-    api_set_value_json "container_info" ".is_container" "$is_container" || return 1
-    api_set_value_json "container_info" ".type" "$container_type" || return 1
-    
-    return 0
-}
-
-# ===========================================================================
-# systeminfo_collect_storage_info
-# ---------------------------------------------------------------------------
-# Funktion.: Sammle Speicherplatz-Informationen und schreibe in storage_info.json
-# Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Hinweis..: FLÜCHTIG - zyklisch ausführen (z.B. alle 30s)
-# Schreibt.: api/storage_info.json
-# ===========================================================================
-systeminfo_collect_storage_info() {
-    local output_dir=$(folders_get_output_dir) || {
-        log_error "Ausgabe-Verzeichnis nicht verfügbar"
-        return 1
-    }
-    
-    local output_dir_space="0"
-    local output_dir_total="0"
-    local output_dir_used_percent="0"
-    
-    if [[ -d "$output_dir" ]]; then
-        local df_output=$(df -BG "$output_dir" 2>/dev/null | tail -1)
-        if [[ -n "$df_output" ]]; then
-            output_dir_total=$(echo "$df_output" | awk '{print $2}' | sed 's/G//')
-            output_dir_space=$(echo "$df_output" | awk '{print $4}' | sed 's/G//')
-            output_dir_used_percent=$(echo "$df_output" | awk '{print $5}' | sed 's/%//')
-        fi
-    fi
-    
-    # Schreibe in JSON (nur Speicherplatz-Metriken, nicht das Verzeichnis selbst)
-    api_set_value_json "storage_info" ".total_gb" "$output_dir_total" || return 1
-    api_set_value_json "storage_info" ".free_gb" "$output_dir_space" || return 1
-    api_set_value_json "storage_info" ".used_percent" "$output_dir_used_percent" || return 1
-    
-    return 0
-}
-
-# ===========================================================================
-# systeminfo_collect_hardware_info (DEPRECATED - Wrapper)
-# ---------------------------------------------------------------------------
-# Funktion.: DEPRECATED - Wrapper für drivestat_collect_drive_info()
-# .........  TODO: Entfernen in zukünftigen Versionen
-# Parameter: keine
-# Rückgabe.: 0 = Erfolg, 1 = Fehler
-# Hinweis..: Ruft drivestat_collect_drive_info() auf für Kompatibilität
-# Migration: Verwende drivestat_collect_drive_info() direkt
-# ===========================================================================
-systeminfo_collect_hardware_info() {
-    log_warning "systeminfo_collect_hardware_info() ist DEPRECATED"
-    log_info "Nutze stattdessen: drivestat_collect_drive_info()"
-    
-    # Rufe neue Funktion aus libdrivestat.sh auf
-    if declare -f drivestat_collect_drive_info >/dev/null 2>&1; then
-        drivestat_collect_drive_info
-        return $?
-    else
-        log_error "drivestat_collect_drive_info() nicht verfügbar - libdrivestat.sh geladen?"
-        return 1
-    fi
-}
 
 # ===========================================================================
 # systeminfo_collect_software_info
@@ -1195,177 +1752,6 @@ systeminfo_collect_software_info() {
 # ============================================================================
 
 # ===========================================================================
-# systeminfo_get_software_version
-# ---------------------------------------------------------------------------
-# Funktion.: Ermittle Version einer installierten Software
-# Parameter: $1 = Software-Name (z.B. "cdparanoia", "lame", "python3")
-# Rückgabe.: 0 = gefunden, 1 = nicht gefunden
-# Ausgabe..: Version-String oder "Not installed"
-# Hinweis..: Zentrale Erkennungslogik für alle Module
-# ===========================================================================
-systeminfo_get_software_version() {
-    local software_name="$1"
-    local version="Not installed"
-    
-    # Prüfe ob Command existiert
-    if ! command -v "$software_name" >/dev/null 2>&1; then
-        # Spezialfall: Python-Module prüfen
-        if [[ "$software_name" == "flask" ]] || [[ "$software_name" == "musicbrainzngs" ]] || [[ "$software_name" == "requests" ]]; then
-            # Versuche mit System-Python
-            if python3 -c "import ${software_name}" 2>/dev/null; then
-                version=$(python3 -c "import importlib.metadata; print(importlib.metadata.version('${software_name}'))" 2>/dev/null || echo "installed")
-            # Versuche mit venv-Python
-            elif [[ -f "/opt/disk2iso/venv/bin/python3" ]]; then
-                if /opt/disk2iso/venv/bin/python3 -c "import ${software_name}" 2>/dev/null; then
-                    version=$(/opt/disk2iso/venv/bin/python3 -c "import importlib.metadata; print(importlib.metadata.version('${software_name}'))" 2>/dev/null || echo "installed")
-                fi
-            fi
-        fi
-        
-        echo "$version"
-        [[ "$version" != "Not installed" ]] && return 0 || return 1
-    fi
-    
-    # Software-spezifische Version-Erkennung
-    case "$software_name" in
-        cdparanoia)
-            version=$(cdparanoia --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
-            ;;
-        lame)
-            version=$(lame --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
-            ;;
-        dvdbackup)
-            version=$(dvdbackup --version 2>&1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
-            ;;
-        ddrescue)
-            version=$(ddrescue --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
-            ;;
-        genisoimage)
-            version=$(genisoimage --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
-            ;;
-        python3|python)
-            version=$(python3 --version 2>&1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
-            ;;
-        mosquitto)
-            version=$(mosquitto -h 2>&1 | grep -oP 'version \K\d+\.\d+(\.\d+)?' || echo "installed")
-            ;;
-        makemkvcon)
-            version=$(makemkvcon --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
-            ;;
-        flac)
-            version=$(flac --version 2>&1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
-            ;;
-        oggenc)
-            version=$(oggenc --version 2>&1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
-            ;;
-        *)
-            # Generischer Fallback: Versuche --version
-            if "$software_name" --version >/dev/null 2>&1; then
-                version=$("$software_name" --version 2>&1 | head -1 | grep -oP '\d+\.\d+(\.\d+)?' || echo "installed")
-            else
-                version="installed"
-            fi
-            ;;
-    esac
-    
-    echo "$version"
-    return 0
-}
-
-# ===========================================================================
-# systeminfo_get_available_version
-# ---------------------------------------------------------------------------
-# Funktion.: Ermittle verfügbare Version einer Software (apt-cache)
-# Parameter: $1 = Software-Name
-# Rückgabe.: 0 = Erfolg
-# Ausgabe..: Version-String oder "Unknown"
-# ===========================================================================
-systeminfo_get_available_version() {
-    local software_name="$1"
-    local available_version="Unknown"
-    
-    # Prüfe ob apt-cache verfügbar ist
-    if command -v apt-cache >/dev/null 2>&1; then
-        # Hole Candidate-Version (nächste installierbare Version)
-        available_version=$(apt-cache policy "$software_name" 2>/dev/null | grep "Candidate:" | awk '{print $2}')
-        
-        # Fallback: Prüfe ob überhaupt ein Paket existiert
-        if [[ -z "$available_version" ]] || [[ "$available_version" == "(none)" ]]; then
-            available_version="Unknown"
-        fi
-    fi
-    
-    echo "$available_version"
-    return 0
-}
-
-# ===========================================================================
-# systeminfo_check_software_list
-# ---------------------------------------------------------------------------
-# Funktion.: Zentrale Software-Versions-Prüfung mit Update-Check
-# Parameter: $@ = Liste von Software-Namen (z.B. "cdparanoia lame ddrescue")
-# Rückgabe.: 0 = Erfolg
-# Ausgabe..: JSON-Array mit Software-Informationen (stdout)
-# Format...: [{"name":"cdparanoia","installed":"10.2","available":"10.2",
-#             "status":"current","update_available":false}]
-# Nutzung..: Wird von Modulen aufgerufen für ihre Dependencies
-# ===========================================================================
-systeminfo_check_software_list() {
-    local software_list=("$@")
-    local json_array="["
-    local first=true
-    
-    for software_name in "${software_list[@]}"; do
-        # Komma zwischen Einträgen
-        if [[ "$first" == "false" ]]; then
-            json_array+=","
-        fi
-        first=false
-        
-        # 1. Installierte Version ermitteln
-        local installed_version=$(systeminfo_get_software_version "$software_name")
-        
-        # 2. Verfügbare Version ermitteln (nur wenn installiert oder apt verfügbar)
-        local available_version="Unknown"
-        if [[ "$installed_version" != "Not installed" ]] || command -v apt-cache >/dev/null 2>&1; then
-            available_version=$(systeminfo_get_available_version "$software_name")
-        fi
-        
-        # 3. Status bestimmen
-        local status="unknown"
-        local update_available="false"
-        
-        if [[ "$installed_version" == "Not installed" ]]; then
-            status="missing"
-            update_available="false"
-        elif [[ "$available_version" == "Unknown" ]]; then
-            # Keine Info über verfügbare Version → Status "installed" (konservativ)
-            status="installed"
-            update_available="false"
-        elif [[ "$installed_version" == "$available_version" ]] || [[ "$installed_version" == "installed" ]]; then
-            # Versionen gleich oder keine genaue Version → Status "current"
-            status="current"
-            update_available="false"
-        else
-            # Versionen unterschiedlich → Update verfügbar
-            status="outdated"
-            update_available="true"
-        fi
-        
-        # 4. JSON-Objekt bauen (escaping für JSON)
-        json_array+="{\"name\":\"${software_name}\","
-        json_array+="\"installed_version\":\"${installed_version}\","
-        json_array+="\"available_version\":\"${available_version}\","
-        json_array+="\"status\":\"${status}\","
-        json_array+="\"update_available\":${update_available}}"
-    done
-    
-    json_array+="]"
-    echo "$json_array"
-    return 0
-}
-
-# ===========================================================================
 # systeminfo_install_software
 # ---------------------------------------------------------------------------
 # Funktion.: Installiere oder aktualisiere Software (für Widget-Buttons)
@@ -1406,6 +1792,10 @@ systeminfo_install_software() {
         return 1
     fi
 }
+
+# ============================================================================
+# DEPRECATED FUNCTIONS
+# ============================================================================
 
 # ===========================================================================
 # WIDGET GETTER FUNCTIONS - Lesen JSON und geben an Middleware
@@ -1508,303 +1898,6 @@ systeminfo_get_software_info() {
     
     cat "$json_file"
 }
-
-
-# ============================================================================
-# PRIVATE VARIABLES AND HELPER FUNCTIONS FOR TOOLS PATHS INFORMATION
-# ============================================================================
-# Private Variablen und Hilfsfunktionen für die Getter/Setter-Methoden
-_DRIVESTAT_LSBLK_PATH=""
-_DRIVESTAT_DMESG_PATH=""
-_DRIVESTAT_UDEVADM_PATH=""
-_DRIVESTAT_DD_PATH=""
-_DRIVESTAT_CDPARANOIA_PATH=""
-_DISCINFO_BLKID_PATH=""
-_DISCINFO_ISOINFO_PATH=""
-_DISCINFO_BLOCKDEV_PATH=""
-
-# ===========================================================================
-# _systeminfo_get_lsblk_path
-# ---------------------------------------------------------------------------
-# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum lsblk Kommando
-# Parameter: keine
-# Rückgabe.: Pfad zum lsblk Kommando oder leerer String, wenn nicht gefunden
-# ===========================================================================
-_systeminfo_get_lsblk_path() {
-    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
-    if [[ -n "$_DRIVESTAT_LSBLK_PATH" ]]; then
-        echo "$_DRIVESTAT_LSBLK_PATH"
-        return 0
-    fi
-
-    #-- Ermittele Pfad zu lsblk ---------------------------------------------
-    if command -v lsblk >/dev/null 2>&1; then
-        _DRIVESTAT_LSBLK_PATH=$(command -v lsblk 2>/dev/null)
-        echo "$_DRIVESTAT_LSBLK_PATH"
-        return 0
-    elif [[ -x "/bin/lsblk" ]]; then
-        _DRIVESTAT_LSBLK_PATH="/bin/lsblk"
-        echo "$_DRIVESTAT_LSBLK_PATH"
-        return 0
-    elif [[ -x "/usr/bin/lsblk" ]]; then
-        _DRIVESTAT_LSBLK_PATH="/usr/bin/lsblk"
-        echo "$_DRIVESTAT_LSBLK_PATH"
-        return 0
-    else
-        log_error "lsblk nicht gefunden, Drive-Informationen werden unvollständig sein"
-        _DRIVESTAT_LSBLK_PATH=""
-        return 1
-    fi
-
-    #-- Rückgabe des ermittelten Pfad ---------------------------------------
-    echo "$_DRIVESTAT_LSBLK_PATH"
-    return 0
-}
-
-# ===========================================================================
-# _systeminfo_get_dmesg_path
-# ---------------------------------------------------------------------------
-# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum dmesg Kommando
-# Parameter: keine
-# Rückgabe.: Pfad zum dmesg Kommando oder leerer String, wenn nicht gefunden
-# ===========================================================================
-_systeminfo_get_dmesg_path() {
-    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
-    if [[ -n "$_DRIVESTAT_DMESG_PATH" ]]; then
-        echo "$_DRIVESTAT_DMESG_PATH"
-        return 0
-    fi
-
-    #--Ermittele Pfad zu dmesg ----------------------------------------------
-    if command -v dmesg >/dev/null 2>&1; then
-        _DRIVESTAT_DMESG_PATH="dmesg"
-        echo "dmesg"
-        return 0
-    elif [[ -x "/bin/dmesg" ]]; then
-        _DRIVESTAT_DMESG_PATH="/bin/dmesg"
-        echo "/bin/dmesg"
-        return 0
-    elif [[ -x "/usr/bin/dmesg" ]]; then
-        _DRIVESTAT_DMESG_PATH="/usr/bin/dmesg"
-        echo "/usr/bin/dmesg"
-        return 0
-    else
-        log_error "dmesg nicht gefunden, Drive-Informationen werden unvollständig sein"
-        _DRIVESTAT_DMESG_PATH=""
-        echo ""
-        return 1
-    fi
-}
-
-# ===========================================================================
-# _systeminfo_get_udevadm_path
-# ---------------------------------------------------------------------------
-# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum udevadm Kommando
-# Parameter: keine
-# Rückgabe.: Pfad zum udevadm Kommando oder leerer String, wenn nicht gefunden
-# ===========================================================================
-_systeminfo_get_udevadm_path() {
-    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
-    if [[ -n "$_DRIVESTAT_UDEVADM_PATH" ]]; then
-        echo "$_DRIVESTAT_UDEVADM_PATH"
-        return 0
-    fi
-
-    #--Ermittele Pfad zu udevadm -------------------------------------------
-    if command -v udevadm >/dev/null 2>&1; then
-        _DRIVESTAT_UDEVADM_PATH="udevadm"
-        echo "udevadm"
-        return 0
-    elif [[ -x "/bin/udevadm" ]]; then
-        _DRIVESTAT_UDEVADM_PATH="/bin/udevadm"
-        echo "/bin/udevadm"
-        return 0
-    elif [[ -x "/usr/bin/udevadm" ]]; then
-        _DRIVESTAT_UDEVADM_PATH="/usr/bin/udevadm"
-        echo "/usr/bin/udevadm"
-        return 0
-    else
-        log_error "udevadm nicht gefunden, Drive-Informationen werden unvollständig sein"
-        _DRIVESTAT_UDEVADM_PATH=""
-        echo ""
-        return 1
-    fi
-}
-
-# ===========================================================================
-# _systeminfo_get_dd_path
-# ---------------------------------------------------------------------------
-# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum dd Kommando
-# Parameter: keine
-# Rückgabe.: Pfad zum dd Kommando oder leerer String, wenn nicht gefunden
-# ===========================================================================
-_systeminfo_get_dd_path() {
-    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
-    if [[ -n "$_DRIVESTAT_DD_PATH" ]]; then
-        echo "$_DRIVESTAT_DD_PATH"
-        return 0
-    fi
-
-    #-- dd kann unter /bin/ liegen -------------------------------------------
-    if command -v dd >/dev/null 2>&1; then
-        _DRIVESTAT_DD_PATH="dd"
-        echo "dd"
-        return 0
-    elif [[ -x "/bin/dd" ]]; then
-        _DRIVESTAT_DD_PATH="/bin/dd"
-        echo "/bin/dd"
-        return 0
-    elif [[ -x "/usr/bin/dd" ]]; then
-        _DRIVESTAT_DD_PATH="/usr/bin/dd"
-        echo "/usr/bin/dd"
-        return 0
-    else
-        log_error "dd nicht gefunden, Drive-Informationen werden unvollständig sein"
-        _DRIVESTAT_DD_PATH=""
-        echo ""
-        return 1
-    fi
-}
-
-# ===========================================================================
-# _systeminfo_get_cdparanoia_path
-# ---------------------------------------------------------------------------
-# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum cdparanoia Kommando
-# Parameter: keine
-# Rückgabe.: Pfad zum cdparanoia Kommando oder leerer String, wenn nicht gefunden
-# ===========================================================================
-_systeminfo_get_cdparanoia_path() {
-    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
-    if [[ -n "$_DRIVESTAT_CDPARANOIA_PATH" ]]; then
-        echo "$_DRIVESTAT_CDPARANOIA_PATH"
-        return 0
-    fi
-
-    #-- cdparanoia prüfen -------------------------------------------------
-    if command -v cdparanoia >/dev/null 2>&1; then
-        _DRIVESTAT_CDPARANOIA_PATH="cdparanoia"
-        echo "cdparanoia"
-        return 0
-    else
-        log_debug "$MSG_DEBUG_CDPARANOIA_NOT_FOUND"
-        _DRIVESTAT_CDPARANOIA_PATH=""
-        echo ""
-        return 1
-    fi
-}
-
-# ===========================================================================
-# _systeminfo_get_blkid_path
-# ---------------------------------------------------------------------------
-# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum blkid Kommando 
-# Parameter: keine
-# Rückgabe.: Pfad zum blkid Kommando oder leerer String, wenn nicht gefunden
-# ===========================================================================
-_systeminfo_get_blkid_path() {
-    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
-    if [[ -n "$_DISCINFO_BLKID_PATH" ]]; then
-        echo "$_DISCINFO_BLKID_PATH"
-        return 0
-    fi
-
-    #-- blkid kann unter /usr/sbin/ liegen ----------------------------------
-    if command -v blkid >/dev/null 2>&1; then
-        _DISCINFO_BLKID_PATH="blkid"
-    elif [[ -x /usr/sbin/blkid ]]; then
-        _DISCINFO_BLKID_PATH="/usr/sbin/blkid"
-    else
-        log_debug "$MSG_DEBUG_BLKID_NOT_FOUND"
-        _DISCINFO_BLKID_PATH=""
-        echo ""
-        return 1
-    fi
-
-    #-- Rückgabe des ermittelten Pfads (oder leerer String) -----------------
-    echo "$_DISCINFO_BLKID_PATH"
-    return 0
-}
-
-# ===========================================================================
-# _systeminfo_get_isoinfo_path
-# ---------------------------------------------------------------------------
-# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum isoinfo Kommando
-# Parameter: keine
-# Rückgabe.: Pfad zum isoinfo Kommando oder leerer String, wenn nicht gefunden
-# ===========================================================================
-_systeminfo_get_isoinfo_path() {
-    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
-    if [[ -n "$_DISCINFO_ISOINFO_PATH" ]]; then
-        echo "$_DISCINFO_ISOINFO_PATH"
-        return 0
-    fi
-
-    #-- isoinfo prüfen ------------------------------------------------------
-    if command -v isoinfo >/dev/null 2>&1; then
-        _DISCINFO_ISOINFO_PATH="isoinfo"
-    else
-        log_debug "$MSG_DEBUG_ISOINFO_NOT_FOUND"
-        _DISCINFO_ISOINFO_PATH=""
-        echo ""
-        return 1
-    fi
-
-    #-- Rückgabe des ermittelten Pfads -------------------------------------
-    echo "$_DISCINFO_ISOINFO_PATH"
-    return 0
-}
-
-# ===========================================================================
-# _systeminfo_get_blockdev_path
-# ---------------------------------------------------------------------------
-# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum blockdev Kommando
-# Parameter: keine
-# Rückgabe.: Pfad zum blockdev Kommando oder leerer String, wenn nicht gefunden
-# ===========================================================================
-_systeminfo_get_blockdev_path() {
-    #-- Wenn bereits ermittelt, direkt zurückgeben --------------------------
-    if [[ -n "$_DISCINFO_BLOCKDEV_PATH" ]]; then
-        echo "$_DISCINFO_BLOCKDEV_PATH"
-        return 0
-    fi
-
-    #-- blockdev kann unter /usr/sbin/ liegen -------------------------------
-    if command -v blockdev >/dev/null 2>&1; then
-        _DISCINFO_BLOCKDEV_PATH="blockdev"
-    elif [[ -x /usr/sbin/blockdev ]]; then
-        _DISCINFO_BLOCKDEV_PATH="/usr/sbin/blockdev"
-    else
-        log_debug "$MSG_DEBUG_BLOCKDEV_NOT_FOUND"
-        _DISCINFO_BLOCKDEV_PATH=""
-        echo ""
-        return 1
-    fi
-
-    #-- Rückgabe des ermittelten Pfads -------------------------------------
-    echo "$_DISCINFO_BLOCKDEV_PATH"
-    return 0
-}
-
-# ===========================================================================
-# _systeminfo_get_jq_path
-# ---------------------------------------------------------------------------
-# Funktion.: Hilfsfunktion zur Ermittlung des Pfad zum jq Kommando
-# Parameter: keine
-# Rückgabe.: Pfad zum jq Kommando oder leerer String, wenn nicht gefunden
-# ===========================================================================
-_systeminfo_get_jq_path() {
-    if command -v jq >/dev/null 2>&1; then
-        echo "jq"
-        return 0
-    else
-        log_debug "$MSG_DEBUG_JQ_NOT_FOUND"
-        echo ""
-        return 1
-    fi
-}
-
-# ============================================================================
-# DEPRECATED FUNCTIONS
-# ============================================================================
 
 # ===========================================================================
 # collect_system_information (DEPRECATED)

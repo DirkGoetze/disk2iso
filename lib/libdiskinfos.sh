@@ -306,7 +306,7 @@ discinfo_detect_id() {
     local uuid=""
     
     #-- blkid Pfad ermitteln und wenn vorhanden verwenden -------------------
-    local blkid_cmd=$(_systeminfo_get_blkid_path)
+    local blkid_cmd=$(systeminfo_get_tool_path "blkid") || return 1
     if [[ -n "$blkid_cmd" ]]; then
         local blkid_output
         blkid_output=$($blkid_cmd -p "$(drivestat_get_drive)" 2>/dev/null)
@@ -479,13 +479,13 @@ discinfo_detect_label() {
     local label=""
     
     #-- blkid Pfad ermitteln und wenn vorhanden verwenden -------------------
-    local blkid_cmd=$(_systeminfo_get_blkid_path)
+    local blkid_cmd=$(systeminfo_get_tool_path "blkid") || return 1
     if [[ -n "$blkid_cmd" ]]; then
         label=$($blkid_cmd "$(drivestat_get_drive)" 2>/dev/null | grep -o 'LABEL="[^"]*"' | cut -d'"' -f2)
     fi
     
     #-- Fallback: Versuche Volume ID mit isoinfo zu lesen -------------------
-    local isoinfo_cmd=$(_systeminfo_get_isoinfo_path)
+    local isoinfo_cmd=$(systeminfo_get_tool_path "isoinfo") || return 1
     if [[ -n "$isoinfo_cmd" ]]; then
         label=$($isoinfo_cmd -d -i "$(drivestat_get_drive)" 2>/dev/null | grep "Volume id:" | sed 's/Volume id: //' | xargs)
     fi
@@ -586,7 +586,7 @@ discinfo_set_type() {
 # ===========================================================================
 discinfo_detect_type() {
     local detected_type="$DISC_TYPE_UNKNOWN"
-    local isoinfo_cmd=$(_systeminfo_get_isoinfo_path)
+    local isoinfo_cmd=$(systeminfo_get_tool_path "isoinfo") || return 1
 
     #-- 1. SPEZIFISCHSTE Prüfung: Video-DVD (VIDEO_TS) ----------------------
     if [[ -n "$isoinfo_cmd" ]]; then
@@ -809,7 +809,7 @@ discinfo_detect_size_sectors() {
     local volume_size=0
     
     #-- isoinfo Pfad ermitteln und wenn vorhanden verwenden -----------------
-    local isoinfo_cmd=$(_systeminfo_get_isoinfo_path)
+    local isoinfo_cmd=$(systeminfo_get_tool_path "isoinfo") || return 1
     if [[ -n "$isoinfo_cmd" ]]; then
         local isoinfo_output=$($isoinfo_cmd -d -i "$(drivestat_get_drive)" 2>/dev/null)
         
@@ -912,7 +912,7 @@ discinfo_detect_block_size() {
     local block_size=2048  # Fallback für optische Medien
     
     #-- isoinfo Pfad ermitteln und wenn vorhanden verwenden -----------------
-    local isoinfo_cmd=$(_systeminfo_get_isoinfo_path)
+    local isoinfo_cmd=$(systeminfo_get_tool_path "isoinfo") || return 1
     if [[ -n "$isoinfo_cmd" ]]; then
         local isoinfo_output=$($isoinfo_cmd -d -i "$(drivestat_get_drive)" 2>/dev/null)
         
@@ -1087,7 +1087,7 @@ discinfo_detect_filesystem() {
     local fs_type="unknown"
     
     #-- blkid Pfad ermitteln und wenn vorhanden verwenden -------------------
-    local blkid_cmd=$(_systeminfo_get_blkid_path)
+    local blkid_cmd=$(systeminfo_get_tool_path "blkid") || return 1
     if [[ -n "$blkid_cmd" ]]; then
         local blkid_output=$($blkid_cmd "$(drivestat_get_drive)" 2>/dev/null)
         if [[ -n "$blkid_output" ]]; then
@@ -1223,7 +1223,7 @@ discinfo_detect_created_at() {
     local timestamp=""
     
     #-- isoinfo Pfad ermitteln und wenn vorhanden verwenden -----------------
-    local isoinfo_cmd=$(_systeminfo_get_isoinfo_path)
+    local isoinfo_cmd=$(systeminfo_get_tool_path "isoinfo") || return 1
     if [[ -n "$isoinfo_cmd" ]]; then
         timestamp=$($isoinfo_cmd -d -i "$(drivestat_get_drive)" 2>/dev/null | grep "Creation Date:" | sed 's/Creation Date: //' | xargs)
     fi
@@ -2185,66 +2185,13 @@ diskinfos_collect_software_info() {
     #-- Start der Sammlung im LOG vermerken ---------------------------------
     log_debug "$MSG_DEBUG_COLLECT_SOFTWARE_START"
     
-    #-- Lese Dependencies aus diskinfos INI-Datei ---------------------------
-    local external_deps=$(settings_get_value_ini "diskinfos" "dependencies" "external" "") || {
-        log_warning "$MSG_WARNING_NO_EXTERNAL_DEPS"
-        external_deps=""
-    }
-    local optional_deps=$(settings_get_value_ini "diskinfos" "dependencies" "optional" "") || {
-        log_warning "$MSG_WARNING_NO_OPTIONAL_DEPS"
-        optional_deps=""
-    }
-    
-    #-- Kombiniere Dependencies zu komma-separierter Liste ------------------
-    local all_deps=""
-    if [[ -n "$external_deps" ]] && [[ -n "$optional_deps" ]]; then
-        all_deps="${external_deps},${optional_deps}"
-    elif [[ -n "$external_deps" ]]; then
-        all_deps="$external_deps"
-    elif [[ -n "$optional_deps" ]]; then
-        all_deps="$optional_deps"
-    fi
-    
-    #-- Keine Dependencies gefunden -----------------------------------------
-    if [[ -z "$all_deps" ]]; then
-        log_debug "$MSG_DEBUG_NO_DEPENDENCIES"
-        
-        #-- Schreibe leeres Array in API ------------------------------------
-        api_set_section_json "diskinfos" "software" "[]"
-        return 0
-    fi
-    
-    #-- Prüfe ob systeminfo_check_software_list verfügbar ist ---------------
-    if ! type -t systeminfo_check_software_list &>/dev/null; then
-        log_error "$MSG_ERROR_SYSTEMINFO_UNAVAILABLE"
-        
-        #-- Schreibe Fehler in API ------------------------------------------
-        api_set_section_json "diskinfos" "software" '{"error":"systeminfo_check_software_list nicht verfügbar"}'
-        return 1
-    fi
-    
     #-- Prüfe Software-Verfügbarkeit ----------------------------------------
-    local json_result=$(systeminfo_check_software_list "$all_deps") || {
+    systeminfo_check_software_list || {
         log_error "$MSG_ERROR_SOFTWARE_CHECK_FAILED"
-        
-        #-- Schreibe Fehler in API ------------------------------------------
-        api_set_section_json "diskinfos" "software" '{"error":"Software-Prüfung fehlgeschlagen"}'
         return 1
     }
     
-    #-- Konvertiere Array zu Objekt (name als Key) --------------------------
-    local json_object=$(echo "$json_result" | jq 'map({(.name): {path, version, available, required}}) | add // {}') || {
-        log_error "$MSG_ERROR_JSON_CONVERSION_FAILED"
-        api_set_section_json "diskinfos" "software" '{"error":"JSON-Konvertierung fehlgeschlagen"}'
-        return 1
-    }
-
-    #-- Schreibe Ergebnis in API --------------------------------------------
-    api_set_section_json "diskinfos" "software" "$json_object" || {
-        log_error "$MSG_ERROR_API_WRITE_FAILED"
-        return 1
-    }
-    
+    #-- LOG Erfolgreichen Abschluss der Sammlung ----------------------------
     log_debug "$MSG_DEBUG_COLLECT_SOFTWARE_SUCCESS"
     return 0
 }

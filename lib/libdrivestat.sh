@@ -236,7 +236,7 @@ drivestat_set_drive() {
 
         #-- Warte auf Laufwerk (wichtig bei USB-Laufwerken) -----------------
         if [[ ! -b "$drive_path" ]]; then
-            local udevadm_cmd=$(_systeminfo_get_udevadm_path)
+            local udevadm_cmd=$(systeminfo_get_tool_path "udevadm") || return 1
             if [[ -n "$udevadm_cmd" ]]; then
                 $udevadm_cmd settle --timeout=3 2>/dev/null
                 # Trigger udev für sr* Devices ------------------------------
@@ -298,7 +298,7 @@ drivestat_detect_drive() {
     # Versuch mit verschiedenen Methoden das optische Laufwerk zu finden
     #------------------------------------------------------------------------
     # Methode 1: lsblk mit TYPE=rom -----------------------------------------
-    local lsblk_cmd=$(_systeminfo_get_lsblk_path)
+    local lsblk_cmd=$(systeminfo_get_tool_path "lsblk") || return 1
     if [[ -z $drive ]] && [[ -n "$lsblk_cmd" ]]; then
         local lsblk_output
         lsblk_output=$("$lsblk_cmd" -ndo NAME,TYPE 2>/dev/null) || lsblk_output=""
@@ -309,7 +309,7 @@ drivestat_detect_drive() {
     fi
 
     # Methode 2: dmesg Kernel-Logs durchsuchen ------------------------------
-    local dmesg_cmd=$(_systeminfo_get_dmesg_path)
+    local dmesg_cmd=$(systeminfo_get_tool_path "dmesg") || return 1
     if [[ -z "$drive" ]] && [[ -n "$dmesg_cmd" ]]; then
         local dmesg_output
         dmesg_output=$("$dmesg_cmd" 2>/dev/null) || dmesg_output=""
@@ -674,7 +674,7 @@ drivestat_detect_bus_type() {
     local sysfs_path="/sys/block/${device_basename}/device"
 
     # Methode 1: udevadm info --query=property -----------------------------
-    local udevadm_cmd=$(_systeminfo_get_udevadm_path)
+    local udevadm_cmd=$(systeminfo_get_tool_path "udevadm") || return 1
     if [[ -n "$udevadm_cmd" ]]; then
         bus_type=$($udevadm_cmd info --query=property --name="$drive_path" 2>/dev/null | grep "^ID_BUS=" | cut -d'=' -f2)
         if [[ -n "$bus_type" ]]; then
@@ -811,7 +811,7 @@ drivestat_detect_capabilities() {
     #------------------------------------------------------------------------
     # Methode 2: Prüfe udevadm (Blu-ray-Disc Unterstützung)
     #------------------------------------------------------------------------
-    local udevadm_cmd=$(_systeminfo_get_udevadm_path)
+    local udevadm_cmd=$(systeminfo_get_tool_path "udevadm") || return 1
     if [[ -n "$udevadm_cmd" ]]; then
         local udev_props
         udev_props=$($udevadm_cmd info --query=property --name="$drive_path" 2>/dev/null) || udev_props=""
@@ -1065,7 +1065,7 @@ drivestat_detect_inserted() {
     # Versuche mit dd ein paar Bytes zu lesen
     # Timeout von 2 Sekunden für langsame USB-Laufwerke
     # Versuche zuerst mit bs=2048 (Daten-CDs/DVDs/Blu-ray)
-    local dd_cmd=$(_systeminfo_get_dd_path)
+    local dd_cmd=$(systeminfo_get_tool_path "dd") || return 1
     if [[ -n "$dd_cmd" ]]; then
          if timeout 2 "$dd_cmd" if="${DRIVE_INFO[drive]}" of=/dev/null bs=2048 count=1 2>/dev/null; then
             echo "true"
@@ -1075,7 +1075,7 @@ drivestat_detect_inserted() {
 
     # Fallback: Prüfe mit cdparanoia ob Audio-CD vorhanden
     # cdparanoia -Q gibt 0 zurück wenn Audio-CD lesbar ist
-    local cdparanoia_cmd=$(_systeminfo_get_cdparanoia_path)
+    local cdparanoia_cmd=$(systeminfo_get_tool_path "cdparanoia") || return 1
     if [[ -n "$cdparanoia_cmd" ]]; then
          if timeout 3 "$cdparanoia_cmd" -Q -d "${DRIVE_INFO[drive]}" >/dev/null 2>&1; then
             echo "true"
@@ -1217,67 +1217,14 @@ drivestat_get_software_info() {
 drivestat_collect_software_info() {
     #-- Start der Sammlung im LOG vermerken ---------------------------------
     log_debug "$MSG_DEBUG_COLLECT_SOFTWARE_START"
-
-    #-- Lese Dependencies aus diskinfos INI-Datei ---------------------------
-    local external_deps=$(settings_get_value_ini "drivestat" "dependencies" "external" "") || {
-        log_warning "$MSG_WARNING_NO_EXTERNAL_DEPS"
-        external_deps=""
-    }
-    local optional_deps=$(settings_get_value_ini "drivestat" "dependencies" "optional" "") || {
-        log_warning "$MSG_WARNING_NO_OPTIONAL_DEPS"
-        optional_deps=""
-    }
-
-    #-- Kombiniere Dependencies zu komma-separierter Liste ------------------
-    local all_deps=""
-    if [[ -n "$external_deps" ]] && [[ -n "$optional_deps" ]]; then
-        all_deps="${external_deps},${optional_deps}"
-    elif [[ -n "$external_deps" ]]; then
-        all_deps="$external_deps"
-    elif [[ -n "$optional_deps" ]]; then
-        all_deps="$optional_deps"
-    fi
-
-    #-- Keine Dependencies gefunden -----------------------------------------
-    if [[ -z "$all_deps" ]]; then
-        log_debug "$MSG_DEBUG_NO_DEPENDENCIES"
-
-        #-- Schreibe leeres Array in API ------------------------------------
-        api_set_section_json "drivestat" "software" "[]"
-        return 0
-    fi
-
-    #-- Prüfe ob systeminfo_check_software_list verfügbar ist ---------------
-    if ! type -t systeminfo_check_software_list &>/dev/null; then
-        log_error "$MSG_ERROR_SYSTEMINFO_UNAVAILABLE"
-
-        #-- Schreibe Fehler in API ------------------------------------------
-        api_set_section_json "drivestat" "software" "{"error":"systeminfo_check_software_list nicht verfügbar"}"
-        return 1
-    fi
-
+    
     #-- Prüfe Software-Verfügbarkeit ----------------------------------------
-    local json_result=$(systeminfo_check_software_list "$all_deps") || {
+    systeminfo_check_software_list || {
         log_error "$MSG_ERROR_SOFTWARE_CHECK_FAILED"
-
-        #-- Schreibe Fehler in API ------------------------------------------
-        api_set_section_json "drivestat" "software" '{"error":"Software-Prüfung fehlgeschlagen"}'
         return 1
     }
-
-    #-- Konvertiere Array zu Objekt (name als Key) --------------------------
-    local json_object=$(echo "$json_result" | jq 'map({(.name): {path, version, available, required}}) | add // {}') || {
-        log_error "$MSG_ERROR_JSON_CONVERSION_FAILED"
-        api_set_section_json "drivestat" "software" '{"error":"JSON-Konvertierung fehlgeschlagen"}'
-        return 1
-    }
-
-    #-- Schreibe Ergebnis in API --------------------------------------------
-    api_set_section_json "drivestat" "software" "$json_object" || {
-        log_error "$MSG_ERROR_API_WRITE_FAILED"
-        return 1
-    }
-
+    
+    #-- LOG Erfolgreichen Abschluss der Sammlung ----------------------------
     log_debug "$MSG_DEBUG_COLLECT_SOFTWARE_SUCCESS"
     return 0
 }
@@ -1353,9 +1300,17 @@ _drivestat_monitor_worker() {
 # .........  und loggt den Startvorgang
 # ===========================================================================
 drivestat_start_monitor() {
+    #-- Überprüfen ob bereits ein Monitor läuft -----------------------------
+    if [[ -n "$_DRIVESTAT_MONITOR_PID" ]]; then
+        log_warning "$(printf "$MSG_WARNING_MONITOR_ALREADY_RUNNING" "$_DRIVESTAT_MONITOR_PID")"
+        return 0
+    fi
+
+    #-- Starte den Monitor-Worker im Hintergrund ----------------------------
     _drivestat_monitor_worker &
     _DRIVESTAT_MONITOR_PID=$!
     log_debug "$(printf "$MSG_DEBUG_MONITOR_STARTED" "$_DRIVESTAT_MONITOR_PID")"
+    return 0
 }
 
 # ===========================================================================
@@ -1368,9 +1323,15 @@ drivestat_start_monitor() {
 # .........  und loggt den Stoppvorgang
 # ===========================================================================
 drivestat_stop_monitor() {
-    [[ -n "$_DRIVESTAT_MONITOR_PID" ]] && kill "$_DRIVESTAT_MONITOR_PID" 2>/dev/null
-    _DRIVESTAT_MONITOR_PID=""
-    log_debug "$MSG_DEBUG_MONITOR_STOPPED"
+    #-- Überprüfen ob ein Monitor läuft --------------------------------------
+    if [[ -n "$_DRIVESTAT_MONITOR_PID" ]] && kill -0 "$_DRIVESTAT_MONITOR_PID" 2>/dev/null; then
+        log_debug "$(printf "$MSG_DEBUG_MONITOR_STOPPED" "$_DRIVESTAT_MONITOR_PID")"
+        kill "$_DRIVESTAT_MONITOR_PID" 2>/dev/null;
+        _DRIVESTAT_MONITOR_PID=""
+    else
+        log_warning "$MSG_WARNING_NO_MONITOR_TO_STOP"
+    fi
+    return 0
 }
 
 # ===========================================================================

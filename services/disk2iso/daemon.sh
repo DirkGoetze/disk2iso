@@ -207,6 +207,9 @@ copy_disc_to_iso() {
     local disc_type="$(discinfo_get_type)"
     local exit_code=0
     
+    #-- Solange der Kopiervorgang läuft, Speicherplatz aktualisieren --------
+    systeminfo_start_monitor
+
     #-- Audio-CD: Delegiere an libaudio.sh ----------------------------------
     if [[ "$disc_type" == "$DISC_TYPE_AUDIO_CD" ]] && is_audio_ready; then
         copy_audio_cd
@@ -224,6 +227,9 @@ copy_disc_to_iso() {
         common_copy_data_disc
         exit_code=$?
     fi
+    
+    #-- Stoppe Systeminfo-Monitor (falls er noch läuft)
+    systeminfo_stop_monitor
     
     #-- Cleanup mit explizitem Status (Success/Failure basierend auf Return-Code)
     if [[ $exit_code -eq 0 ]]; then
