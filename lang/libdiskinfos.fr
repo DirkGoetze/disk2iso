@@ -3,7 +3,7 @@
 # ============================================================================
 # Description: Messages français pour la détection de disque et métadonnées
 # Version: 1.0.0
-# Date: 2026-02-02
+# Date: 2026-02-26
 # ============================================================================
 
 # Dependency Check

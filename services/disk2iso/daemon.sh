@@ -18,7 +18,7 @@
 #   - Fortschrittsanzeige mit pv (optional)
 #   - Service-Modus für automatischen Betrieb
 #   - Modulare Struktur mit lazy-loading
-
+#
 # ============================================================================
 # STATE MACHINE CONSTANTS
 # ============================================================================
