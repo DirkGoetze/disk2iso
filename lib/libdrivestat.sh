@@ -41,7 +41,7 @@
 drivestat_check_dependencies() {
     # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner) -------
     integrity_check_module_dependencies "drivestat" || return 1
-    
+
     #-- modul-spezifische Initialisierung -----------------------------------
     drivestat_reset
 
@@ -378,8 +378,8 @@ drivestat_detect_drive() {
 # ---------------------------------------------------------------------------
 # Funktion.: Gibt den Hersteller des optischen Laufwerks zurück (z.B. "ASUS")
 # Parameter: Keine
-# Ausgabe..: Herstellername (z.B. "ASUS", "LG", "Pioneer") oder "Unknown"
-# Rückgabe.: 0 = Erfolg (Herstellername), 1 = Fehler (gibt "Unknown" zurück)
+# Ausgabe..: Herstellername (z.B. "ASUS", "LG", "Pioneer") oder "unknown"
+# Rückgabe.: 0 = Erfolg (Herstellername), 1 = Fehler (gibt "unknown" zurück)
 # ===========================================================================
 drivestat_get_vendor() {
     #-- Array Wert lesen ----------------------------------------------------
@@ -394,7 +394,7 @@ drivestat_get_vendor() {
 
     #-- Fehlerfall loggen ---------------------------------------------------
     log_error "$MSG_ERROR_VENDOR_UNKNOWN"
-    echo "Unknown"
+    echo "unknown"
     return 1
 }
 
@@ -418,7 +418,7 @@ drivestat_set_vendor() {
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$vendor" ]]; then
         log_error "$MSG_ERROR_VENDOR_UNKNOWN"
-        vendor="Unknown"
+        vendor="unknown"
     fi
 
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
@@ -436,13 +436,13 @@ drivestat_set_vendor() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittelt den Hersteller des optischen Laufwerks über sysfs
 # Parameter: Keine (nutzt globalen Pfad aus drivestat_get_drive())
-# Rückgabe.: 0 = Erfolg (Herstellername), 1 = Fehler (gibt "Unknown" zurück)
-# Hinweis..: Liefert "Unknown" zurück, wenn kein Laufwerk gefunden oder der
+# Rückgabe.: 0 = Erfolg (Herstellername), 1 = Fehler (gibt "unknown" zurück)
+# Hinweis..: Liefert "unknown" zurück, wenn kein Laufwerk gefunden oder der
 # .........  Hersteller nicht ermittelt werden konnte.
 # ===========================================================================
 drivestat_detect_vendor() {
     #-- Locale Variablen vorbereiten ----------------------------------------
-    local vendor="Unknown"
+    local vendor="unknown"
     local drive_path="$(drivestat_get_drive)" || {echo "$vendor"; return 1;}
 
     #-- Prüfe ob Device gültig ist ------------------------------------------
@@ -460,10 +460,10 @@ drivestat_detect_vendor() {
 # ===========================================================================
 # drivestat_get_model
 # ---------------------------------------------------------------------------
-# Funktion.: Gibt die Modellbezeichnung des optischen Laufwerks zurück (z.B. "DRW-24D5MT")
+# Funktion.: Gibt die Modellbezeichnung des optischen Laufwerks zurück 
 # Parameter: Keine
-# Ausgabe..: Modellbezeichnung (z.B. "DRW-24D5MT") oder "Unknown"
-# Rückgabe.: 0 = Erfolg (Modellbezeichnung), 1 = Fehler (gibt "Unknown" zurück)
+# Ausgabe..: Modellbezeichnung (z.B. "DRW-24D5MT") oder "unknown"
+# Rückgabe.: 0 = Erfolg (Modellbezeichnung), 1 = Fehler ("unknown")
 # ===========================================================================
 drivestat_get_model() {
     #-- Array Wert lesen ----------------------------------------------------
@@ -478,7 +478,7 @@ drivestat_get_model() {
 
     #-- Fehlerfall loggen ---------------------------------------------------
     log_error "$MSG_ERROR_MODEL_UNKNOWN"
-    echo "Unknown"
+    echo "unknown"
     return 1
 }
 
@@ -502,7 +502,7 @@ drivestat_set_model() {
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$model" ]]; then
         log_error "$MSG_ERROR_MODEL_UNKNOWN"
-        model="Unknown"
+        model="unknown"
     fi
 
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
@@ -520,13 +520,13 @@ drivestat_set_model() {
 # ---------------------------------------------------------------------------
 # Funktion.: Ermittelt die Modellbezeichnung des optischen Laufwerks über sysfs
 # Parameter: Keine (nutzt globalen Pfad aus drivestat_get_drive())
-# Rückgabe.: 0 = Erfolg (Modellbezeichnung), 1 = Fehler (gibt "Unknown" zurück)
-# Hinweis..: Liefert "Unknown" zurück, wenn kein Laufwerk gefunden oder die
+# Rückgabe.: 0 = Erfolg (Modellbezeichnung), 1 = Fehler (gibt "unknown" zurück)
+# Hinweis..: Liefert "unknown" zurück, wenn kein Laufwerk gefunden oder die
 # .........  Modellbezeichnung nicht ermittelt werden konnte.
 # ===========================================================================
 drivestat_detect_model() {
     #-- Locale Variablen vorbereiten ----------------------------------------
-    local model="Unknown"
+    local model="unknown"
     local drive_path="$(drivestat_get_drive)" || {echo "$model"; return 1;}
 
     #-- Prüfe ob Device gültig ist ------------------------------------------
@@ -544,10 +544,10 @@ drivestat_detect_model() {
 # ===========================================================================
 # drivestat_get_firmware
 # ---------------------------------------------------------------------------
-# Funktion.: Gibt die Firmware-Version des optischen Laufwerks zurück (z.B. "1.00")
+# Funktion.: Gibt die Firmware-Version des optischen Laufwerks zurück 
 # Parameter: Keine
-# Ausgabe..: Firmware-Version (z.B. "1.00") oder "Unknown"
-# Rückgabe.: 0 = Erfolg (Firmware-Version), 1 = Fehler (gibt "Unknown" zurück)
+# Ausgabe..: Firmware-Version (z.B. "1.00") oder "unknown"
+# Rückgabe.: 0 = Erfolg (Firmware-Version), 1 = Fehler (gibt "unknown" zurück)
 # ===========================================================================
 drivestat_get_firmware() {
     #-- Array Wert lesen ----------------------------------------------------
@@ -562,7 +562,7 @@ drivestat_get_firmware() {
 
     #-- Fehlerfall loggen ---------------------------------------------------
     log_error "$MSG_ERROR_FIRMWARE_UNKNOWN"
-    echo "Unknown"
+    echo "unknown"
     return 1
 }
 
@@ -586,7 +586,7 @@ drivestat_set_firmware() {
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$firmware" ]]; then
         log_error "$MSG_ERROR_FIRMWARE_UNKNOWN"
-        firmware="Unknown"
+        firmware="unknown"
     fi
 
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
@@ -602,15 +602,15 @@ drivestat_set_firmware() {
 # ===========================================================================
 # drivestat_detect_firmware
 # ---------------------------------------------------------------------------
-# Funktion.: Ermittelt die Firmware-Version des optischen Laufwerks über sysfs
+# Funktion.: Ermittelt die Firmware-Version des optischen Laufwerks 
 # Parameter: Keine (nutzt globalen Pfad aus drivestat_get_drive())
-# Rückgabe.: 0 = Erfolg (Firmware-Version), 1 = Fehler (gibt "Unknown" zurück)
-# Hinweis..: Liefert "Unknown" zurück, wenn kein Laufwerk gefunden oder die
+# Rückgabe.: 0 = Erfolg (Firmware-Version), 1 = Fehler ("unknown")
+# Hinweis..: Liefert "unknown" zurück, wenn kein Laufwerk gefunden oder die
 # .........  Firmware-Version nicht ermittelt werden konnte.
 # ===========================================================================
 drivestat_detect_firmware() {
     #-- Locale Variablen vorbereiten ----------------------------------------
-    local firmware="Unknown"
+    local firmware="unknown"
     local drive_path="$(drivestat_get_drive)" || {echo "$firmware"; return 1;}
 
     #-- Prüfe ob Device gültig ist ------------------------------------------
@@ -628,7 +628,7 @@ drivestat_detect_firmware() {
 # ===========================================================================
 # drivestat_get_bus_type
 # ---------------------------------------------------------------------------
-# Funktion.: Gibt den Bus-Typ des optischen Laufwerks zurück (z.B. "SATA", "USB")
+# Funktion.: Gibt den Bus-Typ des optischen Laufwerks zurück 
 # Parameter: Keine
 # Ausgabe..: Bus-Typ (z.B. "SATA", "USB") oder "unknown"
 # Rückgabe.: 0 = Erfolg (Bus-Typ), 1 = Fehler (gibt "unknown" zurück)
@@ -686,7 +686,7 @@ drivestat_set_bus_type() {
 # ===========================================================================
 # drivestat_detect_bus_type
 # ---------------------------------------------------------------------------
-# Funktion.: Ermittelt den Bus-Typ des optischen Laufwerks über udevadm oder sysfs
+# Funktion.: Ermittelt den Bus-Typ des optischen Laufwerks 
 # Parameter: Keine (nutzt globalen Pfad aus drivestat_get_drive())
 # Rückgabe.: 0 = Erfolg (Bus-Typ), 1 = Fehler (gibt "unknown" zurück)
 # Hinweis..: Liefert "unknown" zurück, wenn kein Laufwerk gefunden oder der
@@ -727,7 +727,7 @@ drivestat_detect_bus_type() {
 # ===========================================================================
 # drivestat_get_capabilities
 # ---------------------------------------------------------------------------
-# Funktion.: Gibt die Fähigkeiten des optischen Laufwerks zurück (z.B. "CD/DVD", "DVD±R", "BD-ROM")
+# Funktion.: Gibt die Fähigkeiten des optischen Laufwerks zurück 
 # Parameter: Keine
 # Ausgabe..: Fähigkeiten (z.B. "CD/DVD", "DVD±R", "BD-ROM") oder "unknown"
 # Rückgabe.: 0 = Erfolg (Fähigkeiten), 1 = Fehler (gibt "unknown" zurück)
@@ -752,7 +752,7 @@ drivestat_get_capabilities() {
 # ===========================================================================
 # drivestat_set_capabilities
 # ---------------------------------------------------------------------------
-# Funktion.: Setzt die Fähigkeiten des optischen Laufwerks (z.B. "CD/DVD", "DVD±R", "BD-ROM")
+# Funktion.: Setzt die Fähigkeiten des optischen Laufwerks 
 # Parameter: $1 = Fähigkeiten (z.B. "CD/DVD", "DVD±R", "BD-ROM")
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
 # ===========================================================================
@@ -909,7 +909,7 @@ drivestat_detect_capabilities() {
 # ===========================================================================
 # drivestat_get_closed
 # ---------------------------------------------------------------------------
-# Funktion.: Gibt den Status zurück, ob die Laufwerk-Schublade geschlossen ist
+# Funktion.: Gibt zurück, ob die Laufwerk-Schublade geschlossen ist
 # Parameter: Keine
 # Ausgabe..: "true" oder "false"
 # Rückgabe.: 0 = geschlossen, 1 = offen oder unbekannt
@@ -947,7 +947,7 @@ drivestat_set_closed() {
     if [[ -z "$closed" ]]; then
         closed=$(drivestat_detect_closed)
     else
-        #-- Normalisiere den Wert auf "true" oder "false" ------------------
+        #-- Normalisiere den Wert auf "true" oder "false" -------------------
         if [[ "$closed" == "true" ]] || [[ "$closed" == "1" ]] || [[ "$closed" == "yes" ]]; then
             closed="true"
         elif [[ "$closed" == "false" ]] || [[ "$closed" == "0" ]] || [[ "$closed" == "no" ]]; then
@@ -1060,7 +1060,7 @@ drivestat_set_inserted() {
             medium_inserted="false"
         else
             log_error "$(printf "$MSG_ERROR_INSERTED_INVALID" "$medium_inserted")"
-            medium_inserted="false"   # Im Fehlerfall immer kein Medium zurückgeben
+            medium_inserted="false"         # Im Fehlerfall immer kein Medium 
         fi
     fi
 
@@ -1119,7 +1119,7 @@ drivestat_detect_inserted() {
 # ===========================================================================
 # drivstat_get_status
 # ---------------------------------------------------------------------------
-# Funktion.: Gibt den Gesamtstatus des Laufwerks zurück (READY, OPEN, CLOSED, EMPTY, ERROR)
+# Funktion.: Gibt den Gesamtstatus des Laufwerks zurück 
 # Parameter: Keine
 # Ausgabe..: Gesamtstatus als String (READY, OPEN, CLOSED, EMPTY, ERROR)
 # Rückgabe.: 0 = Erfolg (Status als String)
@@ -1144,7 +1144,7 @@ drivestat_get_status() {
 # ===========================================================================
 # drivestat_set_status
 # ---------------------------------------------------------------------------
-# Funktion.: Setzt den Gesamtstatus des Laufwerks (READY, OPEN, CLOSED, EMPTY, ERROR)
+# Funktion.: Setzt den Gesamtstatus des Laufwerks 
 # Parameter: $1 = Gesamtstatus als String (READY, OPEN, CLOSED, EMPTY, ERROR)
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
 # ===========================================================================
@@ -1177,9 +1177,11 @@ drivestat_set_status() {
 # ===========================================================================
 # drivestat_detect_status
 # ---------------------------------------------------------------------------
-# Funktion.: Ermittelt den Gesamtstatus des Laufwerks basierend auf Schubladen- und Medium-Status
+# Funktion.: Ermittelt den Gesamtstatus des Laufwerks basierend auf 
+# .........  Schubladen- und Medium-Status
 # Parameter: Keine
-# Ausgabe..: DRIVE_STATUS_READY, DRIVE_STATUS_OPEN, DRIVE_STATUS_CLOSED oder DRIVE_STATUS_EMPTY
+# Ausgabe..: DRIVE_STATUS_READY, DRIVE_STATUS_OPEN, DRIVE_STATUS_CLOSED oder 
+# .........  DRIVE_STATUS_EMPTY
 # Rückgabe.: 0 = Erfolg (Status als String)
 # ===========================================================================
 drivestat_detect_status() {
@@ -1356,7 +1358,7 @@ _drivestat_monitor_worker() {
 
 
         [[ ("$prev_closed" != "$curr_closed") || ("$prev_inserted" != "$curr_inserted") ]] && {
-            drivestat_set_status                 # Gesamtstatus basierend auf CLOSED/INSERTED aktualisieren
+            drivestat_set_status # Gesamtstatus basierend auf CLOSED/INSERTED
         }
 
         #-- Aktualisieren des vorherigen Status für die nächste Iteration ---
