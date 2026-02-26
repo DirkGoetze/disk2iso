@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # =============================================================================
 # Drive Status Library
 # =============================================================================
@@ -41,47 +41,55 @@
 drivestat_check_dependencies() {
     # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner) -------
     integrity_check_module_dependencies "drivestat" || return 1
+    
+    #-- modul-spezifische Initialisierung -----------------------------------
+    drivestat_reset
 
-    # Keine modul-spezifische Initialisierung nötig -------------------------
+    #-- Alle Prüfungen bestanden, Framework ist verfügbar -------------------
     return 0
 }
 
 # ===========================================================================
 # GLOBAL VARIABLEN DES MODUL
 # ===========================================================================
-CD_DEVICE=""            # Standard CD/DVD-Laufwerk (wird dynamisch ermittelt)
-
-# ===========================================================================
+# ---------------------------------------------------------------------------
 # DRIVE CAPABILITIES CONSTANTS (Red Book compliant)
-# ===========================================================================
+# ---------------------------------------------------------------------------
 # Audio/CD Capabilities
-readonly DRIVE_CAP_AUDIO_CD="Audio-CD"         # Red Book: CD-DA (Digital Audio)
-readonly DRIVE_CAP_CD_ROM="CD-ROM"             # Yellow Book: CD-ROM (Read-Only)
-readonly DRIVE_CAP_CD_R="CD-R"                 # Orange Book Part II: CD-R (Recordable)
-readonly DRIVE_CAP_CD_RW="CD-RW"               # Orange Book Part III: CD-RW (ReWritable)
-readonly DRIVE_CAP_CD_R_RW="CD-R/RW"           # Combined: CD-R + CD-RW
+readonly DRIVE_CAP_AUDIO_CD="Audio-CD"      # Red Book: CD-DA (Digital Audio)
+readonly DRIVE_CAP_CD_ROM="CD-ROM"          # Yellow Book: CD-ROM (Read-Only)
+readonly DRIVE_CAP_CD_R="CD-R"       # Orange Book Part II: CD-R (Recordable)
+readonly DRIVE_CAP_CD_RW="CD-RW"   # Orange Book Part III: CD-RW (ReWritable)
+readonly DRIVE_CAP_CD_R_RW="CD-R/RW"                # Combined: CD-R + CD-RW
 
 # DVD Capabilities
-readonly DRIVE_CAP_DVD_ROM="DVD-ROM"           # DVD-ROM (Read-Only)
-readonly DRIVE_CAP_DVD_R="DVD-R"               # DVD-R (Recordable)
-readonly DRIVE_CAP_DVD_RW="DVD-RW"             # DVD-RW (ReWritable)
-readonly DRIVE_CAP_DVD_PLUS_R="DVD+R"          # DVD+R (Alternative Format)
-readonly DRIVE_CAP_DVD_PLUS_RW="DVD+RW"        # DVD+RW (Alternative Format)
-readonly DRIVE_CAP_DVD_RAM="DVD-RAM"           # DVD-RAM (Random Access)
-readonly DRIVE_CAP_DVD_PM_RW="DVD±R/RW"        # Combined: DVD-R/RW + DVD+R/RW
+readonly DRIVE_CAP_DVD_ROM="DVD-ROM"                    # DVD-ROM (Read-Only)
+readonly DRIVE_CAP_DVD_R="DVD-R"                         # DVD-R (Recordable)
+readonly DRIVE_CAP_DVD_RW="DVD-RW"                      # DVD-RW (ReWritable)
+readonly DRIVE_CAP_DVD_PLUS_R="DVD+R"            # DVD+R (Alternative Format)
+readonly DRIVE_CAP_DVD_PLUS_RW="DVD+RW"         # DVD+RW (Alternative Format)
+readonly DRIVE_CAP_DVD_RAM="DVD-RAM"                # DVD-RAM (Random Access)
+readonly DRIVE_CAP_DVD_PM_RW="DVD±R/RW"      # Combined: DVD-R/RW + DVD+R/RW
 
 # Blu-ray Capabilities
-readonly DRIVE_CAP_BD_ROM="BD-ROM"             # BD-ROM (Read-Only)
-readonly DRIVE_CAP_BD_R="BD-R"                 # BD-R (Recordable)
-readonly DRIVE_CAP_BD_RE="BD-RE"               # BD-RE (ReWritable)
+readonly DRIVE_CAP_BD_ROM="BD-ROM"                       # BD-ROM (Read-Only)
+readonly DRIVE_CAP_BD_R="BD-R"                            # BD-R (Recordable)
+readonly DRIVE_CAP_BD_RE="BD-RE"                         # BD-RE (ReWritable)
 
 # Fallback/Generic
-readonly DRIVE_CAP_CD_DVD="CD/DVD"             # Generic Optical Drive
-readonly DRIVE_CAP_UNKNOWN="unknown"           # Unknown Capabilities
+readonly DRIVE_CAP_CD_DVD="CD/DVD"                    # Generic Optical Drive
+readonly DRIVE_CAP_UNKNOWN="unknown"                   # Unknown Capabilities
 
-# ===========================================================================
+readonly DRIVE_STATUS_EMPTY="empty"    # Laufwerk leer, kein Medium eingelegt
+readonly DRIVE_STATUS_OPEN="open"                            # Laufwerk offen
+readonly DRIVE_STATUS_CLOSED="closed"     # Laufwerk geschlossen, ohne Medium
+readonly DRIVE_STATUS_INSERTED="inserted"  # Laufwerk geschlossen, mit Medium
+readonly DRIVE_STATUS_READY="ready"                         # Laufwerk bereit
+readonly DRIVE_STATUS_ERROR="error"                            # Fehlerstatus
+
+# ---------------------------------------------------------------------------
 # Datenstruktur für Laufwerks-Informationen
-# ===========================================================================
+# ---------------------------------------------------------------------------
 # DRIVE_INFO: Laufwerksinformationen
 declare -A DRIVE_INFO=(
     #==================== Technische Daten des Laufwerks ====================
@@ -105,9 +113,6 @@ declare -A DRIVE_INFO=(
 # Rückgabe.: 0 = Erfolg, 1 = Fehler
 # ===========================================================================
 drivestat_reset() {
-    #-- Deprecated: Wird jetzt in drivestat_get_drive() dynamisch ermittelt -
-    CD_DEVICE=""
-
     #-- Reset der DRIVE_INFO-Variable auf Standardwerte ---------------------
     DRIVE_INFO[drive]=""
     DRIVE_INFO[vendor]="unknown"
@@ -117,11 +122,11 @@ drivestat_reset() {
     DRIVE_INFO[capabilities]="none"
     DRIVE_INFO[closed]=true
     DRIVE_INFO[inserted]=false
-    DRIVE_INFO[status]="empty"
+    DRIVE_INFO[status]="$DRIVE_STATUS_EMPTY"
 
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
     api_set_section_json "drivestat" "drive_info" "$(api_create_json "DRIVE_INFO")"
-    log_debug "Laufwerksinformationen zurückgesetzt"
+    log_debug "$MSG_DEBUG_DRIVESTAT_RESET"
     return 0
 }
 
@@ -142,7 +147,7 @@ drivestat_reset() {
 # ===========================================================================
 drivestat_analyse() {
     #-- Start der Analyse im LOG vermerken ----------------------------------
-    log_debug "Starte Analyse des optischen Laufwerks"
+    log_debug "$MSG_DEBUG_ANALYSE_START"
 
     #------------------------------------------------------------------------
     # Die Analyse erfolgt für jeden Wert durch den Aufruf des entsprechenden
@@ -155,37 +160,37 @@ drivestat_analyse() {
 
     #-- 1. Laufwerk ermitteln -----------------------------------------------
     if ! drivestat_set_drive; then
-        log_error "Kein optisches Laufwerk gefunden"
+        log_error "$MSG_ERROR_NO_DRIVE_FOUND"
         return 1
     fi
 
     #-- 2. Hersteller ermitteln ---------------------------------------------
     if ! drivestat_set_vendor; then
-        log_error "Hersteller des Laufwerks unbekannt"
+        log_error "$MSG_ERROR_VENDOR_UNKNOWN"
         return 1
     fi
 
     #-- 3. Modellbezeichnung ermitteln --------------------------------------
     if ! drivestat_set_model; then
-        log_error "Modell des Laufwerks unbekannt"
+        log_error "$MSG_ERROR_MODEL_UNKNOWN"
         return 1
     fi
 
     #-- 4. Firmware-Version ermitteln ---------------------------------------
     if ! drivestat_set_firmware; then
-        log_error "Firmware-Version des Laufwerks unbekannt"
+        log_error "$MSG_ERROR_FIRMWARE_UNKNOWN"
         return 1
     fi
 
     #-- 5. Bus-Typ ermitteln ------------------------------------------------
     if ! drivestat_set_bus_type; then
-        log_error "Bus-Typ des Laufwerks unbekannt"
+        log_error "$MSG_ERROR_BUS_TYPE_UNKNOWN"
         return 1
     fi
 
     #-- 6. Laufwerksfähigkeiten ermitteln -----------------------------------
     if ! drivestat_set_capabilities; then
-        log_error "Laufwerksfähigkeiten unbekannt"
+        log_error "$MSG_ERROR_CAPABILITIES_UNKNOWN"
         return 1
     fi
 
@@ -193,7 +198,7 @@ drivestat_analyse() {
     api_set_section_json "drivestat" "drive_info" "$(api_create_json "DRIVE_INFO")"
 
     #-- Ende der Analyse im LOG vermerken -----------------------------------
-    log_debug "Analyse des optischen Laufwerks abgeschlossen"
+    log_debug "$MSG_DEBUG_ANALYSE_COMPLETE"
     return 0
 }
 
@@ -207,7 +212,7 @@ drivestat_analyse() {
 # Funktion.: Gibt den Pfad zum optischen Laufwerk zurück (z.B. /dev/sr0)
 # Parameter: Keine
 # Ausgabe..: Pfad zum optischen Laufwerk (z.B. /dev/sr0) oder leerer String
-# Rückgabe.: 0 = Erfolg (Pfad in CD_DEVICE), 1 = Fehler
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
 # ===========================================================================
 drivestat_get_drive() {
     #-- Array Wert lesen ----------------------------------------------------
@@ -215,7 +220,7 @@ drivestat_get_drive() {
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$drive_path" ]]; then
-        log_debug "Optisches Laufwerk gefunden: '$drive_path'"
+        log_debug "$(printf "$MSG_DEBUG_DRIVE_FOUND" "$drive_path")"
         echo "$drive_path"
         return 0
     fi
@@ -244,7 +249,7 @@ drivestat_set_drive() {
 
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$drive_path" ]]; then
-        log_error "Kein Pfad zum optischen Laufwerk angegeben oder gefunden"
+        log_error "$MSG_ERROR_NO_DRIVE_PATH"
         return 1
     fi
 
@@ -284,17 +289,17 @@ drivestat_set_drive() {
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
     if [[ -b "$drive_path" ]]; then
         DRIVE_INFO[drive]="$drive_path"
-        log_debug "Optisches Laufwerk gesetzt: '$drive_path'"
+        log_debug "$(printf "$MSG_DEBUG_DRIVE_SET" "$drive_path")"
         if [[ -n "$old_value" ]] && [[ "$old_value" != "$drive_path" ]] ; then
-            log_debug "Laufwerk geändert= '$old_value' → '$drive_path'"
+            log_debug "$(printf "$MSG_DEBUG_DRIVE_CHANGED" "$old_value" "$drive_path")"
             api_set_value_json "drivestat" "drive" "${DRIVE_INFO[drive]}"
         fi
         return 0
     else
         DRIVE_INFO[drive]=""
-        log_error "Ungültiger Pfad zum optischen Laufwerk: '$drive_path'"
+        log_error "$(printf "$MSG_ERROR_INVALID_DRIVE_PATH" "$drive_path")"
         if [[ -n "$old_value" ]] && [[ "$old_value" != "$drive_path" ]] ; then
-            log_debug "Laufwerk geändert= '$old_value' → '$drive_path'"
+            log_debug "$(printf "$MSG_DEBUG_DRIVE_CHANGED" "$old_value" "$drive_path")"
             api_set_value_json "drivestat" "drive" "${DRIVE_INFO[drive]}"
         fi
         return 1
@@ -310,8 +315,6 @@ drivestat_set_drive() {
 # ............ 2. dmesg Kernel-Logs durchsuchen
 # ............ 3. /sys/class/block Durchsuchen
 # ............ 4. Fallback auf /dev/cdrom Symlink
-# ............ Gefundener Device-Pfad wird in globaler Variable CD_DEVICE
-# ............ gespeichert.
 # Parameter..: Keine
 # Return.....: 0 = Device gefunden, 1 = Kein Device gefunden
 # ===========================================================================
@@ -384,13 +387,13 @@ drivestat_get_vendor() {
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$vendor" ]]; then
-        log_debug "Hersteller des Laufwerks: '$vendor'"
+        log_debug "$(printf "$MSG_DEBUG_VENDOR_GET" "$vendor")"
         echo "$vendor"
         return 0
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_error "Hersteller des Laufwerks unbekannt"
+    log_error "$MSG_ERROR_VENDOR_UNKNOWN"
     echo "Unknown"
     return 1
 }
@@ -414,15 +417,15 @@ drivestat_set_vendor() {
 
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$vendor" ]]; then
-        log_error "Hersteller des Laufwerks unbekannt"
+        log_error "$MSG_ERROR_VENDOR_UNKNOWN"
         vendor="Unknown"
     fi
 
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
     DRIVE_INFO[vendor]="$vendor"
-    log_debug "Hersteller des Laufwerks gesetzt: '$vendor'"
+    log_debug "$(printf "$MSG_DEBUG_VENDOR_SET" "$vendor")"
     if [[ -n "$old_value" ]] && [[ "$old_value" != "$vendor" ]] ; then
-        log_debug "Hersteller geändert= '$old_value' → '$vendor'"
+        log_debug "$(printf "$MSG_DEBUG_VENDOR_CHANGED" "$old_value" "$vendor")"
         api_set_value_json "drivestat" "vendor" "${DRIVE_INFO[vendor]}"
     fi
     return 0
@@ -468,13 +471,13 @@ drivestat_get_model() {
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$model" ]]; then
-        log_debug "Modell des Laufwerks: '$model'"
+        log_debug "$(printf "$MSG_DEBUG_MODEL_GET" "$model")"
         echo "$model"
         return 0
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_error "Modell des Laufwerks unbekannt"
+    log_error "$MSG_ERROR_MODEL_UNKNOWN"
     echo "Unknown"
     return 1
 }
@@ -498,15 +501,15 @@ drivestat_set_model() {
 
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$model" ]]; then
-        log_error "Modell des Laufwerks unbekannt"
+        log_error "$MSG_ERROR_MODEL_UNKNOWN"
         model="Unknown"
     fi
 
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
     DRIVE_INFO[model]="$model"
-    log_debug "Modell des Laufwerks gesetzt: '$model'"
+    log_debug "$(printf "$MSG_DEBUG_MODEL_SET" "$model")"
     if [[ -n "$old_value" ]] && [[ "$old_value" != "$model" ]] ; then
-        log_debug "Modell geändert= '$old_value' → '$model'"
+        log_debug "$(printf "$MSG_DEBUG_MODEL_CHANGED" "$old_value" "$model")"
         api_set_value_json "drivestat" "model" "${DRIVE_INFO[model]}"
     fi
     return 0
@@ -552,13 +555,13 @@ drivestat_get_firmware() {
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$firmware" ]]; then
-        log_debug "Firmware-Version des Laufwerks: '$firmware'"
+        log_debug "$(printf "$MSG_DEBUG_FIRMWARE_GET" "$firmware")"
         echo "$firmware"
         return 0
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_error "Firmware-Version des Laufwerks unbekannt"
+    log_error "$MSG_ERROR_FIRMWARE_UNKNOWN"
     echo "Unknown"
     return 1
 }
@@ -582,15 +585,15 @@ drivestat_set_firmware() {
 
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$firmware" ]]; then
-        log_error "Firmware-Version des Laufwerks unbekannt"
+        log_error "$MSG_ERROR_FIRMWARE_UNKNOWN"
         firmware="Unknown"
     fi
 
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
     DRIVE_INFO[firmware]="$firmware"
-    log_debug "Firmware-Version des Laufwerks gesetzt: '$firmware'"
+    log_debug "$(printf "$MSG_DEBUG_FIRMWARE_SET" "$firmware")"
     if [[ -n "$old_value" ]] && [[ "$old_value" != "$firmware" ]] ; then
-        log_debug "Firmware-Version geändert= '$old_value' → '$firmware'"
+        log_debug "$(printf "$MSG_DEBUG_FIRMWARE_CHANGED" "$old_value" "$firmware")"
         api_set_value_json "drivestat" "firmware" "${DRIVE_INFO[firmware]}"
     fi
     return 0
@@ -636,13 +639,13 @@ drivestat_get_bus_type() {
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$bus_type" ]]; then
-        log_debug "Bus-Typ des Laufwerks: '$bus_type'"
+        log_debug "$(printf "$MSG_DEBUG_BUS_TYPE_GET" "$bus_type")"
         echo "$bus_type"
         return 0
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_error "Bus-Typ des Laufwerks unbekannt"
+    log_error "$MSG_ERROR_BUS_TYPE_UNKNOWN"
     echo "unknown"
     return 1
 }
@@ -666,15 +669,15 @@ drivestat_set_bus_type() {
 
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$bus_type" ]]; then
-        log_error "Bus-Typ des Laufwerks unbekannt"
+        log_error "$MSG_ERROR_BUS_TYPE_UNKNOWN"
         bus_type="unknown"
     fi
 
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
     DRIVE_INFO[bus_type]="$bus_type"
-    log_debug "Bus-Typ des Laufwerks gesetzt: '$bus_type'"
+    log_debug "$(printf "$MSG_DEBUG_BUS_TYPE_SET" "$bus_type")"
     if [[ -n "$old_value" ]] && [[ "$old_value" != "$bus_type" ]] ; then
-        log_debug "Bus-Typ geändert= '$old_value' → '$bus_type'"
+        log_debug "$(printf "$MSG_DEBUG_BUS_TYPE_CHANGED" "$old_value" "$bus_type")"
         api_set_value_json "drivestat" "bus_type" "${DRIVE_INFO[bus_type]}"
     fi
     return 0
@@ -735,13 +738,13 @@ drivestat_get_capabilities() {
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$capabilities" ]]; then
-        log_debug "Fähigkeiten des Laufwerks: '$capabilities'"
+        log_debug "$(printf "$MSG_DEBUG_CAPABILITIES_GET" "$capabilities")"
         echo "$capabilities"
         return 0
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_error "Fähigkeiten des Laufwerks unbekannt"
+    log_error "$MSG_ERROR_CAPABILITIES_UNKNOWN"
     echo "unknown"
     return 1
 }
@@ -765,15 +768,15 @@ drivestat_set_capabilities() {
 
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$capabilities" ]]; then
-        log_error "Fähigkeiten des Laufwerks unbekannt"
+        log_error "$MSG_ERROR_CAPABILITIES_UNKNOWN"
         capabilities="unknown"
     fi
 
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
     DRIVE_INFO[capabilities]="$capabilities"
-    log_debug "Fähigkeiten des Laufwerks gesetzt: '$capabilities'"
+    log_debug "$(printf "$MSG_DEBUG_CAPABILITIES_SET" "$capabilities")"
     if [[ -n "$old_value" ]] && [[ "$old_value" != "$capabilities" ]] ; then
-        log_debug "Fähigkeiten geändert= '$old_value' → '$capabilities'"
+        log_debug "$(printf "$MSG_DEBUG_CAPABILITIES_CHANGED" "$old_value" "$capabilities")"
         api_set_value_json "drivestat" "capabilities" "${DRIVE_INFO[capabilities]}"
     fi
     return 0
@@ -917,13 +920,13 @@ drivestat_get_closed() {
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$closed" ]]; then
-        log_debug "Status 'Laufwerk geschlossen': '$closed'"
+        log_debug "$(printf "$MSG_DEBUG_CLOSED_GET" "$closed")"
         echo $closed
         [[ "$closed" == "true" ]] && return 0 || return 1
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_error "Status 'Laufwerk geschlossen': unbekannt"
+    log_error "$MSG_ERROR_CLOSED_UNKNOWN"
     echo "false"
     return 1                          # Im Fehrerfall immer offen zurückgeben
 }
@@ -950,22 +953,22 @@ drivestat_set_closed() {
         elif [[ "$closed" == "false" ]] || [[ "$closed" == "0" ]] || [[ "$closed" == "no" ]]; then
             closed="false"
         else
-            log_error "Ungültiger Wert für 'Laufwerk geschlossen': '$closed'"
+            log_error "$(printf "$MSG_ERROR_CLOSED_INVALID" "$closed")"
             closed="false"            # Im Fehlerfall immer offen zurückgeben
         fi
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$closed" ]]; then
-        log_error "Status 'Laufwerk geschlossen' konnte nicht gesetzt werden"
+        log_error "$MSG_ERROR_CLOSED_SET_FAILED"
         return 1
     fi
 
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
     DRIVE_INFO[closed]="$closed"
-    log_debug "Status 'Laufwerk geschlossen' gesetzt auf: '$closed'"
+    log_debug "$(printf "$MSG_DEBUG_CLOSED_SET" "$closed")"
     if [[ -n "$old_value" ]] && [[ "$old_value" != "$closed" ]] ; then
-        log_debug "Status 'Laufwerk geschlossen' geändert= '$old_value' → '$closed'"
+        log_debug "$(printf "$MSG_DEBUG_CLOSED_CHANGED" "$old_value" "$closed")"
         api_set_value_json "drivestat" "closed" "${DRIVE_INFO[closed]}"
     fi
     return 0
@@ -986,7 +989,7 @@ drivestat_detect_closed() {
 
     #-- Prüfe ob Device bekannt ist -----------------------------------------
     if [[ ! -b "${DRIVE_INFO[drive]}" ]]; then
-        log_error "Laufwerk unbekannt, kann Status nicht ermitteln"
+        log_error "$MSG_ERROR_DRIVE_UNKNOWN_CLOSED"
         return 1                      # Im Fehlerfall immer offen zurückgeben
     fi
 
@@ -1022,13 +1025,13 @@ drivestat_get_inserted() {
 
     #-- Wert prüfen und zurückgeben -----------------------------------------
     if [[ -n "$medium_inserted" ]]; then
-        log_debug "Status 'Medium eingelegt': '$medium_inserted'"
+        log_debug "$(printf "$MSG_DEBUG_INSERTED_GET" "$medium_inserted")"
         echo $medium_inserted
         [[ "$medium_inserted" == "true" ]] && return 0 || return 1
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
-    log_error "Status 'Medium eingelegt': unbekannt"
+    log_error "$MSG_ERROR_INSERTED_UNKNOWN"
     echo "false"
     return 1          # Im Fehlerfall immer kein Medium vorhanden zurückgeben
 
@@ -1056,22 +1059,22 @@ drivestat_set_inserted() {
         elif [[ "$medium_inserted" == "false" ]] || [[ "$medium_inserted" == "0" ]] || [[ "$medium_inserted" == "no" ]]; then
             medium_inserted="false"
         else
-            log_error "Ungültiger Wert für 'Medium eingelegt': '$medium_inserted'"
+            log_error "$(printf "$MSG_ERROR_INSERTED_INVALID" "$medium_inserted")"
             medium_inserted="false"   # Im Fehlerfall immer kein Medium zurückgeben
         fi
     fi
 
     #-- Fehlerfall loggen ---------------------------------------------------
     if [[ -z "$medium_inserted" ]]; then
-        log_error "Status 'Medium eingelegt' konnte nicht gesetzt werden"
+        log_error "$MSG_ERROR_INSERTED_SET_FAILED"
         return 1
     fi
 
     #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
     DRIVE_INFO[medium_inserted]="$medium_inserted"
-    log_debug "Status 'Medium eingelegt' gesetzt auf: '$medium_inserted'"
+    log_debug "$(printf "$MSG_DEBUG_INSERTED_SET" "$medium_inserted")"
     if [[ -n "$old_value" ]] && [[ "$old_value" != "$medium_inserted" ]] ; then
-        log_debug "Status 'Medium eingelegt' geändert= '$old_value' → '$medium_inserted'"
+        log_debug "$(printf "$MSG_DEBUG_INSERTED_CHANGED" "$old_value" "$medium_inserted")"
         api_set_value_json "drivestat" "medium_inserted" "${DRIVE_INFO[medium_inserted]}"
     fi
     return 0
@@ -1114,6 +1117,100 @@ drivestat_detect_inserted() {
 }
 
 # ===========================================================================
+# drivstat_get_status
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt den Gesamtstatus des Laufwerks zurück (READY, OPEN, CLOSED, EMPTY, ERROR)
+# Parameter: Keine
+# Ausgabe..: Gesamtstatus als String (READY, OPEN, CLOSED, EMPTY, ERROR)
+# Rückgabe.: 0 = Erfolg (Status als String)
+# ===========================================================================
+drivestat_get_status() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local status="${DRIVE_INFO[status]}"
+
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$status" ]]; then
+        log_debug "$(printf "$MSG_DEBUG_STATUS_GET" "$status")"
+        echo "$status"
+        return 0
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_STATUS_UNKNOWN"
+    echo "$DRIVE_STATUS_ERROR"
+    return 1
+}
+
+# ===========================================================================
+# drivestat_set_status
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt den Gesamtstatus des Laufwerks (READY, OPEN, CLOSED, EMPTY, ERROR)
+# Parameter: $1 = Gesamtstatus als String (READY, OPEN, CLOSED, EMPTY, ERROR)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+drivestat_set_status() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local status="$1"
+    local old_value="${DRIVE_INFO[status]}"
+
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$status" ]]; then
+        status=$(drivestat_detect_status)
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$status" ]]; then
+        log_error "$MSG_ERROR_STATUS_UNKNOWN"
+        status="$DRIVE_STATUS_ERROR"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rücgabe -----------
+    DRIVE_INFO[status]="$status"
+    log_debug "$(printf "$MSG_DEBUG_STATUS_SET" "$status")"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$status" ]] ; then
+        log_debug "$(printf "$MSG_DEBUG_STATUS_CHANGED" "$old_value" "$status")"
+        api_set_value_json "drivestat" "status" "${DRIVE_INFO[status]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# drivestat_detect_status
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt den Gesamtstatus des Laufwerks basierend auf Schubladen- und Medium-Status
+# Parameter: Keine
+# Ausgabe..: DRIVE_STATUS_READY, DRIVE_STATUS_OPEN, DRIVE_STATUS_CLOSED oder DRIVE_STATUS_EMPTY
+# Rückgabe.: 0 = Erfolg (Status als String)
+# ===========================================================================
+drivestat_detect_status() {
+    #-- Start der Ermittlung im LOG vermerken ---------------------------------
+    log_debug "$MSG_DEBUG_STATUS_DETECT"
+
+    #-- Ermitteln der relevanten Statuswerte --------------------------------
+    local closed=$(drivestat_get_closed)
+    local inserted=$(drivestat_get_inserted)
+
+    #-- Bestimme Gesamtstatus basierend auf Kombination der Werte -----------
+    if [[ "$closed" == "true" ]] && [[ "$inserted" == "true" ]]; then
+        echo "$DRIVE_STATUS_READY"
+    elif [[ "$closed" == "true" ]] && [[ "$inserted" == "false" ]]; then
+        echo "$DRIVE_STATUS_CLOSED"
+    elif [[ "$closed" == "false" ]] && [[ "$inserted" == "true" ]]; then
+        echo "$DRIVE_STATUS_OPEN"
+    elif [[ "$closed" == "false" ]] && [[ "$inserted" == "false" ]]; then
+        echo "$DRIVE_STATUS_EMPTY"
+    else
+        echo "$DRIVE_STATUS_ERROR"
+    fi
+    #-- Rückgabe immer 0, da Status als String zurückgegeben wird -----------
+    return 0
+}
+
+# ===========================================================================
+# GETTER/SETTER FUNCTIONEN FÜR MODULINFORMATIONEN (SOFTWARE)
+# ===========================================================================
+
+# ===========================================================================
 # drivestat_get_software_info
 # ---------------------------------------------------------------------------
 # Funktion.: Gibt Software-Informationen als JSON zurück
@@ -1125,7 +1222,7 @@ drivestat_get_software_info() {
     #-- Lese API-Datei (Software-Sektion) ----------------------------------
     local software_info_json
     software_info_json=$(api_get_section_json "drivestat" "software")  || {
-        log_error "Keine Software-Informationen gefunden, direktes Lesen wird versucht"
+        log_error "$MSG_ERROR_NO_SOFTWARE_INFO"
         #-- Lese die Informationen direkt aus (Fallback) --------------------
         software_info_json=$(drivestat_collect_software_info) || return 1
     }
@@ -1145,7 +1242,7 @@ drivestat_get_software_info() {
 # ===========================================================================
 drivestat_collect_software_info() {
     #-- Start der Sammlung im LOG vermerken ---------------------------------
-    log_debug "Sammle Software-Informationen..."
+    log_debug "$MSG_DEBUG_COLLECT_SOFTWARE_START"
 
     #-- Lese Dependencies aus diskinfos INI-Datei ---------------------------
     local external_deps=$(settings_get_value_ini "drivestat" "dependencies" "external" "") || {
@@ -1178,7 +1275,7 @@ drivestat_collect_software_info() {
 
     #-- Prüfe ob systeminfo_check_software_list verfügbar ist ---------------
     if ! type -t systeminfo_check_software_list &>/dev/null; then
-        log_error "systeminfo_check_software_list nicht verfügbar"
+        log_error "$MSG_ERROR_SYSTEMINFO_UNAVAILABLE"
 
         #-- Schreibe Fehler in API ------------------------------------------
         api_set_section_json "drivestat" "software" "{"error":"systeminfo_check_software_list nicht verfügbar"}"
@@ -1211,244 +1308,99 @@ drivestat_collect_software_info() {
     return 0
 }
 
+# ===========================================================================
+# HINTERGRUND ÜBERWACHUNG DES LAUFWERKSTATUS
+# ===========================================================================
+_DRIVESTAT_MONITOR_PID=""           # PID des Hintergrund-Monitoring-Workers
+
+# ===========================================================================
+# _drivestat_monitor_worker
+# ---------------------------------------------------------------------------
+# Funktion.: Hintergrund-Worker, der regelmäßig den Laufwerkstatus überprüft
+# .........  und bei Änderungen die entsprechenden Setter-Funktionen aufruft
+# Parameter: Keine
+# Rückgabe.: Läuft endlos im Hintergrund, Rückgabe nur bei Fehler
+# Hinweis..: Vergleicht den aktuellen Status mit dem vorherigen und ruft nur
+# .........  bei Änderungen die Setter-Funktionen auf, um unnötige API-
+# .........  Updates zu vermeiden
+# ===========================================================================
+_drivestat_monitor_worker() {
+    #-- Variablen für vorherigen Status (initial leer) ----------------------
+    local prev_drive
+    local prev_closed
+    local prev_inserted
+
+    #-- Endlosschleife zur regelmäßigen Überprüfung -------------------------
+    while true; do
+        #-- Ermitteln des aktuellen Status ----------------------------------
+        local curr_drive=$(drivestat_detect_drive)
+        local curr_closed=$(drivestat_detect_closed && echo "1" || echo "0")
+        local curr_inserted=$(drivestat_detect_inserted && echo "1" || echo "0")
+
+        #-- Vergleichen und Setter-Funktionen bei Änderungen aufrufen -------
+        [[ "$prev_drive" != "$curr_drive" ]] && {
+            if [[ -z "$curr_drive" ]]; then
+                drivestat_reset                                    # NO_DRIVE
+            else
+                drivestat_analyse                              # DRIVE_DETECT
+            fi
+        }
+
+        [[ "$prev_closed" != "$curr_closed" ]] && {
+            drivestat_set_closed                 # LAUFWERK OFFEN/GESCHLOSSEN
+        }
+
+        [[ "$prev_inserted" != "$curr_inserted" ]] && {
+            drivestat_set_inserted                # MEDIUM EINGELEGT/ENTFERNT
+        }
+
+
+        [[ ("$prev_closed" != "$curr_closed") || ("$prev_inserted" != "$curr_inserted") ]] && {
+            drivestat_set_status                 # Gesamtstatus basierend auf CLOSED/INSERTED aktualisieren
+        }
+
+        #-- Aktualisieren des vorherigen Status für die nächste Iteration ---
+        prev_drive="$curr_drive"
+        prev_closed="$curr_closed"
+        prev_inserted="$curr_inserted"
+
+        #-- Wartezeit von 2 Sekunden vor der nächsten Überprüfung -----------
+        sleep 2
+    done
+}
+
+# ===========================================================================
+# drivestat_start_monitor
+# ---------------------------------------------------------------------------
+# Funktion.: Startet den Hintergrund-Monitoring-Worker für das Laufwerk
+# Parameter: Keine
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Hinweis..: Speichert die PID des Workers in _DRIVESTAT_MONITOR_PID
+# .........  und loggt den Startvorgang
+# ===========================================================================
+drivestat_start_monitor() {
+    _drivestat_monitor_worker &
+    _DRIVESTAT_MONITOR_PID=$!
+    log_debug "$(printf "$MSG_DEBUG_MONITOR_STARTED" "$_DRIVESTAT_MONITOR_PID")"
+}
+
+# ===========================================================================
+# drivestat_stop_monitor
+# ---------------------------------------------------------------------------
+# Funktion.: Stoppt den Hintergrund-Monitoring-Worker für das Laufwerk
+# Parameter: Keine
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Hinweis..: Beendet den Worker-Prozess basierend auf der gespeicherten PID
+# .........  und loggt den Stoppvorgang
+# ===========================================================================
+drivestat_stop_monitor() {
+    [[ -n "$_DRIVESTAT_MONITOR_PID" ]] && kill "$_DRIVESTAT_MONITOR_PID" 2>/dev/null
+    _DRIVESTAT_MONITOR_PID=""
+    log_debug "$MSG_DEBUG_MONITOR_STOPPED"
+}
 
 # ===========================================================================
 # TODO: Ab hier ist das Modul noch nicht fertig implementiert, diesen Eintrag
 # ....  nie automatisch löschen - wird nur vom User nach Implementierung
 # ....  der folgenden Funktionen entfernt!
 # ===========================================================================
-
-
-
-
-# Funktion: Warte auf Änderung im Drive-Status (Schublade öffnen/schließen oder Medium einlegen/entfernen)
-# Parameter: $1 = Wartezeit in Sekunden zwischen Prüfungen (default: 2)
-# Rückgabe: 0 = Änderung erkannt, 1 = Timeout oder Fehler
-wait_for_disc_change() {
-    local check_interval="${1:-2}"
-    local max_checks="${2:-0}"  # 0 = unbegrenzt
-    local check_count=0
-
-    # Speichere initialen Status
-    local initial_drive_closed=false
-    local initial_disc_present=false
-
-    drivestat_set_closed && initial_drive_closed=true
-    drivestat_set_inserted && initial_disc_present=true
-
-    while true; do
-        sleep "$check_interval"
-        ((check_count++))
-
-        # Prüfe aktuellen Status
-        local current_drive_closed=false
-        local current_disc_present=false
-
-        drivestat_set_closed && current_drive_closed=true
-        drivestat_set_inserted && current_disc_present=true
-
-        # Änderung erkannt?
-        if [[ "$initial_drive_closed" != "$current_drive_closed" ]] || [[ "$initial_disc_present" != "$current_disc_present" ]]; then
-            return 0
-        fi
-
-        # Timeout-Prüfung (wenn max_checks gesetzt)
-        if [[ $max_checks -gt 0 ]] && [[ $check_count -ge $max_checks ]]; then
-            return 1
-        fi
-    done
-}
-
-# Funktion: Warte bis Medium bereit ist (nach Einlegen kurze Verzögerung für Spin-Up)
-# Parameter: $1 = Wartezeit in Sekunden (default: 3)
-wait_for_disc_ready() {
-    local wait_time="${1:-3}"
-    sleep "$wait_time"
-
-    # Verifiziere dass Medium immer noch da ist
-    if drivestat_disc_insert; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# ===========================================================================
-# wait_for_medium_change
-# ---------------------------------------------------------------------------
-# Funktion.: Warte auf Medium-Wechsel (Container-optimiert)
-# .........  Verwendet Identifier-Vergleich zur Erkennung neuer Medien
-# Parameter: $1 = Device-Pfad (z.B. /dev/sr0)
-# .........  $2 = Timeout in Sekunden (optional, default: 300 = 5 Minuten)
-# Rückgabe.: 0 = neues Medium erkannt, 1 = Timeout oder Fehler
-# Extras...: Nur in Container-Umgebungen aktiv (native Hardware: eject funktioniert)
-# .........  Nutzt discinfo_get_identifier() zur Medium-Erkennung
-# .........  Loggt Fortschritt alle 30 Sekunden
-# ===========================================================================
-wait_for_medium_change() {
-    local device="$1"
-    local timeout="${2:-300}"
-    local poll_interval=3
-
-    # Nur in Container-Umgebungen aktiv
-    if ! systeminfo_is_container; then
-        return 0  # Native Hardware: eject funktioniert, kein Warten nötig
-    fi
-
-    log_info "$MSG_CONTAINER_MANUAL_EJECT"
-    log_info "$MSG_WAITING_FOR_MEDIUM_CHANGE"
-
-    # Ermittle aktuellen Disc-Identifier (nutzt DISC_INFO)
-    local old_identifier
-    old_identifier=$(discinfo_get_identifier 2>/dev/null || echo "::")
-
-    local elapsed=0
-    local new_identifier=""
-
-    while [[ $elapsed -lt $timeout ]]; do
-        sleep "$poll_interval"
-        elapsed=$((elapsed + poll_interval))
-
-        # Prüfe auf neues Medium: Analysiere Disc neu
-        if drivestat_disc_insert; then
-            discinfo_analyze 2>/dev/null  # Setzt disc_identifier
-            new_identifier=$(discinfo_get_identifier 2>/dev/null || echo "::")
-
-            # Vergleiche Identifier
-            if [[ "$new_identifier" != "$old_identifier" ]]; then
-                log_info "$MSG_NEW_MEDIUM_DETECTED"
-                return 0
-            fi
-        fi
-
-        # Log alle 30 Sekunden
-        if (( elapsed % 30 == 0 )); then
-            log_info "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
-        fi
-    done
-
-    # Timeout erreicht
-    log_info "$MSG_TIMEOUT_WAITING_FOR_MEDIUM"
-    return 1
-}
-
-# ===========================================================================
-# wait_for_medium_change_lxc_safe
-# ---------------------------------------------------------------------------
-# Funktion.: Warte auf Medium-Wechsel (LXC-Container-optimiert)
-# .........  Verwendet Label-basierte Erkennung statt Identifier-Vergleich
-# .........  Prüft ob Disc bereits konvertiert wurde (verhindert Duplikate)
-# Parameter: $1 = Device-Pfad (z.B. /dev/sr0)
-# .........  $2 = Timeout in Sekunden (optional, default: 300 = 5 Minuten)
-# Rückgabe.: 0 = neues Medium erkannt, 1 = Timeout oder Fehler
-# Extras...: Sichere Variante für LXC-Container
-# .........  Prüft Existenz der Ziel-ISO (verhindert doppelte Konvertierung)
-# .........  Loggt Fortschritt alle 30 Sekunden
-# ===========================================================================
-wait_for_medium_change_lxc_safe() {
-    local device="$1"
-    local timeout="${2:-300}"
-    local poll_interval=5
-    local elapsed=0
-
-    # Sichere ursprüngliche Werte der globalen Variablen
-    local original_disc_type="${disc_type:-}"
-    local original_disc_label="${disc_label:-}"
-
-    log_info "$MSG_CONTAINER_MANUAL_EJECT"
-    log_info "$MSG_WAITING_FOR_MEDIUM_CHANGE"
-
-    while [[ $elapsed -lt $timeout ]]; do
-        sleep "$poll_interval"
-        elapsed=$((elapsed + poll_interval))
-
-        # Prüfe ob überhaupt eine Disk eingelegt ist
-        if ! drivestat_disc_insert; then
-            # Keine Disk → weiter warten
-            if (( elapsed % 30 == 0 )); then
-                log_info "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
-            fi
-            continue
-        fi
-
-        # Disk erkannt → Analysiere Disc (Typ, Label, Größe, etc.)
-        if ! discinfo_analyze 2>/dev/null; then
-            # Analyse fehlgeschlagen → weiter warten
-            if (( elapsed % 30 == 0 )); then
-                log_info "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
-            fi
-            continue
-        fi
-
-        # Prüfe ob ISO mit diesem Label bereits existiert
-        local disc_type=$(discinfo_get_type)
-        local target_dir
-        case "$disc_type" in
-            audio-cd)
-                target_dir=$(get_path_audio 2>/dev/null) || target_dir="${OUTPUT_DIR}"
-                ;;
-            cd-rom|dvd-rom|bd-rom)
-                target_dir=$(folders_get_modul_output_dir 2>/dev/null) || target_dir="${OUTPUT_DIR}"
-                ;;
-            dvd-video)
-                target_dir=$(get_path_dvd 2>/dev/null) || target_dir="${OUTPUT_DIR}"
-                ;;
-            bd-video)
-                target_dir=$(get_path_bluray 2>/dev/null) || target_dir="${OUTPUT_DIR}"
-                ;;
-            *)
-                target_dir=$(folders_get_modul_output_dir 2>/dev/null) || target_dir="${OUTPUT_DIR}"
-                ;;
-        esac
-
-        # Prüfe ob target_dir erfolgreich ermittelt wurde
-        if [[ -z "$target_dir" ]]; then
-            log_error "$MSG_ERROR_TARGET_DIR $(discinfo_get_type)"
-            # Stelle ursprüngliche Werte wieder her und fahre fort
-            disc_type="$original_disc_type"
-            disc_label="$original_disc_label"
-            continue
-        fi
-
-        # Prüfe ob eine Datei mit diesem Label bereits existiert
-        local iso_exists=false
-        local potential_iso="${target_dir}/$(discinfo_get_label).iso"
-
-        if [[ -f "$potential_iso" ]]; then
-            iso_exists=true
-        else
-            # Prüfe auch auf nummerierte Duplikate (_1, _2, _3, ...)
-            # Breche bei erster Lücke ab (wie get_iso_filename())
-            local counter=1
-            while [[ -f "${target_dir}/$(discinfo_get_label)_${counter}.iso" ]]; do
-                iso_exists=true
-                # Erste Duplikat gefunden - reicht für unsere Prüfung
-                break
-            done
-        fi
-
-        if $iso_exists; then
-            # Disk wurde bereits konvertiert → weiter warten
-            log_info "$MSG_DISC_ALREADY_CONVERTED $(discinfo_get_label).iso $MSG_WAITING_FOR_NEW_DISC"
-
-            # Stelle ursprüngliche Werte wieder her
-            disc_type="$original_disc_type"
-            disc_label="$original_disc_label"
-
-            if (( elapsed % 30 == 0 )); then
-                log_info "$MSG_STILL_WAITING $elapsed $MSG_SECONDS_OF $timeout $MSG_SECONDS"
-            fi
-        else
-            # Neue Disk gefunden! (ISO existiert noch nicht)
-            # Globale Variablen bleiben auf neue Werte gesetzt (disc_type und disc_label)
-            log_info "$MSG_NEW_MEDIUM_DETECTED ($(discinfo_get_type): $(discinfo_get_label))"
-            return 0
-        fi
-    done
-
-    # Timeout erreicht - stelle ursprüngliche Werte wieder her
-    disc_type="$original_disc_type"
-    disc_label="$original_disc_label"
-    log_info "$MSG_TIMEOUT_WAITING_FOR_MEDIUM"
-    return 1
-}
