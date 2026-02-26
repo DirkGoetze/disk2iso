@@ -120,12 +120,13 @@ drivestat_reset() {
     DRIVE_INFO[firmware]="unknown"
     DRIVE_INFO[bus_type]=""
     DRIVE_INFO[capabilities]="none"
+
     DRIVE_INFO[closed]=true
     DRIVE_INFO[medium_inserted]=false
     DRIVE_INFO[status]="$DRIVE_STATUS_EMPTY"
 
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
-    api_set_section_json "drivestat" "drive_info" "$(api_create_json "DRIVE_INFO")"
+    api_set_section_json "drivestat" "drive_info" "$(api_create_json "DRIVE_INFO")" || return 1
     log_debug "$MSG_DEBUG_DRIVESTAT_RESET"
     return 0
 }
@@ -158,41 +159,12 @@ drivestat_analyse() {
     # bereits erfolgt.
     # -----------------------------------------------------------------------
 
-    #-- 1. Laufwerk ermitteln -----------------------------------------------
-    if ! drivestat_set_drive; then
-        log_error "$MSG_ERROR_NO_DRIVE_FOUND"
-        return 1
-    fi
-
-    #-- 2. Hersteller ermitteln ---------------------------------------------
-    if ! drivestat_set_vendor; then
-        log_error "$MSG_ERROR_VENDOR_UNKNOWN"
-        return 1
-    fi
-
-    #-- 3. Modellbezeichnung ermitteln --------------------------------------
-    if ! drivestat_set_model; then
-        log_error "$MSG_ERROR_MODEL_UNKNOWN"
-        return 1
-    fi
-
-    #-- 4. Firmware-Version ermitteln ---------------------------------------
-    if ! drivestat_set_firmware; then
-        log_error "$MSG_ERROR_FIRMWARE_UNKNOWN"
-        return 1
-    fi
-
-    #-- 5. Bus-Typ ermitteln ------------------------------------------------
-    if ! drivestat_set_bus_type; then
-        log_error "$MSG_ERROR_BUS_TYPE_UNKNOWN"
-        return 1
-    fi
-
-    #-- 6. Laufwerksfähigkeiten ermitteln -----------------------------------
-    if ! drivestat_set_capabilities; then
-        log_error "$MSG_ERROR_CAPABILITIES_UNKNOWN"
-        return 1
-    fi
+    drivestat_set_drive || return 1                   # 1. Laufwerk ermitteln
+    drivestat_set_vendor || return 1                # 2. Hersteller ermitteln
+    drivestat_set_model || return 1          # 3. Modellbezeichnung ermitteln
+    drivestat_set_firmware || return 1        # 4. Firmware-Version ermitteln
+    drivestat_set_bus_type || return 1                 # 5. Bus-Typ ermitteln
+    drivestat_set_capabilities || return 1  # 6. Laufwerksfähigkeit ermitteln
 
     #-- Schreiben nach JSON & Loggen der Analyseergebnisse ------------------
     api_set_section_json "drivestat" "drive_info" "$(api_create_json "DRIVE_INFO")"

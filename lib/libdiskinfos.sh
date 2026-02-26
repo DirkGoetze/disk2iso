@@ -149,7 +149,7 @@ discinfo_reset() {
     DISC_INFO[temp_pathname]=""
     
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
-    api_set_section_json "discinfos" "disc_info" "$(api_create_json "DISC_INFO")"
+    api_set_section_json "discinfos" "disc_info" "$(api_create_json "DISC_INFO")" || return 1
     log_debug "$MSG_DEBUG_DISCINFO_INIT"
     return 0
 }
@@ -197,92 +197,23 @@ discinfo_analyze() {
     # bereits erfolgt.
     # -----------------------------------------------------------------------
 
-    #-- Step 1: Prüfung ob überhaupt eine Disk erkannt wurde ----------------
-    if ! (drivestat_get_drive && drivestat_disc_insert); then
-        log_error "$MSG_ERROR_NO_DISC"
-        return 1
-    fi
-
-    #-- Step 2: Disc-Typ erkennen -------------------------------------------
-    if ! (discinfo_set_type ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 3: Dateisystem erkennen ----------------------------------------
-    if ! (discinfo_set_filesystem ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 4: Label extrahieren -------------------------------------------
-    if ! (discinfo_set_label ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 5: Größe ermitteln (Sektoren) ----------------------------------
-    if ! (discinfo_set_size_sectors ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 6: Größe ermitteln (Blockgröße) --------------------------------
-    if ! (discinfo_set_block_size ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 7: Größe ermitteln (MB) ----------------------------------------
-    if ! (discinfo_set_size_mb ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 8: Geschätzte Größe ermitteln (MB) -----------------------------
-    if ! (discinfo_set_estimated_size_mb ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 9: Erstellungsdatum ermitteln ----------------------------------
-    if ! (discinfo_set_created_at ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 10: Disc-ID ermitteln ------------------------------------------
-    if ! (discinfo_set_id ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 11: Interne Disc-Identifier berechnen --------------------------
-    if ! (discinfo_set_identifier ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 12: Titel ermitteln ---------------------------------------------
-    if ! (discinfo_set_title ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #-- Step 13: Erscheinungsdatum ermitteln --------------------------------
-    if ! (discinfo_set_release_date ""); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
-
-    #--Step 14: Dateinamen generieren ---------------------------------------
-    if ! (init_filenames); then
-        log_error "$MSG_ERROR_ANALYSE_FAILED"
-        return 1
-    fi
+    drivestat_get_drive && drivestat_get_inserted || return 1  # Disc erkannt
+    discinfo_set_type || return 1                         # Disc-Typ erkennen
+    discinfo_set_filesystem || return 1                # Dateisystem erkennen
+    discinfo_set_label || return 1                        # Label extrahieren
+    discinfo_set_size_sectors || return 1       # Größe in Sektoren ermitteln
+    discinfo_set_block_size || return 1       # Größe in Blockgröße ermitteln
+    discinfo_set_size_mb || return 1                  # Größe in MB ermitteln
+    discinfo_set_estimated_size_mb || return 1   # Geschätzte Größe ermitteln
+    discinfo_set_created_at || return 1          # Erstellungsdatum ermitteln
+    discinfo_set_id || return 1                           # Disc-ID ermitteln
+    discinfo_set_identifier || return 1   # Interne Disc-Identifier berechnen
+    discinfo_set_title || return 1                          # Titel ermitteln
+    discinfo_set_release_date || return 1       # Erscheinungsdatum ermitteln
+    init_filenames || return 1                        # Dateinamen generieren
 
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
-    api_set_section_json "discinfos" "disc_info" "$(api_create_json "DISC_INFO")"
+    api_set_section_json "discinfos" "disc_info" "$(api_create_json "DISC_INFO")" || return 1
 
     #-- Ende der Analyse im LOG vermerken --------------------------------------    
     log_debug "$MSG_DEBUG_INIT_SUCCESS"

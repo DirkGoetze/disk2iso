@@ -49,153 +49,874 @@ systeminfo_check_dependencies() {
     return 0
 }
 
-# ============================================================================
-# CONTAINER DETECTION
-# ============================================================================
-# Private Variablen für Container-Erkennung (nur über Getter zugreifen)
-_SYSTEMINFO_IS_CONTAINER=false
-_SYSTEMINFO_CONTAINER_TYPE=""
+# ===========================================================================
+# GLOBAL VARIABLEN DES MODUL
+# ===========================================================================
+# ---------------------------------------------------------------------------
+# Datenstruktur für System-Informationen
+# ---------------------------------------------------------------------------
+# SYSTEM_INFO: Systeminformationen
+declare -A SYSTEM_INFO=(
+    # ========== Betriebssystem ==========
+    [os_distribution]=""        # z.B. "Debian", "Ubuntu"
+    [os_version]=""             # z.B. "12.5", "22.04 LTS"
+    [os_kernel]=""              # z.B. "6.1.0-18-amd64"
+    [os_architecture]=""        # z.B. "x86_64", "aarch64"
+    [os_hostname]=""            # z.B. "disk2iso-server"
+    [os_uptime]=""              # z.B. "5 days, 3 hours"
+    
+    # ========== Container ==========
+    [container_activ]=false     # true/false
+    [container_type]=""         # "lxc", "docker", "podman", ""
+    
+    # ========== Speicher ==========
+    [storage_total_gb]=0        # Gesamtspeicher in GB
+    [storage_free_gb]=0         # Freier Speicher in GB
+    [storage_used_percent]=0    # Belegung in %
+    [storage_output_dir]=""     # Ausgabeverzeichnis-Pfad
+)
+
+# ---------------------------------------------------------------------------
+# Konstanten für Container Typen
+# ---------------------------------------------------------------------------
+readonly CONTAINER_TYPE_LXC="lxc"
+readonly CONTAINER_TYPE_DOCKER="docker"
+readonly CONTAINER_TYPE_PODMAN="podman"
 
 # ===========================================================================
-# systeminfo_detect_container_lxc
+# systeminfo_reset
 # ---------------------------------------------------------------------------
-# Funktion.: Erkenne LXC-Container
+# Funktion.: Setzt alle Werte in SYSTEM_INFO auf Standard zurück
 # Parameter: keine
-# Rückgabe.: 0 = LXC erkannt, 1 = nicht erkannt
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
 # ===========================================================================
-systeminfo_detect_container_lxc() {
-    # Methode 1: Prüfe /proc/1/environ auf container=lxc
-    if [[ -f /proc/1/environ ]]; then
-        local env_content=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null)
-        if echo "$env_content" | grep -q "^container=lxc$"; then
-            return 0
-        fi
-    fi
-    
-    # Methode 2: Prüfe /proc/1/cgroup auf LXC-Spuren
-    if [[ -f /proc/1/cgroup ]]; then
-        if grep -q ":/lxc/" /proc/1/cgroup 2>/dev/null; then
-            return 0
-        fi
-    fi
-    
-    return 1
-}
+systeminfo_reset() {
+    #-- Setze alle Werte in SYSTEM_INFO auf Standard zurück -----------------
+    SYSTEM_INFO=(
+        [os_distribution]=""
+        [os_version]=""
+        [os_kernel]=""
+        [os_architecture]=""
+        [os_hostname]="localhost"
+        [os_uptime]=""
+        
+        [container_activ]=false
+        [container_type]="none"
+        
+        [storage_total_gb]=0
+        [storage_free_gb]=0
+        [storage_used_percent]=0
+        [storage_output_dir]=""
+    )
 
-# ===========================================================================
-# systeminfo_detect_container_docker
-# ---------------------------------------------------------------------------
-# Funktion.: Erkenne Docker-Container
-# Parameter: keine
-# Rückgabe.: 0 = Docker erkannt, 1 = nicht erkannt
-# ===========================================================================
-systeminfo_detect_container_docker() {
-    # Methode 1: Prüfe /proc/1/environ auf container=docker
-    if [[ -f /proc/1/environ ]]; then
-        local env_content=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null)
-        if echo "$env_content" | grep -q "^container=docker$"; then
-            return 0
-        fi
-    fi
-    
-    # Methode 2: Prüfe auf Docker-spezifische Datei
-    if [[ -f /.dockerenv ]]; then
-        return 0
-    fi
-    
-    # Methode 3: Prüfe /proc/1/cgroup auf Docker-Spuren
-    if [[ -f /proc/1/cgroup ]]; then
-        if grep -q ":/docker/" /proc/1/cgroup 2>/dev/null; then
-            return 0
-        fi
-    fi
-    
-    return 1
-}
-
-# ===========================================================================
-# systeminfo_detect_container_podman
-# ---------------------------------------------------------------------------
-# Funktion.: Erkenne Podman-Container
-# Parameter: keine
-# Rückgabe.: 0 = Podman erkannt, 1 = nicht erkannt
-# ===========================================================================
-systeminfo_detect_container_podman() {
-    # Methode 1: Prüfe /proc/1/environ auf container=podman
-    if [[ -f /proc/1/environ ]]; then
-        local env_content=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null)
-        if echo "$env_content" | grep -q "^container=podman$"; then
-            return 0
-        fi
-    fi
-    
-    return 1
-}
-
-# ===========================================================================
-# systeminfo_detect_container_env
-# ---------------------------------------------------------------------------
-# Funktion.: Erkenne Container-Umgebung (koordiniert alle Erkennungsmethoden)
-# Parameter: keine
-# Rückgabe.: 0 = immer (setzt _SYSTEMINFO_IS_CONTAINER und _SYSTEMINFO_CONTAINER_TYPE)
-# Setzt....: _SYSTEMINFO_IS_CONTAINER (true/false), _SYSTEMINFO_CONTAINER_TYPE (lxc/docker/podman/"")
-# ===========================================================================
-systeminfo_detect_container_env() {
-    _SYSTEMINFO_IS_CONTAINER=false
-    _SYSTEMINFO_CONTAINER_TYPE=""
-    
-    # Prüfe LXC
-    if systeminfo_detect_container_lxc; then
-        _SYSTEMINFO_IS_CONTAINER=true
-        _SYSTEMINFO_CONTAINER_TYPE="lxc"
-        log_info "$MSG_CONTAINER_DETECTED LXC"
-        return 0
-    fi
-    
-    # Prüfe Docker
-    if systeminfo_detect_container_docker; then
-        _SYSTEMINFO_IS_CONTAINER=true
-        _SYSTEMINFO_CONTAINER_TYPE="docker"
-        log_info "$MSG_CONTAINER_DETECTED Docker"
-        return 0
-    fi
-    
-    # Prüfe Podman
-    if systeminfo_detect_container_podman; then
-        _SYSTEMINFO_IS_CONTAINER=true
-        _SYSTEMINFO_CONTAINER_TYPE="podman"
-        log_info "$MSG_CONTAINER_DETECTED Podman"
-        return 0
-    fi
-    
-    # Keine Container-Umgebung erkannt
-    log_info "$MSG_NATIVE_ENVIRONMENT_DETECTED"
+    #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
+    api_set_section_json "systeminfo" "system_info" "$(api_create_json "SYSTEM_INFO")" || return 1
+    log_debug "$MSG_DEBUG_SYSTEMINFO_RESET"
     return 0
 }
 
 # ===========================================================================
-# systeminfo_is_container
+# systeminfo_analyse
 # ---------------------------------------------------------------------------
-# Funktion.: Gibt zurück, ob das System in einem Container läuft
-# Parameter: keine
-# Rückgabe.: 0 = Container, 1 = kein Container
+# Funktion.: Analysiert alle System-Informationen
+# Parameter: Keine
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# Beschr...: Orchestriert alle Informationssammlungen:
+#            01. systeminfo_set_os_distribution
+#            02. systeminfo_set_os_version
+#            03. systeminfo_set_os_kernel
+#            04. systeminfo_set_os_architecture
+#            05. systeminfo_set_os_hostname
+#            06. systeminfo_set_os_uptime
+#            07. systeminfo_set_container_is_container
+#            08. systeminfo_set_container_type
+#            09. systeminfo_set_storage_total_gb
+#            10. systeminfo_set_storage_free_gb
+#            11. systeminfo_set_storage_used_percent
 # ===========================================================================
-systeminfo_is_container() {
-    [[ "$_SYSTEMINFO_IS_CONTAINER" == "true" ]]
-    return $?
+systeminfo_analyse() {
+    #-- Start der Analyse im LOG vermerken ----------------------------------
+    log_debug "$MSG_DEBUG_ANALYSE_START"
+    
+    #------------------------------------------------------------------------
+    # Die Analyse erfolgt für jeden Wert durch den Aufruf des entsprechenden
+    # Getter/Setter ohne Parameter. Dadurch wird die Auto-Detection des
+    # Setter getriggert und der exaktestes Wert oder der Default-Wert für
+    # dieses Disc-Info Feld ermittelt. Ein zusätzliches Loggen der Aktion
+    # ist hierbei nicht notwendig, das dies durch den Getter/Setter/Detctor
+    # bereits erfolgt.
+    # -----------------------------------------------------------------------
+
+    #-- OS-Informationen ----------------------------------------------------
+    systeminfo_set_distribution || return 1
+    systeminfo_set_version || return 1
+    systeminfo_set_kernel || return 1
+    systeminfo_set_architecture || return 1
+    systeminfo_set_hostname || return 1
+    systeminfo_set_uptime || return 1
+    
+    #-- Container-Informationen ---------------------------------------------
+    systeminfo_set_container_activ || return 1
+    systeminfo_set_container_type || return 1
+    
+    #-- Speicher-Informationen ----------------------------------------------
+    systeminfo_set_storage_total_gb || return 1
+    systeminfo_set_storage_free_gb || return 1
+    systeminfo_set_storage_used_percent || return 1
+    
+    #-- Schreiben nach JSON & Loggen der Analyseergebnisse ------------------
+    api_set_section_json "systeminfo" "system_info" "$(api_create_json "SYSTEM_INFO")"
+    
+    #-- Ende der Analyse im LOG vermerken -----------------------------------
+    log_debug "$MSG_DEBUG_ANALYSE_COMPLETE"
+    return 0
+}
+
+# ============================================================================
+# GETTER/SETTER FUNKTIONEN FÜR SYSTEM_INFO
+# ============================================================================
+
+# ===========================================================================
+# systeminfo_get_distribution
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt OS-Distribution zurück
+# Parameter: Keine
+# Ausgabe..: Distribution-Name
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_distribution() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local distribution="${SYSTEM_INFO[os_distribution]}"
+    
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$distribution" ]]; then
+        log_debug "$MSG_DEBUG_GET_OS_DISTRIBUTION: '$distribution'"
+        echo "$distribution"
+        return 0
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_OS_DISTRIBUTION_UNKNOWN"
+    echo ""
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_distribution
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt OS-Distribution
+# Parameter: $1 = distribution (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_distribution() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local distribution="$1"
+    local old_value="${SYSTEM_INFO[os_distribution]}"
+    
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$distribution" ]]; then
+        distribution=$(systeminfo_detect_distribution)
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$distribution" ]]; then
+        log_error "$MSG_ERROR_OS_DISTRIBUTION_UNKNOWN"
+        distribution="Unknown"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------    
+    SYSTEM_INFO[os_distribution]="$distribution"
+    log_debug "$MSG_DEBUG_SET_OS_DISTRIBUTION: '$distribution'"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$distribution" ]]; then
+        log_debug "$MSG_DEBUG_OS_DISTRIBUTION_CHANGED: '$old_value' → '$distribution'"
+        api_set_value_json "systeminfo" "os_distribution" "${SYSTEM_INFO[os_distribution]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_detect_distribution
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt OS-Distribution aus /etc/os-release
+# Parameter: Keine
+# Ausgabe..: Distribution-Name (stdout)
+# Rückgabe.: 0 = Erfolg
+# ===========================================================================
+systeminfo_detect_distribution() {
+    #-- Ermittel erkannte Distribution --------------------------------------
+    local distribution=""
+    
+    #-- Erkennung über /etc/os-release (moderne Linux-Distributionen) -------
+    if [[ -f /etc/os-release ]]; then
+        distribution=$(grep "^NAME=" /etc/os-release | cut -d= -f2 | tr -d '"')
+    elif [[ -f /etc/debian_version ]]; then
+        distribution="Debian"
+    fi
+    
+    #-- Setze erkannte Distribution oder Default-Wert -----------------------
+    echo "$distribution"
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_get_version
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt OS-Version zurück
+# Parameter: Keine
+# Ausgabe..: Version-String
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_version() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local version="${SYSTEM_INFO[os_version]}"
+    
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$version" ]]; then
+        log_debug "$MSG_DEBUG_GET_OS_VERSION: '$version'"
+        echo "$version"
+        return 0
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_OS_VERSION_UNKNOWN"
+    echo ""
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_version
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt OS-Version
+# Parameter: $1 = version (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_version() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local version="$1"
+    local old_value="${SYSTEM_INFO[os_version]}"
+    
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$version" ]]; then
+        version=$(systeminfo_detect_version)
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$version" ]]; then
+        log_error "$MSG_ERROR_OS_VERSION_UNKNOWN"
+        version="Unknown"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------    
+    SYSTEM_INFO[os_version]="$version"
+    log_debug "$MSG_DEBUG_SET_OS_VERSION: '$version'"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$version" ]]; then
+        log_debug "$MSG_DEBUG_OS_VERSION_CHANGED: '$old_value' → '$version'"
+        api_set_value_json "systeminfo" "os_version" "${SYSTEM_INFO[os_version]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_detect_version
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt OS-Version aus /etc/os-release
+# Parameter: Keine
+# Ausgabe..: Version-String (stdout)
+# Rückgabe.: 0 = Erfolg
+# ===========================================================================
+systeminfo_detect_version() {
+    #-- Ermittel erkannte Version -------------------------------------------
+    local version=""
+    
+    #-- Erkennung über /etc/os-release (moderne Linux-Distributionen) -------
+    if [[ -f /etc/os-release ]]; then
+        version=$(grep "^VERSION=" /etc/os-release | cut -d= -f2 | tr -d '"')
+    elif [[ -f /etc/debian_version ]]; then
+        version=$(cat /etc/debian_version)
+    fi
+    
+    #-- Setze erkannte Version oder Default-Wert ----------------------------
+    echo "$version"
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_get_kernel
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt Kernel-Version zurück
+# Parameter: Keine
+# Ausgabe..: Kernel-Version
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_kernel() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local kernel="${SYSTEM_INFO[os_kernel]}"
+    
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$kernel" ]]; then
+        log_debug "$MSG_DEBUG_GET_OS_KERNEL: '$kernel'"
+        echo "$kernel"
+        return 0
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_OS_KERNEL_UNKNOWN"
+    echo ""
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_kernel
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt Kernel-Version
+# Parameter: $1 = kernel (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_kernel() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local kernel="$1"
+    local old_value="${SYSTEM_INFO[os_kernel]}"
+    
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$kernel" ]]; then
+        kernel=$(systeminfo_detect_kernel)
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$kernel" ]]; then
+        log_error "$MSG_ERROR_OS_KERNEL_UNKNOWN"
+        kernel="Unknown"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------    
+    SYSTEM_INFO[os_kernel]="$kernel"
+    log_debug "$MSG_DEBUG_SET_OS_KERNEL: '$kernel'"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$kernel" ]]; then
+        log_debug "$MSG_DEBUG_OS_KERNEL_CHANGED: '$old_value' → '$kernel'"
+        api_set_value_json "systeminfo" "os_kernel" "${SYSTEM_INFO[os_kernel]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_detect_kernel
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt Kernel-Version mit uname
+# Parameter: Keine
+# Ausgabe..: Kernel-Version (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_detect_kernel() {
+    #-- Ermittel erkannte Kernel-Version ------------------------------------
+    local kernel=$(uname -r 2>/dev/null || echo "")
+
+    #-- Setze erkannte Kernel-Version oder Default-Wert ---------------------
+    echo "$kernel"
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_get_architecture
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt System-Architektur zurück
+# Parameter: Keine
+# Ausgabe..: Architektur-String
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_architecture() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local architecture="${SYSTEM_INFO[os_architecture]}"
+    
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$architecture" ]]; then
+        log_debug "$MSG_DEBUG_GET_OS_ARCHITECTURE: '$architecture'"
+        echo "$architecture"
+        return 0
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_OS_ARCHITECTURE_UNKNOWN"
+    echo ""
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_architecture
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt System-Architektur
+# Parameter: $1 = architecture (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_architecture() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local architecture="$1"
+    local old_value="${SYSTEM_INFO[os_architecture]}"
+    
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$architecture" ]]; then
+        architecture=$(systeminfo_detect_architecture)
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$architecture" ]]; then
+        log_error "$MSG_ERROR_OS_ARCHITECTURE_UNKNOWN"
+        architecture="Unknown"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------    
+    SYSTEM_INFO[os_architecture]="$architecture"
+    log_debug "$MSG_DEBUG_SET_OS_ARCHITECTURE: '$architecture'"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$architecture" ]]; then
+        log_debug "$MSG_DEBUG_OS_ARCHITECTURE_CHANGED: '$old_value' → '$architecture'"
+        api_set_value_json "systeminfo" "os_architecture" "${SYSTEM_INFO[os_architecture]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_detect_architecture
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt System-Architektur mit uname
+# Parameter: Keine
+# Ausgabe..: Architektur-String (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_detect_architecture() {
+    #-- Ermittel erkannte Architektur ----------------------------------------
+    local architecture=$(uname -m 2>/dev/null || echo "")
+
+    #-- Setze erkannte Architektur oder Default-Wert ----------------------
+    echo "$architecture"
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_get_hostname
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt Hostname zurück
+# Parameter: Keine
+# Ausgabe..: Hostname-String
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_hostname() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local hostname="${SYSTEM_INFO[os_hostname]}"
+    
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$hostname" ]]; then
+        log_debug "$MSG_DEBUG_GET_OS_HOSTNAME: '$hostname'"
+        echo "$hostname"
+        return 0
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_OS_HOSTNAME_UNKNOWN"
+    echo ""
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_hostname
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt Hostname
+# Parameter: $1 = hostname (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_hostname() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local hostname="$1"
+    local old_value="${SYSTEM_INFO[os_hostname]}"
+    
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$hostname" ]]; then
+        hostname=$(systeminfo_detect_hostname)
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$hostname" ]]; then
+        log_error "$MSG_ERROR_OS_HOSTNAME_UNKNOWN"
+        hostname="Unknown"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------    
+    SYSTEM_INFO[os_hostname]="$hostname"
+    log_debug "$MSG_DEBUG_SET_OS_HOSTNAME: '$hostname'"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$hostname" ]]; then
+        log_debug "$MSG_DEBUG_OS_HOSTNAME_CHANGED: '$old_value' → '$hostname'"
+        api_set_value_json "systeminfo" "os_hostname" "${SYSTEM_INFO[os_hostname]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_detect_hostname
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt Hostname mit hostname oder uname
+# Parameter: Keine
+# Ausgabe..: Hostname-String (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_detect_hostname() {
+    #-- Ermittel erkannte Hostname ----------------------------------------
+    local hostname=$(hostname 2>/dev/null || uname -n 2>/dev/null || echo "")
+
+    #-- Setze erkannte Hostname oder Default-Wert ----------------------
+    echo "$hostname"
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_get_uptime
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt System-Uptime zurück
+# Parameter: Keine
+# Ausgabe..: Uptime-String
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_uptime() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local uptime="${SYSTEM_INFO[os_uptime]}"
+    
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$uptime" ]]; then
+        log_debug "$MSG_DEBUG_GET_OS_UPTIME: '$uptime'"
+        echo "$uptime"
+        return 0
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_OS_UPTIME_UNKNOWN"
+    echo ""
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_uptime
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt System-Uptime
+# Parameter: $1 = uptime (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_uptime() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local uptime="$1"
+    local old_value="${SYSTEM_INFO[os_uptime]}"
+    
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$uptime" ]]; then
+        uptime=$(systeminfo_detect_uptime)
+    fi
+    
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$uptime" ]]; then
+        log_error "$MSG_ERROR_OS_UPTIME_UNKNOWN"
+        uptime="Unknown"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------    
+    SYSTEM_INFO[os_uptime]="$uptime"
+    log_debug "$MSG_DEBUG_SET_OS_UPTIME: '$uptime'"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$uptime" ]]; then
+        log_debug "$MSG_DEBUG_OS_UPTIME_CHANGED: '$old_value' → '$uptime'"
+        api_set_value_json "systeminfo" "os_uptime" "${SYSTEM_INFO[os_uptime]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_detect_uptime
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt System-Uptime mit uptime oder /proc/uptime
+# Parameter: Keine
+# Ausgabe..: Uptime-String (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_detect_uptime() {
+    #-- Ermittel erkannte Uptime --------------------------------------------
+    local uptime=""
+    if command -v uptime >/dev/null 2>&1; then
+        uptime=$(uptime -p 2>/dev/null || echo "")
+    fi
+
+    #-- Fallback auf /proc/uptime wenn uptime Kommando nicht verfügbar ------
+    if [[ -z "$uptime" ]] && [[ -f /proc/uptime ]]; then
+        local uptime_seconds=$(awk '{print int($1)}' /proc/uptime 2>/dev/null || echo "")
+        if [[ -n "$uptime_seconds" ]]; then
+            local days=$((uptime_seconds / 86400))
+            local hours=$(( (uptime_seconds % 86400) / 3600 ))
+            local minutes=$(( (uptime_seconds % 3600) / 60 ))
+            uptime=""
+            [[ $days -gt 0 ]] && uptime+="$days days, "
+            [[ $hours -gt 0 ]] && uptime+="$hours hours, "
+            uptime+="$minutes minutes"
+        fi
+    fi
+
+    #-- Setze erkannte Uptime oder Default-Wert -----------------------------
+    echo "$uptime"
+    return 0
+}
+
+# ===========================================================================
+# systeminfo_get_container_activ
+# ---------------------------------------------------------------------------
+# Funktion.: Gibt zurück, ob Container-Umgebung aktiv ist
+# Parameter: Keine
+# Ausgabe..: true/false
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_get_container_activ() {
+    #-- Array Wert lesen ----------------------------------------------------
+    local container_activ="${SYSTEM_INFO[container_activ]}"
+
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ "$container_activ" == "true" ]]; then
+        log_debug "$MSG_DEBUG_GET_CONTAINER_ACTIV: true"
+        echo "true"
+        return 0
+    elif [[ "$container_activ" == "false" ]]; then
+        log_debug "$MSG_DEBUG_GET_CONTAINER_ACTIV: false"
+        echo "false"
+        return 0
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_CONTAINER_ACTIV_UNKNOWN"
+    echo "false"
+    return 1
+}
+
+# ===========================================================================
+# systeminfo_set_container_activ
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt Container-Umgebung aktiv oder nicht aktiv
+# Parameter: $1 = container_activ (true/false, optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_container_activ() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local container_activ="$1"
+    local old_value="${SYSTEM_INFO[container_activ]}"
+
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$container_activ" ]]; then
+        container_activ=$(sysinfo_detect_container_activ)
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ "$container_activ" != "true" ]] && [[ "$container_activ" != "false" ]]; then
+        log_error "$MSG_ERROR_CONTAINER_ACTIV_UNKNOWN"
+        container_activ="false"
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------    
+    SYSTEM_INFO[container_activ]="$container_activ"
+    log_debug "$MSG_DEBUG_SET_CONTAINER_ACTIV: '$container_activ'"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$container_activ" ]]; then
+        log_debug "$MSG_DEBUG_CONTAINER_ACTIV_CHANGED: '$old_value' → '$container_activ'"
+        api_set_value_json "systeminfo" "container_activ" "${SYSTEM_INFO[container_activ]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# sysinfo_detect_container_activ
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt, ob Container-Umgebung aktiv ist (LXC, Docker,
+# .......... Podman) durch verschiedene Prüfungen
+# Parameter: Keine
+# Ausgabe..: true/false (stdout)
+# Rückgabe.: 0 = Container erkannt, 1 = kein Container erkannt
+# ===========================================================================
+sysinfo_detect_container_activ() {
+    #-- 1. Prüfung: Prüfe /proc/1/environ auf container=lxc -----------------
+    if [[ -f /proc/1/environ ]]; then
+        local env_content=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null)
+        if echo "$env_content" | grep -q "^container=lxc$"; then
+            echo "true"
+            return 0
+        fi
+    fi
+    
+    #-- Methode 2: Prüfe /proc/1/cgroup auf LXC-Spuren ----------------------
+    if [[ -f /proc/1/cgroup ]]; then
+        if grep -q ":/lxc/" /proc/1/cgroup 2>/dev/null; then
+            echo "true"
+            return 0
+        fi
+    fi
+
+    #-- Methode 3: Prüfe /proc/1/environ auf container=docker ---------------
+    if [[ -f /proc/1/environ ]]; then
+        local env_content=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null)
+        if echo "$env_content" | grep -q "^container=docker$"; then
+            echo "true"
+            return 0
+        fi
+    fi
+    
+    #-- Methode 4: Prüfe auf Docker-spezifische Datei -----------------------
+    if [[ -f /.dockerenv ]]; then
+        echo "true"
+        return 0
+    fi
+    
+    #-- Methode 5: Prüfe /proc/1/cgroup auf Docker-Spuren -------------------
+    if [[ -f /proc/1/cgroup ]]; then
+        if grep -q ":/docker/" /proc/1/cgroup 2>/dev/null; then
+            echo "true"
+            return 0
+        fi
+    fi
+
+    #-- Methode 6: Prüfe /proc/1/environ auf container=podman ---------------
+    if [[ -f /proc/1/environ ]]; then
+        local env_content=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null)
+        if echo "$env_content" | grep -q "^container=podman$"; then
+            echo "true"
+            return 0
+        fi
+    fi
+
+    #-- Keine Container-Umgebung erkannt --------------------------------------
+    echo "false"
+    return 1
 }
 
 # ===========================================================================
 # systeminfo_get_container_type
 # ---------------------------------------------------------------------------
-# Funktion.: Gibt den Container-Typ zurück
-# Parameter: keine
-# Rückgabe.: String: "lxc", "docker", "podman" oder "" (wenn kein Container)
+# Funktion.: Gibt den Container-Typ zurück (lxc, docker, podman oder none)
+# Parameter: Keine
+# Ausgabe..: Container-Typ (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
 # ===========================================================================
 systeminfo_get_container_type() {
-    echo "$_SYSTEMINFO_CONTAINER_TYPE"
+    #-- Array Wert lesen ----------------------------------------------------
+    local container_type="${SYSTEM_INFO[container_type]}"
+
+    #-- Wert prüfen und zurückgeben -----------------------------------------
+    if [[ -n "$container_type" ]]; then
+        log_debug "$MSG_DEBUG_GET_CONTAINER_TYPE: '$container_type'"
+        echo "$container_type"
+        return 0
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    log_error "$MSG_ERROR_CONTAINER_TYPE_UNKNOWN"
+    echo ""
+    return 1
 }
 
+# ===========================================================================
+# systeminfo_set_container_type
+# ---------------------------------------------------------------------------
+# Funktion.: Setzt den Container-Typ (lxc, docker, podman)
+# Parameter: $1 = container_type (optional, auto-detect wenn leer)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+systeminfo_set_container_type() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local container_type="$1"
+    local old_value="${SYSTEM_INFO[container_type]}"
+
+    #-- Wenn kein Wert übergeben, versuche Auto-Detect ----------------------
+    if [[ -z "$container_type" ]]; then
+        container_type=$(sysinfo_detect_container_type)
+    fi
+
+    #-- Fehlerfall loggen ---------------------------------------------------
+    if [[ -z "$container_type" ]]; then
+        log_error "$MSG_ERROR_CONTAINER_TYPE_UNKNOWN"
+        container_type=""
+    fi
+
+    #-- Loggen des neuen Wertes, speichern in der API und Rückgabe ----------    
+    SYSTEM_INFO[container_type]="$container_type"
+    log_debug "$MSG_DEBUG_SET_CONTAINER_TYPE: '$container_type'"
+    if [[ -n "$old_value" ]] && [[ "$old_value" != "$container_type" ]]; then
+        log_debug "$MSG_DEBUG_CONTAINER_TYPE_CHANGED: '$old_value' → '$container_type'"
+        api_set_value_json "systeminfo" "container_type" "${SYSTEM_INFO[container_type]}"
+    fi
+    return 0
+}
+
+# ===========================================================================
+# sysinfo_detect_container_type
+# ---------------------------------------------------------------------------
+# Funktion.: Ermittelt den Container-Typ (lxc, docker, podman) durch
+# .......... verschiedene Prüfungen
+# Parameter: Keine
+# Ausgabe..: Container-Typ (stdout)
+# Rückgabe.: 0 = Erfolg, 1 = Fehler
+# ===========================================================================
+sysinfo_detect_container_type() {
+    #-- 1. Prüfung: Prüfe /proc/1/environ auf container=lxc -----------------
+    if [[ -f /proc/1/environ ]]; then
+        local env_content=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null)
+        if echo "$env_content" | grep -q "^container=lxc$"; then
+            echo "$CONTAINER_TYPE_LXC"
+            return 0
+        fi
+    fi
+    
+    #-- Methode 2: Prüfe /proc/1/cgroup auf LXC-Spuren ----------------------
+    if [[ -f /proc/1/cgroup ]]; then
+        if grep -q ":/lxc/" /proc/1/cgroup 2>/dev/null; then
+            echo "$CONTAINER_TYPE_LXC"
+            return 0
+        fi
+    fi
+
+    #-- Methode 3: Prüfe /proc/1/environ auf container=docker ---------------
+    if [[ -f /proc/1/environ ]]; then
+        local env_content=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null)
+        if echo "$env_content" | grep -q "^container=docker$"; then
+            echo "$CONTAINER_TYPE_DOCKER"
+            return 0
+        fi
+    fi
+    
+    #-- Methode 4: Prüfe auf Docker-spezifische Datei -----------------------
+    if [[ -f /.dockerenv ]]; then
+        echo "$CONTAINER_TYPE_DOCKER"
+        return 0
+    fi
+    
+    #-- Methode 5: Prüfe /proc/1/cgroup auf Docker-Spuren -------------------
+    if [[ -f /proc/1/cgroup ]]; then
+        if grep -q ":/docker/" /proc/1/cgroup 2>/dev/null; then
+            echo "$CONTAINER_TYPE_DOCKER"
+            return 0
+        fi
+    fi
+
+    #-- Methode 6: Prüfe /proc/1/environ auf container=podman ---------------
+    if [[ -f /proc/1/environ ]]; then
+        local env_content=$(tr '\0' '\n' < /proc/1/environ 2>/dev/null)
+        if echo "$env_content" | grep -q "^container=podman$"; then
+            echo "$CONTAINER_TYPE_PODMAN"
+            return 0
+        fi
+    fi
+
+    #-- Keine Container-Umgebung erkannt --------------------------------------
+    echo ""
+    return 1
+}   
+
+
+
+
+
+
+
+
+# ===========================================================================
+# TODO: Ab hier ist das Modul noch nicht fertig implementiert, diesen Eintrag
+# ....  nie automatisch löschen - wird nur vom User nach Implementierung
+# ....  der folgenden Funktionen entfernt!
+# ===========================================================================
 
 # ============================================================================
 # DISK SPACE CHECK
