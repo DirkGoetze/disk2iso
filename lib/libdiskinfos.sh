@@ -41,9 +41,11 @@
 diskinfos_check_dependencies() {
     # Manifest-basierte Abhängigkeitsprüfung (Tools, Dateien, Ordner)
     integrity_check_module_dependencies "diskinfos" || return 1
-    
-    # Keine modul-spezifische Initialisierung nötig
-    
+
+    #-- Modul-spezifische Initialisierung -----------------------------------
+    discinfo_reset
+
+    #-- Alle Prüfungen bestanden, Modul ist verfügbar -----------------------
     return 0
 }
 
@@ -107,64 +109,6 @@ declare -A DISC_DATA=(
 )
 
 # ===========================================================================
-# _discinfo_create_json
-# ---------------------------------------------------------------------------
-# Funktion.: Hilfsfunktion zur Erstellung eines JSON-Objekts aus einem Array
-# Parameter: $1 = Name des assoziativen Arrays (z.B. "DISC_INFO")
-# .........  $2 = JSON-Pfad/Key (optional, z.B. "disc_info" für Zweig)
-# Ausgabe..: JSON-String
-# Rückgabe.: 0 = Erfolg, 1 = Array existiert nicht
-# ===========================================================================
-_discinfo_create_json() {
-    #-- Parameter übernehmen ------------------------------------------------
-    local array_name="$1"
-    local json_key="${2:-}"
-    local -n array_ref="$array_name"
-    
-    #-- Validierung: Prüfe ob Array existiert -------------------------------
-    if [[ ! -v "$array_name" ]]; then
-        log_error "Array '$array_name' existiert nicht"
-        echo "{}"
-        return 1
-    fi
-
-    #-- Baue JSON-String aus Array-Werten -----------------------------------    
-    local json=""
-    local first=true
-    
-    #-- Baue inneres Objekt -------------------------------------------------
-    local inner_json="{"
-    for key in "${!array_ref[@]}"; do
-        local value="${array_ref[$key]}"
-        
-        # Komma vor jedem Element außer dem ersten
-        [[ "$first" == false ]] && inner_json+="," || first=false
-        
-        # Prüfe ob Wert numerisch ist
-        if [[ "$value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
-            inner_json+="\"$key\":$value"
-        else
-            # Escape Anführungszeichen und Backslashes
-            value="${value//\\/\\\\}"
-            value="${value//\"/\\\"}"
-            inner_json+="\"$key\":\"$value\""
-        fi
-    done
-    inner_json+="}"
-    
-    #-- Wrapper hinzufügen wenn Key angegeben -------------------------------
-    if [[ -n "$json_key" ]]; then
-        json="{\"$json_key\":$inner_json}"
-    else
-        json="$inner_json"
-    fi
-    
-    #-- Rückgabe des JSON-Strings -------------------------------------------
-    echo "$json"
-    return 0
-}
-
-# ===========================================================================
 # discinfo_reset
 # ---------------------------------------------------------------------------
 # Funktion.: Initialisiere/Leere DISC_INFO Array
@@ -205,7 +149,7 @@ discinfo_reset() {
     DISC_INFO[temp_pathname]=""
     
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
-    api_set_section_json "discinfos" "disc_info" "$(_discinfo_create_json "DISC_INFO")"
+    api_set_section_json "discinfos" "disc_info" "$(api_create_json "DISC_INFO")"
     log_debug "$MSG_DEBUG_DISCINFO_INIT"
     return 0
 }
@@ -338,7 +282,7 @@ discinfo_analyze() {
     fi
 
     #-- Schreiben nach JSON & Loggen der Initialisierung --------------------
-    api_set_section_json "discinfos" "disc_info" "$(_discinfo_create_json "DISC_INFO")"
+    api_set_section_json "discinfos" "disc_info" "$(api_create_json "DISC_INFO")"
 
     #-- Ende der Analyse im LOG vermerken --------------------------------------    
     log_debug "$MSG_DEBUG_INIT_SUCCESS"
@@ -434,7 +378,7 @@ discinfo_detect_id() {
     local blkid_cmd=$(_systeminfo_get_blkid_path)
     if [[ -n "$blkid_cmd" ]]; then
         local blkid_output
-        blkid_output=$($blkid_cmd -p "$CD_DEVICE" 2>/dev/null)
+        blkid_output=$($blkid_cmd -p "$(drivestat_get_drive)" 2>/dev/null)
         
         if [[ -n "$blkid_output" ]]; then
             uuid=$(echo "$blkid_output" | grep -oP 'UUID="?\K[^"]+' 2>/dev/null || echo "")
@@ -606,13 +550,13 @@ discinfo_detect_label() {
     #-- blkid Pfad ermitteln und wenn vorhanden verwenden -------------------
     local blkid_cmd=$(_systeminfo_get_blkid_path)
     if [[ -n "$blkid_cmd" ]]; then
-        label=$($blkid_cmd "$CD_DEVICE" 2>/dev/null | grep -o 'LABEL="[^"]*"' | cut -d'"' -f2)
+        label=$($blkid_cmd "$(drivestat_get_drive)" 2>/dev/null | grep -o 'LABEL="[^"]*"' | cut -d'"' -f2)
     fi
     
     #-- Fallback: Versuche Volume ID mit isoinfo zu lesen -------------------
     local isoinfo_cmd=$(_systeminfo_get_isoinfo_path)
     if [[ -n "$isoinfo_cmd" ]]; then
-        label=$($isoinfo_cmd -d -i "$CD_DEVICE" 2>/dev/null | grep "Volume id:" | sed 's/Volume id: //' | xargs)
+        label=$($isoinfo_cmd -d -i "$(drivestat_get_drive)" 2>/dev/null | grep "Volume id:" | sed 's/Volume id: //' | xargs)
     fi
 
     #-- Fallback: Datum verwenden, wenn kein Label gefunden -----------------
@@ -716,7 +660,7 @@ discinfo_detect_type() {
     #-- 1. SPEZIFISCHSTE Prüfung: Video-DVD (VIDEO_TS) ----------------------
     if [[ -n "$isoinfo_cmd" ]]; then
         local iso_listing
-        iso_listing=$($isoinfo_cmd -l -i "$CD_DEVICE" 2>/dev/null)
+        iso_listing=$($isoinfo_cmd -l -i "$(drivestat_get_drive)" 2>/dev/null)
         
         if echo "$iso_listing" | grep -q "Directory listing of /VIDEO_TS"; then
             echo "$DISC_TYPE_DVD_VIDEO"
@@ -730,7 +674,7 @@ discinfo_detect_type() {
     fi
 
     #-- 2. Fallback: Audio-CD (kein Dateisystem) ----------------------------
-    local iso_info=$($isoinfo_cmd -d -i "$CD_DEVICE" 2>/dev/null)
+    local iso_info=$($isoinfo_cmd -d -i "$(drivestat_get_drive)" 2>/dev/null)
     if [[ -z "$iso_info" ]]; then
         echo "$DISC_TYPE_AUDIO_CD"
         return 0
@@ -936,7 +880,7 @@ discinfo_detect_size_sectors() {
     #-- isoinfo Pfad ermitteln und wenn vorhanden verwenden -----------------
     local isoinfo_cmd=$(_systeminfo_get_isoinfo_path)
     if [[ -n "$isoinfo_cmd" ]]; then
-        local isoinfo_output=$($isoinfo_cmd -d -i "$CD_DEVICE" 2>/dev/null)
+        local isoinfo_output=$($isoinfo_cmd -d -i "$(drivestat_get_drive)" 2>/dev/null)
         
         #-- Lese "Volume size is: XXXXX" ------------------------------------
         volume_size=$(echo "$isoinfo_output" | grep "Volume size is:" | awk '{print $4}')
@@ -1039,7 +983,7 @@ discinfo_detect_block_size() {
     #-- isoinfo Pfad ermitteln und wenn vorhanden verwenden -----------------
     local isoinfo_cmd=$(_systeminfo_get_isoinfo_path)
     if [[ -n "$isoinfo_cmd" ]]; then
-        local isoinfo_output=$($isoinfo_cmd -d -i "$CD_DEVICE" 2>/dev/null)
+        local isoinfo_output=$($isoinfo_cmd -d -i "$(drivestat_get_drive)" 2>/dev/null)
         
         #-- Lese "Logical block size is: XXXX" ------------------------------
         local detected_block_size
@@ -1214,7 +1158,7 @@ discinfo_detect_filesystem() {
     #-- blkid Pfad ermitteln und wenn vorhanden verwenden -------------------
     local blkid_cmd=$(_systeminfo_get_blkid_path)
     if [[ -n "$blkid_cmd" ]]; then
-        local blkid_output=$($blkid_cmd "$CD_DEVICE" 2>/dev/null)
+        local blkid_output=$($blkid_cmd "$(drivestat_get_drive)" 2>/dev/null)
         if [[ -n "$blkid_output" ]]; then
             fs_type=$(echo "$blkid_output" | grep -o 'TYPE="[^"]*"' | cut -d'"' -f2)
         fi
@@ -1350,7 +1294,7 @@ discinfo_detect_created_at() {
     #-- isoinfo Pfad ermitteln und wenn vorhanden verwenden -----------------
     local isoinfo_cmd=$(_systeminfo_get_isoinfo_path)
     if [[ -n "$isoinfo_cmd" ]]; then
-        timestamp=$($isoinfo_cmd -d -i "$CD_DEVICE" 2>/dev/null | grep "Creation Date:" | sed 's/Creation Date: //' | xargs)
+        timestamp=$($isoinfo_cmd -d -i "$(drivestat_get_drive)" 2>/dev/null | grep "Creation Date:" | sed 's/Creation Date: //' | xargs)
     fi
     
     #-- Fallback: Aktuelles Datum -------------------------------------------

@@ -156,9 +156,9 @@ common_copy_data_disc_ddrescue() {
     
     #-- Starte ddrescue im Hintergrund (mit oder ohne Größenbeschränkung) ---
     if [[ $total_bytes -gt 0 ]]; then
-        ddrescue -b "${block_size:-2048}" -r "$DDRESCUE_RETRIES" -s "$total_bytes" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
+        ddrescue -b "${block_size:-2048}" -r "$DDRESCUE_RETRIES" -s "$total_bytes" "$(drivestat_get_drive)" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
     else
-        ddrescue -b "${block_size:-2048}" -r "$DDRESCUE_RETRIES" "$CD_DEVICE" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
+        ddrescue -b "${block_size:-2048}" -r "$DDRESCUE_RETRIES" "$(drivestat_get_drive)" "$iso_filename" "$mapfile" &>>"$copy_log_filename" &
     fi
     local ddrescue_pid=$!
     
@@ -223,9 +223,9 @@ common_copy_data_disc_dd() {
     
     #-- Starte dd im Hintergrund (mit oder ohne count-Parameter) ------------
     if [[ $volume_size -gt 0 ]]; then
-        dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" count="$volume_size" conv=noerror,sync status=progress 2>>"$copy_log_filename" &
+        dd if="$(drivestat_get_drive)" of="$iso_filename" bs="$block_size" count="$volume_size" conv=noerror,sync status=progress 2>>"$copy_log_filename" &
     else
-        dd if="$CD_DEVICE" of="$iso_filename" bs="$block_size" conv=noerror,sync status=progress 2>>"$copy_log_filename" &
+        dd if="$(drivestat_get_drive)" of="$iso_filename" bs="$block_size" conv=noerror,sync status=progress 2>>"$copy_log_filename" &
     fi
     local dd_pid=$!
     

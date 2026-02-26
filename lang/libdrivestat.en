@@ -1,0 +1,92 @@
+# ============================================================================
+# Language File: libdrivestat (English)
+# ============================================================================
+# Description: English messages for drive detection and monitoring
+# Version: 1.3.0
+# Date: 2026-02-26
+# ============================================================================
+
+# Reset/Init
+readonly MSG_DEBUG_DRIVESTAT_RESET="Drive information reset"
+
+# Analysis
+readonly MSG_DEBUG_ANALYSE_START="Starting optical drive analysis"
+readonly MSG_DEBUG_ANALYSE_COMPLETE="Optical drive analysis complete"
+readonly MSG_ERROR_NO_DRIVE_FOUND="No optical drive found"
+readonly MSG_ERROR_VENDOR_UNKNOWN="Drive vendor unknown"
+readonly MSG_ERROR_MODEL_UNKNOWN="Drive model unknown"
+readonly MSG_ERROR_FIRMWARE_UNKNOWN="Drive firmware version unknown"
+readonly MSG_ERROR_BUS_TYPE_UNKNOWN="Drive bus type unknown"
+readonly MSG_ERROR_CAPABILITIES_UNKNOWN="Drive capabilities unknown"
+
+# Drive Get/Set/Detect
+readonly MSG_DEBUG_DRIVE_FOUND="Optical drive found: '%s'"
+readonly MSG_ERROR_NO_DRIVE_PATH="No optical drive path specified or found"
+readonly MSG_DEBUG_DRIVE_SET="Optical drive set: '%s'"
+readonly MSG_DEBUG_DRIVE_CHANGED="Drive changed: '%s' → '%s'"
+readonly MSG_ERROR_INVALID_DRIVE_PATH="Invalid optical drive path: '%s'"
+
+# Vendor Get/Set/Detect
+readonly MSG_DEBUG_VENDOR_GET="Drive vendor: '%s'"
+readonly MSG_DEBUG_VENDOR_SET="Drive vendor set: '%s'"
+readonly MSG_DEBUG_VENDOR_CHANGED="Vendor changed: '%s' → '%s'"
+
+# Model Get/Set/Detect
+readonly MSG_DEBUG_MODEL_GET="Drive model: '%s'"
+readonly MSG_DEBUG_MODEL_SET="Drive model set: '%s'"
+readonly MSG_DEBUG_MODEL_CHANGED="Model changed: '%s' → '%s'"
+
+# Firmware Get/Set/Detect
+readonly MSG_DEBUG_FIRMWARE_GET="Drive firmware version: '%s'"
+readonly MSG_DEBUG_FIRMWARE_SET="Drive firmware version set: '%s'"
+readonly MSG_DEBUG_FIRMWARE_CHANGED="Firmware version changed: '%s' → '%s'"
+
+# Bus Type Get/Set/Detect
+readonly MSG_DEBUG_BUS_TYPE_GET="Drive bus type: '%s'"
+readonly MSG_DEBUG_BUS_TYPE_SET="Drive bus type set: '%s'"
+readonly MSG_DEBUG_BUS_TYPE_CHANGED="Bus type changed: '%s' → '%s'"
+
+# Capabilities Get/Set/Detect
+readonly MSG_DEBUG_CAPABILITIES_GET="Drive capabilities: '%s'"
+readonly MSG_DEBUG_CAPABILITIES_SET="Drive capabilities set: '%s'"
+readonly MSG_DEBUG_CAPABILITIES_CHANGED="Capabilities changed: '%s' → '%s'"
+
+# Closed Status Get/Set/Detect
+readonly MSG_DEBUG_CLOSED_GET="Status 'Drive closed': '%s'"
+readonly MSG_ERROR_CLOSED_UNKNOWN="Status 'Drive closed': unknown"
+readonly MSG_ERROR_CLOSED_INVALID="Invalid value for 'Drive closed': '%s'"
+readonly MSG_ERROR_CLOSED_SET_FAILED="Status 'Drive closed' could not be set"
+readonly MSG_DEBUG_CLOSED_SET="Status 'Drive closed' set to: '%s'"
+readonly MSG_DEBUG_CLOSED_CHANGED="Status 'Drive closed' changed: '%s' → '%s'"
+readonly MSG_ERROR_DRIVE_UNKNOWN_CLOSED="Drive unknown, cannot determine status"
+
+# Inserted Status Get/Set/Detect
+readonly MSG_DEBUG_INSERTED_GET="Status 'Medium inserted': '%s'"
+readonly MSG_ERROR_INSERTED_UNKNOWN="Status 'Medium inserted': unknown"
+readonly MSG_ERROR_INSERTED_INVALID="Invalid value for 'Medium inserted': '%s'"
+readonly MSG_ERROR_INSERTED_SET_FAILED="Status 'Medium inserted' could not be set"
+readonly MSG_DEBUG_INSERTED_SET="Status 'Medium inserted' set to: '%s'"
+readonly MSG_DEBUG_INSERTED_CHANGED="Status 'Medium inserted' changed: '%s' → '%s'"
+
+# Overall Status Get/Set/Detect
+readonly MSG_DEBUG_STATUS_GET="Overall drive status: '%s'"
+readonly MSG_ERROR_STATUS_UNKNOWN="Overall drive status unknown"
+readonly MSG_DEBUG_STATUS_SET="Overall drive status set to: '%s'"
+readonly MSG_DEBUG_STATUS_CHANGED="Overall status changed: '%s' → '%s'"
+readonly MSG_DEBUG_STATUS_DETECT="Determining overall drive status based on tray and medium status..."
+
+# Software Info
+readonly MSG_ERROR_NO_SOFTWARE_INFO="No software information found, attempting direct read"
+readonly MSG_DEBUG_COLLECT_SOFTWARE_START="Collecting software information..."
+readonly MSG_WARNING_NO_EXTERNAL_DEPS="No external dependencies found in INI"
+readonly MSG_WARNING_NO_OPTIONAL_DEPS="No optional dependencies found in INI"
+readonly MSG_DEBUG_NO_DEPENDENCIES="No dependencies configured"
+readonly MSG_ERROR_SYSTEMINFO_UNAVAILABLE="systeminfo_check_software_list not available"
+readonly MSG_ERROR_SOFTWARE_CHECK_FAILED="Software check failed"
+readonly MSG_ERROR_JSON_CONVERSION_FAILED="JSON conversion failed"
+readonly MSG_ERROR_API_WRITE_FAILED="API write failed"
+readonly MSG_DEBUG_COLLECT_SOFTWARE_SUCCESS="Software information collected successfully"
+
+# Monitor
+readonly MSG_DEBUG_MONITOR_STARTED="Drive monitor started (PID: %s)"
+readonly MSG_DEBUG_MONITOR_STOPPED="Drive monitor stopped"

@@ -426,6 +426,64 @@ api_set_section_json() {
 }
 
 # ===========================================================================
+# api_create_json
+# ---------------------------------------------------------------------------
+# Funktion.: Hilfsfunktion zur Erstellung eines JSON-Objekts aus einem Array
+# Parameter: $1 = Name des assoziativen Arrays (z.B. "DRIVE_INFO")
+# .........  $2 = JSON-Pfad/Key (optional, z.B. "drive_info" für Zweig)
+# Ausgabe..: JSON-String
+# Rückgabe.: 0 = Erfolg, 1 = Array existiert nicht
+# ===========================================================================
+api_create_json() {
+    #-- Parameter übernehmen ------------------------------------------------
+    local array_name="$1"
+    local json_key="${2:-}"
+    local -n array_ref="$array_name"
+    
+    #-- Validierung: Prüfe ob Array existiert -------------------------------
+    if [[ ! -v "$array_name" ]]; then
+        log_error "$(printf "$MSG_ERROR_ARRAY_NOT_EXISTS" "$array_name")"
+        echo "{}"
+        return 1
+    fi
+
+    #-- Baue JSON-String aus Array-Werten -----------------------------------    
+    local json=""
+    local first=true
+    
+    #-- Baue inneres Objekt -------------------------------------------------
+    local inner_json="{"
+    for key in "${!array_ref[@]}"; do
+        local value="${array_ref[$key]}"
+        
+        # Komma vor jedem Element außer dem ersten
+        [[ "$first" == false ]] && inner_json+="," || first=false
+        
+        # Prüfe ob Wert numerisch ist
+        if [[ "$value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+            inner_json+="\"$key\":$value"
+        else
+            # Escape Anführungszeichen und Backslashes
+            value="${value//\\/\\\\}"
+            value="${value//\"/\\\"}"
+            inner_json+="\"$key\":\"$value\""
+        fi
+    done
+    inner_json+="}"
+    
+    #-- Wrapper hinzufügen wenn Key angegeben -------------------------------
+    if [[ -n "$json_key" ]]; then
+        json="{\"$json_key\":$inner_json}"
+    else
+        json="$inner_json"
+    fi
+    
+    #-- Rückgabe des JSON-Strings -------------------------------------------
+    echo "$json"
+    return 0
+}
+
+# ===========================================================================
 # TODO: Ab hier ist das Modul noch nicht fertig implementiert, diesen Eintrag
 # ....  nie automatisch löschen - wird nur vom User nach Implementierung
 # ....  der folgenden Funktionen entfernt!

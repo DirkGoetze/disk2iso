@@ -1,0 +1,92 @@
+# ============================================================================
+# Fichier de langue: libdrivestat (Français)
+# ============================================================================
+# Description: Messages français pour la détection et surveillance des lecteurs
+# Version: 1.3.0
+# Date: 2026-02-26
+# ============================================================================
+
+# Reset/Init
+readonly MSG_DEBUG_DRIVESTAT_RESET="Informations du lecteur réinitialisées"
+
+# Analyse
+readonly MSG_DEBUG_ANALYSE_START="Démarrage de l'analyse du lecteur optique"
+readonly MSG_DEBUG_ANALYSE_COMPLETE="Analyse du lecteur optique terminée"
+readonly MSG_ERROR_NO_DRIVE_FOUND="Aucun lecteur optique trouvé"
+readonly MSG_ERROR_VENDOR_UNKNOWN="Fabricant du lecteur inconnu"
+readonly MSG_ERROR_MODEL_UNKNOWN="Modèle du lecteur inconnu"
+readonly MSG_ERROR_FIRMWARE_UNKNOWN="Version du firmware du lecteur inconnue"
+readonly MSG_ERROR_BUS_TYPE_UNKNOWN="Type de bus du lecteur inconnu"
+readonly MSG_ERROR_CAPABILITIES_UNKNOWN="Capacités du lecteur inconnues"
+
+# Drive Get/Set/Detect
+readonly MSG_DEBUG_DRIVE_FOUND="Lecteur optique trouvé: '%s'"
+readonly MSG_ERROR_NO_DRIVE_PATH="Aucun chemin de lecteur optique spécifié ou trouvé"
+readonly MSG_DEBUG_DRIVE_SET="Lecteur optique défini: '%s'"
+readonly MSG_DEBUG_DRIVE_CHANGED="Lecteur modifié: '%s' → '%s'"
+readonly MSG_ERROR_INVALID_DRIVE_PATH="Chemin de lecteur optique invalide: '%s'"
+
+# Vendor Get/Set/Detect
+readonly MSG_DEBUG_VENDOR_GET="Fabricant du lecteur: '%s'"
+readonly MSG_DEBUG_VENDOR_SET="Fabricant du lecteur défini: '%s'"
+readonly MSG_DEBUG_VENDOR_CHANGED="Fabricant modifié: '%s' → '%s'"
+
+# Model Get/Set/Detect
+readonly MSG_DEBUG_MODEL_GET="Modèle du lecteur: '%s'"
+readonly MSG_DEBUG_MODEL_SET="Modèle du lecteur défini: '%s'"
+readonly MSG_DEBUG_MODEL_CHANGED="Modèle modifié: '%s' → '%s'"
+
+# Firmware Get/Set/Detect
+readonly MSG_DEBUG_FIRMWARE_GET="Version du firmware du lecteur: '%s'"
+readonly MSG_DEBUG_FIRMWARE_SET="Version du firmware du lecteur définie: '%s'"
+readonly MSG_DEBUG_FIRMWARE_CHANGED="Version du firmware modifiée: '%s' → '%s'"
+
+# Bus Type Get/Set/Detect
+readonly MSG_DEBUG_BUS_TYPE_GET="Type de bus du lecteur: '%s'"
+readonly MSG_DEBUG_BUS_TYPE_SET="Type de bus du lecteur défini: '%s'"
+readonly MSG_DEBUG_BUS_TYPE_CHANGED="Type de bus modifié: '%s' → '%s'"
+
+# Capabilities Get/Set/Detect
+readonly MSG_DEBUG_CAPABILITIES_GET="Capacités du lecteur: '%s'"
+readonly MSG_DEBUG_CAPABILITIES_SET="Capacités du lecteur définies: '%s'"
+readonly MSG_DEBUG_CAPABILITIES_CHANGED="Capacités modifiées: '%s' → '%s'"
+
+# Closed Status Get/Set/Detect
+readonly MSG_DEBUG_CLOSED_GET="Statut 'Lecteur fermé': '%s'"
+readonly MSG_ERROR_CLOSED_UNKNOWN="Statut 'Lecteur fermé': inconnu"
+readonly MSG_ERROR_CLOSED_INVALID="Valeur invalide pour 'Lecteur fermé': '%s'"
+readonly MSG_ERROR_CLOSED_SET_FAILED="Le statut 'Lecteur fermé' n'a pas pu être défini"
+readonly MSG_DEBUG_CLOSED_SET="Statut 'Lecteur fermé' défini à: '%s'"
+readonly MSG_DEBUG_CLOSED_CHANGED="Statut 'Lecteur fermé' modifié: '%s' → '%s'"
+readonly MSG_ERROR_DRIVE_UNKNOWN_CLOSED="Lecteur inconnu, impossible de déterminer le statut"
+
+# Inserted Status Get/Set/Detect
+readonly MSG_DEBUG_INSERTED_GET="Statut 'Support inséré': '%s'"
+readonly MSG_ERROR_INSERTED_UNKNOWN="Statut 'Support inséré': inconnu"
+readonly MSG_ERROR_INSERTED_INVALID="Valeur invalide pour 'Support inséré': '%s'"
+readonly MSG_ERROR_INSERTED_SET_FAILED="Le statut 'Support inséré' n'a pas pu être défini"
+readonly MSG_DEBUG_INSERTED_SET="Statut 'Support inséré' défini à: '%s'"
+readonly MSG_DEBUG_INSERTED_CHANGED="Statut 'Support inséré' modifié: '%s' → '%s'"
+
+# Overall Status Get/Set/Detect
+readonly MSG_DEBUG_STATUS_GET="Statut général du lecteur: '%s'"
+readonly MSG_ERROR_STATUS_UNKNOWN="Statut général du lecteur inconnu"
+readonly MSG_DEBUG_STATUS_SET="Statut général du lecteur défini à: '%s'"
+readonly MSG_DEBUG_STATUS_CHANGED="Statut général modifié: '%s' → '%s'"
+readonly MSG_DEBUG_STATUS_DETECT="Détermination du statut général du lecteur basé sur le tiroir et le statut du support..."
+
+# Software Info
+readonly MSG_ERROR_NO_SOFTWARE_INFO="Aucune information logicielle trouvée, tentative de lecture directe"
+readonly MSG_DEBUG_COLLECT_SOFTWARE_START="Collecte des informations logicielles..."
+readonly MSG_WARNING_NO_EXTERNAL_DEPS="Aucune dépendance externe trouvée dans INI"
+readonly MSG_WARNING_NO_OPTIONAL_DEPS="Aucune dépendance optionnelle trouvée dans INI"
+readonly MSG_DEBUG_NO_DEPENDENCIES="Aucune dépendance configurée"
+readonly MSG_ERROR_SYSTEMINFO_UNAVAILABLE="systeminfo_check_software_list non disponible"
+readonly MSG_ERROR_SOFTWARE_CHECK_FAILED="Vérification logicielle échouée"
+readonly MSG_ERROR_JSON_CONVERSION_FAILED="Conversion JSON échouée"
+readonly MSG_ERROR_API_WRITE_FAILED="Écriture API échouée"
+readonly MSG_DEBUG_COLLECT_SOFTWARE_SUCCESS="Informations logicielles collectées avec succès"
+
+# Monitor
+readonly MSG_DEBUG_MONITOR_STARTED="Moniteur de lecteur démarré (PID: %s)"
+readonly MSG_DEBUG_MONITOR_STOPPED="Moniteur de lecteur arrêté"

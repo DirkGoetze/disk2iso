@@ -208,15 +208,15 @@ copy_disc_to_iso() {
     local exit_code=0
     
     #-- Audio-CD: Delegiere an libaudio.sh ----------------------------------
-    if [[ "$disc_type" == "audio-cd" ]] && is_audio_ready; then
+    if [[ "$disc_type" == "$DISC_TYPE_AUDIO_CD" ]] && is_audio_ready; then
         copy_audio_cd
         exit_code=$?
     #-- Video-DVD: Delegiere an libdvd.sh -----------------------------------
-    elif [[ "$disc_type" == "dvd-video" ]] && is_dvd_ready; then
+    elif [[ "$disc_type" == "$DISC_TYPE_DVD_VIDEO" ]] && is_dvd_ready; then
         copy_video_dvd
         exit_code=$?
     #-- Blu-ray: Delegiere an libbluray.sh ----------------------------------
-    elif [[ "$disc_type" == "bd-video" ]] && is_bluray_ready; then
+    elif [[ "$disc_type" == "$DISC_TYPE_BD_VIDEO" ]] && is_bluray_ready; then
         copy_bluray_disk
         exit_code=$?
     #-- Daten-Disc oder kein passendes Kopiermodul aktiv -------------------
@@ -280,11 +280,16 @@ transition_to_state() {
 # .........  Auto-Recovery bei Fehlern (Device-Loss, Lesefehler)
 # ===========================================================================
 run_state_machine() {
+    #-- Start der State Machine im Log vermerken ----------------------------
     log_info "$MSG_STATE_MACHINE_STARTED"
     
+    #-- Laufwerksmonitor starten --------------------------------------------
+    drivestat_start_monitor
+
+    #-- Initalen State setzen (INITIALIZING) --------------------------------
     transition_to_state "$STATE_INITIALIZING" "Initialisiere Service..."
-    
-    # Hauptschleife - läuft endlos
+
+    #-- Hauptschleife - läuft endlos ----------------------------------------
     while true; do
         case "$CURRENT_STATE" in
             "$STATE_INITIALIZING")
@@ -296,7 +301,7 @@ run_state_machine() {
             "$STATE_WAITING_FOR_DRIVE")
                 # Prüfe ob Laufwerk verfügbar ist
                 if drivestat_get_drive; then
-                    transition_to_state "$STATE_WAITING_FOR_MEDIA" "$MSG_DRIVE_DETECTED $CD_DEVICE"
+                    transition_to_state "$STATE_WAITING_FOR_MEDIA" "$MSG_DRIVE_DETECTED $(drivestat_get_drive)"
                 else
                     # Kein Laufwerk gefunden - warte und versuche erneut
                     sleep "$POLL_DRIVE_INTERVAL"
@@ -305,7 +310,7 @@ run_state_machine() {
                 
             "$STATE_WAITING_FOR_MEDIA")
                 # Prüfe ob Medium eingelegt ist
-                if drivestat_disc_insert; then
+                if drivestat_get_inserted; then
                     transition_to_state "$STATE_MEDIA_DETECTED" "$MSG_MEDIUM_DETECTED"
                 else
                     # Prüfe ob Laufwerk noch da ist
@@ -317,13 +322,15 @@ run_state_machine() {
                 ;;
                 
             "$STATE_MEDIA_DETECTED")
+                # Kurze Pause für Spin-Up und Erkennung
+                sleep 2  
+
                 # Medium erkannt - warte bis es bereit ist (Spin-Up)
-                if wait_for_disc_ready 3; then
+                if drivestat_get_inserted; then
                     transition_to_state "$STATE_ANALYZING" "Analysiere Medium..."
                 else
                     # Medium nicht lesbar - zurück zum Warten
                     transition_to_state "$STATE_WAITING_FOR_MEDIA" "Medium nicht lesbar"
-                    sleep "$POLL_MEDIA_INTERVAL"
                 fi
                 ;;
                 
@@ -336,14 +343,11 @@ run_state_machine() {
                 fi
                 
                 log_info "$MSG_DISC_TYPE_DETECTED $(discinfo_get_type)"
-                if [[ "$(discinfo_get_type)" != "audio-cd" ]]; then
-                    log_info "$MSG_VOLUME_LABEL $(discinfo_get_label)"
-                fi
-                
+
                 # Unmounte Disc falls sie auto-gemountet wurde
-                if mount | grep -q "$CD_DEVICE"; then
+                if mount | grep -q "$(drivestat_get_drive)"; then
                     log_info "$MSG_UNMOUNTING_DISC"
-                    umount "$CD_DEVICE" 2>/dev/null || sudo umount "$CD_DEVICE" 2>/dev/null
+                    umount "$(drivestat_get_drive)" 2>/dev/null || sudo umount "$(drivestat_get_drive)" 2>/dev/null
                     sleep 1
                 fi
                 
@@ -370,7 +374,7 @@ run_state_machine() {
                 
             "$STATE_WAITING_FOR_REMOVAL")
                 # Warte bis Medium entfernt wurde
-                if ! drivestat_disc_insert; then
+                if ! drivestat_get_inserted; then
                     # Medium entfernt - zurück zum Warten auf neues Medium
                     transition_to_state "$STATE_IDLE" "Medium entfernt"
                 else
@@ -501,6 +505,9 @@ main() {
 cleanup_service() {
     log_info "$MSG_SERVICE_STOPPING"
     
+    #-- Laufwerksmonitor stoppen --------------------------------------------
+    drivestat_stop_monitor
+
     # MQTT: Offline setzen
     if [[ "$SUPPORT_MQTT" == "true" ]]; then
         mqtt_cleanup
@@ -509,7 +516,7 @@ cleanup_service() {
     # Töte alle laufenden Kopierprozesse (dvdbackup, ddrescue, etc.)
     pkill -P $$ 2>/dev/null  # Töte alle Child-Prozesse
     sleep 2  # Warte bis Prozesse beendet sind
-    
+
     # Jetzt cleanup durchführen
     common_cleanup_disc_operation "interrupted"
     exit 0

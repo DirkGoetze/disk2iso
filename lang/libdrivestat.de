@@ -1,0 +1,92 @@
+# ============================================================================
+# Sprachdatei: libdrivestat (Deutsch)
+# ============================================================================
+# Beschreibung: Deutsche Meldungen für Laufwerks-Erkennung und -Überwachung
+# Version: 1.3.0
+# Datum: 2026-02-26
+# ============================================================================
+
+# Reset/Init
+readonly MSG_DEBUG_DRIVESTAT_RESET="Laufwerksinformationen zurückgesetzt"
+
+# Analyse
+readonly MSG_DEBUG_ANALYSE_START="Starte Analyse des optischen Laufwerks"
+readonly MSG_DEBUG_ANALYSE_COMPLETE="Analyse des optischen Laufwerks abgeschlossen"
+readonly MSG_ERROR_NO_DRIVE_FOUND="Kein optisches Laufwerk gefunden"
+readonly MSG_ERROR_VENDOR_UNKNOWN="Hersteller des Laufwerks unbekannt"
+readonly MSG_ERROR_MODEL_UNKNOWN="Modell des Laufwerks unbekannt"
+readonly MSG_ERROR_FIRMWARE_UNKNOWN="Firmware-Version des Laufwerks unbekannt"
+readonly MSG_ERROR_BUS_TYPE_UNKNOWN="Bus-Typ des Laufwerks unbekannt"
+readonly MSG_ERROR_CAPABILITIES_UNKNOWN="Laufwerksfähigkeiten unbekannt"
+
+# Drive Get/Set/Detect
+readonly MSG_DEBUG_DRIVE_FOUND="Optisches Laufwerk gefunden: '%s'"
+readonly MSG_ERROR_NO_DRIVE_PATH="Kein Pfad zum optischen Laufwerk angegeben oder gefunden"
+readonly MSG_DEBUG_DRIVE_SET="Optisches Laufwerk gesetzt: '%s'"
+readonly MSG_DEBUG_DRIVE_CHANGED="Laufwerk geändert: '%s' → '%s'"
+readonly MSG_ERROR_INVALID_DRIVE_PATH="Ungültiger Pfad zum optischen Laufwerk: '%s'"
+
+# Vendor Get/Set/Detect
+readonly MSG_DEBUG_VENDOR_GET="Hersteller des Laufwerks: '%s'"
+readonly MSG_DEBUG_VENDOR_SET="Hersteller des Laufwerks gesetzt: '%s'"
+readonly MSG_DEBUG_VENDOR_CHANGED="Hersteller geändert: '%s' → '%s'"
+
+# Model Get/Set/Detect
+readonly MSG_DEBUG_MODEL_GET="Modell des Laufwerks: '%s'"
+readonly MSG_DEBUG_MODEL_SET="Modell des Laufwerks gesetzt: '%s'"
+readonly MSG_DEBUG_MODEL_CHANGED="Modell geändert: '%s' → '%s'"
+
+# Firmware Get/Set/Detect
+readonly MSG_DEBUG_FIRMWARE_GET="Firmware-Version des Laufwerks: '%s'"
+readonly MSG_DEBUG_FIRMWARE_SET="Firmware-Version des Laufwerks gesetzt: '%s'"
+readonly MSG_DEBUG_FIRMWARE_CHANGED="Firmware-Version geändert: '%s' → '%s'"
+
+# Bus Type Get/Set/Detect
+readonly MSG_DEBUG_BUS_TYPE_GET="Bus-Typ des Laufwerks: '%s'"
+readonly MSG_DEBUG_BUS_TYPE_SET="Bus-Typ des Laufwerks gesetzt: '%s'"
+readonly MSG_DEBUG_BUS_TYPE_CHANGED="Bus-Typ geändert: '%s' → '%s'"
+
+# Capabilities Get/Set/Detect
+readonly MSG_DEBUG_CAPABILITIES_GET="Fähigkeiten des Laufwerks: '%s'"
+readonly MSG_DEBUG_CAPABILITIES_SET="Fähigkeiten des Laufwerks gesetzt: '%s'"
+readonly MSG_DEBUG_CAPABILITIES_CHANGED="Fähigkeiten geändert: '%s' → '%s'"
+
+# Closed Status Get/Set/Detect
+readonly MSG_DEBUG_CLOSED_GET="Status 'Laufwerk geschlossen': '%s'"
+readonly MSG_ERROR_CLOSED_UNKNOWN="Status 'Laufwerk geschlossen': unbekannt"
+readonly MSG_ERROR_CLOSED_INVALID="Ungültiger Wert für 'Laufwerk geschlossen': '%s'"
+readonly MSG_ERROR_CLOSED_SET_FAILED="Status 'Laufwerk geschlossen' konnte nicht gesetzt werden"
+readonly MSG_DEBUG_CLOSED_SET="Status 'Laufwerk geschlossen' gesetzt auf: '%s'"
+readonly MSG_DEBUG_CLOSED_CHANGED="Status 'Laufwerk geschlossen' geändert: '%s' → '%s'"
+readonly MSG_ERROR_DRIVE_UNKNOWN_CLOSED="Laufwerk unbekannt, kann Status nicht ermitteln"
+
+# Inserted Status Get/Set/Detect
+readonly MSG_DEBUG_INSERTED_GET="Status 'Medium eingelegt': '%s'"
+readonly MSG_ERROR_INSERTED_UNKNOWN="Status 'Medium eingelegt': unbekannt"
+readonly MSG_ERROR_INSERTED_INVALID="Ungültiger Wert für 'Medium eingelegt': '%s'"
+readonly MSG_ERROR_INSERTED_SET_FAILED="Status 'Medium eingelegt' konnte nicht gesetzt werden"
+readonly MSG_DEBUG_INSERTED_SET="Status 'Medium eingelegt' gesetzt auf: '%s'"
+readonly MSG_DEBUG_INSERTED_CHANGED="Status 'Medium eingelegt' geändert: '%s' → '%s'"
+
+# Overall Status Get/Set/Detect
+readonly MSG_DEBUG_STATUS_GET="Gesamtstatus des Laufwerks: '%s'"
+readonly MSG_ERROR_STATUS_UNKNOWN="Gesamtstatus des Laufwerks unbekannt"
+readonly MSG_DEBUG_STATUS_SET="Gesamtstatus des Laufwerks gesetzt auf: '%s'"
+readonly MSG_DEBUG_STATUS_CHANGED="Gesamtstatus geändert: '%s' → '%s'"
+readonly MSG_DEBUG_STATUS_DETECT="Ermittle Gesamtstatus des Laufwerks basierend auf Schubladen- und Medium-Status..."
+
+# Software Info
+readonly MSG_ERROR_NO_SOFTWARE_INFO="Keine Software-Informationen gefunden, direktes Lesen wird versucht"
+readonly MSG_DEBUG_COLLECT_SOFTWARE_START="Sammle Software-Informationen..."
+readonly MSG_WARNING_NO_EXTERNAL_DEPS="Keine externen Dependencies in INI gefunden"
+readonly MSG_WARNING_NO_OPTIONAL_DEPS="Keine optionalen Dependencies in INI gefunden"
+readonly MSG_DEBUG_NO_DEPENDENCIES="Keine Dependencies konfiguriert"
+readonly MSG_ERROR_SYSTEMINFO_UNAVAILABLE="systeminfo_check_software_list nicht verfügbar"
+readonly MSG_ERROR_SOFTWARE_CHECK_FAILED="Software-Prüfung fehlgeschlagen"
+readonly MSG_ERROR_JSON_CONVERSION_FAILED="JSON-Konvertierung fehlgeschlagen"
+readonly MSG_ERROR_API_WRITE_FAILED="API-Schreiben fehlgeschlagen"
+readonly MSG_DEBUG_COLLECT_SOFTWARE_SUCCESS="Software-Informationen erfolgreich gesammelt"
+
+# Monitor
+readonly MSG_DEBUG_MONITOR_STARTED="Drive-Monitor gestartet (PID: %s)"
+readonly MSG_DEBUG_MONITOR_STOPPED="Drive-Monitor gestoppt"
