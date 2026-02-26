@@ -7,9 +7,9 @@
 # Beschreibung:
 #   Überwacht den Status des optischen Laufwerks (Schublade, Medium)
 #   - drivestat_get_drive() - Findet erstes optisches Laufwerk
-#   - drivestat_drive_closed(), drivestat_disc_insert()
-#   - wait_for_disc_change(), wait_for_disc_ready()
-#   - Erkennt Änderungen im Drive-Status für automatisches Disc-Handling
+#   - drivestat_get_closed(), drivestat_get_inserted()
+#   - drivestat_start_monitor(), drivestat_stop_monitor()
+#   - Background-Monitoring mit automatischer Status-Erkennung
 #
 # -----------------------------------------------------------------------------
 # Dependencies: liblogging (für log_* Funktionen)
@@ -93,16 +93,16 @@ readonly DRIVE_STATUS_ERROR="error"                            # Fehlerstatus
 # DRIVE_INFO: Laufwerksinformationen
 declare -A DRIVE_INFO=(
     #==================== Technische Daten des Laufwerks ====================
-    [drive]="none"              # Pfad zum optischen Laufwerk (z.B. /dev/sr0)
-    [vendor]="Unknown"            # Hersteller (z.B. "ASUS", "LG", "Pioneer")
-    [model]="Unknown"   # Modellbezeichnung (z.B. "DRW-24D5MT", "BDR-209DBK")
-    [firmware]="Unknown"     # Firmware-Version (z.B. "1.00", "1.01", "1.02")
-    [bus_type]="unknown"                         # USB, SATA, ATA, SCSI, etc.
+    [drive]=""                  # Pfad zum optischen Laufwerk (z.B. /dev/sr0)
+    [vendor]="unknown"            # Hersteller (z.B. "ASUS", "LG", "Pioneer")
+    [model]="unknown"   # Modellbezeichnung (z.B. "DRW-24D5MT", "BDR-209DBK")
+    [firmware]="unknown"     # Firmware-Version (z.B. "1.00", "1.01", "1.02")
+    [bus_type]=""                                # USB, SATA, ATA, SCSI, etc.
     [capabilities]="unknown"           # "CD/DVD", "DVD±R", "BD-ROM", "Audio"
     #===================== Laufwerksstatus (Dynamisch) ======================
     [closed]=true      # true = Laufwerk geschlossen, false = Schublade offen
     [medium_inserted]=false    # true = Medium eingelegt, false = kein Medium
-    [status]="empty"                # empty, disc_inserted, disc_ready, error
+    [status]="$DRIVE_STATUS_EMPTY"  # empty, disc_inserted, disc_ready, error
 )
 
 # ===========================================================================
@@ -1081,7 +1081,7 @@ drivestat_set_inserted() {
 }
 
 # ===========================================================================
-# drivestat_disc_insert
+# drivestat_detect_inserted
 # ---------------------------------------------------------------------------
 # Funktion.: Prüft ob ein Medium im Laufwerk eingelegt ist
 # Parameter: Keine
