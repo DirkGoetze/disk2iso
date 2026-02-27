@@ -1479,6 +1479,63 @@ _systeminfo_get_tool_path() {
 }
 
 # ===========================================================================
+# _systeminfo_collect_tool_info (PRIVATE HELPER)
+# ---------------------------------------------------------------------------
+# Funktion.: Sammelt alle Informationen für ein einzelnes Tool
+# Parameter: $1 = software_name (z.B. "blkid")
+#            $2 = required (true/false String)
+# Ausgabe..: JSON-Fragment (stdout): "toolname": { ... }
+# ===========================================================================
+_systeminfo_collect_tool_info() {
+    local software_name="$1"
+    local required="$2"  # "true" oder "false" als String
+    
+    #-- 1. Installierte Version ermitteln -----------------------------------
+    local installed_version
+    installed_version=$(_systeminfo_get_software_version "$software_name")
+    
+    #-- 2. Verfügbare Version ermitteln -------------------------------------
+    local available_version="Unknown"
+    if [[ "$installed_version" != "Not installed" ]]; then
+        available_version=$(_systeminfo_get_available_version "$software_name")
+    fi
+    
+    #-- 3. Executable-Pfad ermitteln ----------------------------------------
+    local executable_path=""
+    if [[ "$installed_version" != "Not installed" ]]; then
+        executable_path=$(_systeminfo_get_tool_path "$software_name" 2>/dev/null || echo "")
+    fi
+    
+    #-- 4. Status bestimmen -------------------------------------------------
+    local status="unknown"
+    local update_available="false"
+    
+    if [[ "$installed_version" == "Not installed" ]]; then
+        status="missing"
+    elif [[ "$available_version" == "Unknown" ]]; then
+        status="installed"
+    elif [[ "$installed_version" == "$available_version" ]]; then
+        status="current"
+    else
+        status="outdated"
+        update_available="true"
+    fi
+    
+    #-- 5. JSON-String bauen ------------------------------------------------
+    local json_fragment=""
+    json_fragment+="\"${software_name}\":{"
+    json_fragment+="\"path\":\"${executable_path}\","
+    json_fragment+="\"version\":\"${installed_version}\","
+    json_fragment+="\"available\":\"${available_version}\","
+    json_fragment+="\"status\":\"${status}\","
+    json_fragment+="\"update_available\":${update_available},"
+    json_fragment+="\"required\":${required}"
+    json_fragment+="}"
+    
+    echo "$json_fragment"
+}
+
+# ===========================================================================
 # systeminfo_check_software_list
 # ---------------------------------------------------------------------------
 # Funktion.: Zentrale Software-Versions-Prüfung mit Update-Check
@@ -1511,88 +1568,65 @@ systeminfo_check_software_list() {
         optional_deps=""
     }
     
-    #-- Kombiniere Dependencies ---------------------------------------------
-    local all_deps=""
-    if [[ -n "$external_deps" ]] && [[ -n "$optional_deps" ]]; then
-        all_deps="${external_deps},${optional_deps}"
-    elif [[ -n "$external_deps" ]]; then
-        all_deps="$external_deps"
-    elif [[ -n "$optional_deps" ]]; then
-        all_deps="$optional_deps"
+    #-- Parse Dependencies zu Arrays ----------------------------------------
+    local -a external_array=()
+    local -a optional_array=()
+    
+    if [[ -n "$external_deps" ]]; then
+        IFS=',' read -ra external_array <<< "$external_deps"
+    fi
+    
+    if [[ -n "$optional_deps" ]]; then
+        IFS=',' read -ra optional_array <<< "$optional_deps"
     fi
     
     #-- Keine Dependencies gefunden -----------------------------------------
-    if [[ -z "$all_deps" ]]; then
+    if [[ ${#external_array[@]} -eq 0 ]] && [[ ${#optional_array[@]} -eq 0 ]]; then
         log_debug "Keine Dependencies für $caller_module definiert"
-        echo "[]"
+        api_set_value_json "systeminfo" ".software.${caller_module}_dependencies" "{}"
         return 0
     fi
-    
-    #-- Parse Dependencies (kommasepariert → Array) -------------------------
-    IFS=',' read -ra deps_array <<< "$all_deps"
     
     #-- JSON-Array aufbauen -------------------------------------------------
     local json_array="{"
     local first=true
 
-    for software_name in "${software_list[@]}"; do
-
-        #-- Trim Whitespace -------------------------------------------------
+    #-- 1. Verarbeite REQUIRED Dependencies (external) ---------------------
+    for software_name in "${external_array[@]}"; do
+        # Trim Whitespace
         software_name=$(echo "$software_name" | xargs)
-
-        #-- Komma zwischen Einträgen, außer beim ersten Eintrag -------------
-        if [[ "$first" == "false" ]] && json_array+=","
+        [[ -z "$software_name" ]] && continue
+        
+        #-- Komma zwischen Einträgen ----------------------------------------
+        [[ "$first" == "false" ]] && json_array+=","
         first=false
         
-        #-- 1. Installierte Version ermitteln -------------------------------
-        local installed_version
-        installed_version=$(_systeminfo_get_software_version "$software_name")
+        #-- Sammle Tool-Informationen ---------------------------------------
+        local tool_json
+        tool_json=$(_systeminfo_collect_tool_info "$software_name" "true")  
+        json_array+="$tool_json"
+    done
+    
+    #-- 2. Verarbeite OPTIONAL Dependencies ---------------------------------
+    for software_name in "${optional_array[@]}"; do
+        # Trim Whitespace
+        software_name=$(echo "$software_name" | xargs)
+        [[ -z "$software_name" ]] && continue
         
-        #-- 2. Verfügbare Version ermitteln ---------------------------------
-        local available_version="Unknown"
-        if [[ "$installed_version" != "Not installed" ]]; then
-            available_version=$(_systeminfo_get_available_version "$software_name")
-        fi
+        #-- Komma zwischen Einträgen ----------------------------------------
+        [[ "$first" == "false" ]] && json_array+=","
+        first=false
         
-        #-- 3. Executable-Pfad ermitteln (NEU!) -----------------------------
-        local executable_path=""
-        if [[ "$installed_version" != "Not installed" ]]; then
-            executable_path=$(_systeminfo_get_tool_path "$software_name" 2>/dev/null || echo "")
-        fi
-
-        #-- 4. Status bestimmen ---------------------------------------------
-        local status="unknown"
-        local update_available="false"
-        
-        if [[ "$installed_version" == "Not installed" ]]; then
-            # Software nicht installiert → Status "missing"
-            status="missing"
-        elif [[ "$available_version" == "Unknown" ]]; then
-            # Keine Info über verfügbare Version → Status "installed" 
-            status="installed"
-        elif [[ "$installed_version" == "$available_version" ]]; then
-            # Versionen gleich oder keine genaue Version → Status "current"
-            status="current"
-        else
-            # Versionen unterschiedlich → Update verfügbar
-            status="outdated"
-            update_available="true"
-        fi
-        
-        #-- 4. JSON-Objekt bauen (escaping für JSON) ------------------------
-        json_array+="\"${software_name}\":{"
-        json_array+="\"path\":\"${executable_path}\","
-        json_array+="\"version\":\"${installed_version}\","
-        json_array+="\"available\":\"${available_version}\","
-        json_array+="\"status\":\"${status}\","
-        json_array+="\"update_available\":${update_available}"
-        json_array+="}"
+        #-- Sammle Tool-Informationen ---------------------------------------
+        local tool_json
+        tool_json=$(_systeminfo_collect_tool_info "$software_name" "false") 
+        json_array+="$tool_json"
     done
     
     json_array+="}"
 
     #-- Speicher in systeminfo.json unter software.{modul}_dependencies -----
-    api_set_value_json "systeminfo" ".software.${caller_module}_dependencies" "$json_object" || {
+    api_set_value_json "systeminfo" ".software.${caller_module}_dependencies" "$json_array" || {
         log_error "Fehler beim Schreiben der Software-Infos für $caller_module"
         return 1
     }
